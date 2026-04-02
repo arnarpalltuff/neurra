@@ -368,7 +368,7 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <SettingRow label="App version" value="1.0.0" />
           <Divider />
-          <SettingRow label="The science behind Neurra" onPress={() => {}} />
+          <SettingRow label="The science behind Neurra" onPress={() => router.push('/science')} />
           <Divider />
           <SettingRow label="Contact support" value="support@neurra.app" />
           <Divider />
