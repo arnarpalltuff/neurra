@@ -38,8 +38,8 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
   const scoreRef = useRef(0);
   const tapRef = useRef(0);
   const missRef = useRef(0);
+  const targetVisibleRef = useRef(false);
 
-  // Breathing circle animation
   const breathScale = useSharedValue(0.6);
   const breathOpacity = useSharedValue(0.4);
 
@@ -48,7 +48,6 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
     opacity: breathOpacity.value,
   }));
 
-  // Breathing phase
   useEffect(() => {
     if (phase !== 'breathing') return;
     let cycle = 0;
@@ -114,18 +113,16 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
         y: 20 + Math.random() * (fieldSize * 0.6),
       });
       setTargetVisible(true);
+      targetVisibleRef.current = true;
 
-      // Auto-miss after 2s
       setTimeout(() => {
         if (cancelled) return;
-        setTargetVisible(prev => {
-          if (prev) {
-            missRef.current += 1;
-            setMissCount(missRef.current);
-          }
-          return false;
-        });
-        // Next target
+        if (targetVisibleRef.current) {
+          missRef.current += 1;
+          setMissCount(missRef.current);
+          targetVisibleRef.current = false;
+          setTargetVisible(false);
+        }
         const delay = 800 + Math.random() * 1200;
         setTimeout(() => { if (!cancelled) spawnTarget(); }, delay);
       }, 2000);
@@ -139,7 +136,6 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
     };
   }, [phase]);
 
-  // Done
   useEffect(() => {
     if (phase !== 'done') return;
     const total = tapRef.current + missRef.current;
@@ -149,7 +145,8 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
   }, [phase, onComplete]);
 
   const handleTargetTap = useCallback(() => {
-    if (!targetVisible) return;
+    if (!targetVisibleRef.current) return;
+    targetVisibleRef.current = false;
     setTargetVisible(false);
     tapRef.current += 1;
     setTapCount(tapRef.current);
@@ -157,7 +154,7 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
     scoreRef.current += pts;
     setScore(scoreRef.current);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, [targetVisible]);
+  }, []);
 
   return (
     <View style={styles.container}>

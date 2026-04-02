@@ -7,7 +7,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { Svg, Circle, Ellipse, Rect, Path, G, Text as SvgText } from 'react-native-svg';
 import { colors } from '../../../constants/colors';
-import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { updateDifficulty, getDifficulty, facePlaceParams } from '../../../utils/difficultyEngine';
 import { shuffle, pickRandom } from '../../../utils/arrayUtils';
 
 const { width } = Dimensions.get('window');
@@ -48,16 +48,6 @@ interface FaceItem {
   skin: string;
   feature: string;
   accent: string;
-}
-
-function faceParams(level: number) {
-  const l = Math.round(level);
-  return {
-    numFaces: Math.min(3 + Math.floor(l / 3), 8),
-    displayTime: Math.max(2000, 3500 - l * 75),
-    recallType: l >= 7 ? 'type' as const : 'choice' as const,
-    numChoices: 4 + Math.floor(l / 5),
-  };
 }
 
 function IllustratedFace({ face, size = 80, showName = false, correct, wrong }: {
@@ -147,7 +137,7 @@ function IllustratedFace({ face, size = 80, showName = false, correct, wrong }: 
 export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlaceProps) {
   const diff = getDifficulty('face-place', 0);
   const level = Math.max(initialLevel, diff.level);
-  const params = useMemo(() => faceParams(level), [level]);
+  const params = useMemo(() => facePlaceParams(level), [level]);
 
   const [phase, setPhase] = useState<Phase>('study');
   const [faces, setFaces] = useState<FaceItem[]>([]);
@@ -161,8 +151,10 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
   const [feedback, setFeedback] = useState<{ correct: boolean; answer: string } | null>(null);
   const [typedName, setTypedName] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startTimeRef = useRef(Date.now());
   const scoreRef = useRef(0);
+  const correctCountRef = useRef(0);
 
   // Init faces
   useEffect(() => {
@@ -224,7 +216,8 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
     updateDifficulty('face-place', isCorrect);
 
     if (isCorrect) {
-      setCorrectCount(c => c + 1);
+      correctCountRef.current += 1;
+      setCorrectCount(correctCountRef.current);
       const speedBonus = elapsed < 2 ? 60 : 0;
       const pts = 120 + speedBonus;
       scoreRef.current += pts;
@@ -237,19 +230,19 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
     setFeedback({ correct: isCorrect, answer: currentFace.name });
     setTypedName('');
 
-    setTimeout(() => {
+    if (answerTimerRef.current) clearTimeout(answerTimerRef.current);
+    answerTimerRef.current = setTimeout(() => {
       setFeedback(null);
       if (recallIndex + 1 < recallOrder.length) {
         setRecallIndex(i => i + 1);
       } else {
-        // All done — add sweep bonus
-        const sweepBonus = correctCount + (isCorrect ? 1 : 0) === faces.length ? 200 : 0;
+        const sweepBonus = correctCountRef.current === faces.length ? 200 : 0;
         scoreRef.current += sweepBonus;
-        const finalAcc = (correctCount + (isCorrect ? 1 : 0)) / faces.length;
+        const finalAcc = correctCountRef.current / faces.length;
         onComplete(scoreRef.current, finalAcc);
       }
     }, 1200);
-  }, [recallIndex, recallOrder, correctCount, faces, onComplete]);
+  }, [recallIndex, recallOrder, faces, onComplete]);
 
   const currentStudyFace = faces[studyIndex];
   const currentRecallFace = recallOrder[recallIndex];

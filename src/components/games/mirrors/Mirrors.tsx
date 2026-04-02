@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
-import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { updateDifficulty, getDifficulty, mirrorsParams as mirrorsParamsEngine } from '../../../utils/difficultyEngine';
 import { pickRandom, shuffle } from '../../../utils/arrayUtils';
+import ProgressBar from '../../ui/ProgressBar';
 
 const { width: W } = Dimensions.get('window');
 
@@ -46,16 +47,6 @@ const RULES: Rule[] = [
   { type: 'size', label: 'Match the SIZE', getAnswer: (s) => s.size },
   { type: 'count', label: 'Match the COUNT', getAnswer: (s) => String(s.count) },
 ];
-
-function mirrorsParams(level: number) {
-  const l = Math.round(level);
-  return {
-    totalTrials: Math.min(12 + Math.floor(l / 2), 24),
-    switchEvery: Math.max(2, 6 - Math.floor(l / 3)),
-    numRules: Math.min(2 + Math.floor(l / 4), 4),
-    timeLimit: Math.max(1500, 3000 - l * 80),
-  };
-}
 
 function generateStimulus(): Stimulus {
   const c = pickRandom(SHAPE_COLORS);
@@ -107,7 +98,7 @@ function ShapeDisplay({ stimulus, displaySize }: { stimulus: Stimulus; displaySi
 export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) {
   const diff = getDifficulty('mirrors', 0);
   const level = Math.max(initialLevel, diff.level);
-  const params = useMemo(() => mirrorsParams(level), [level]);
+  const params = useMemo(() => mirrorsParamsEngine(level), [level]);
 
   const activeRules = useMemo(() => RULES.slice(0, params.numRules), [params.numRules]);
 
@@ -124,6 +115,13 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
   const correctRef = useRef(0);
   const trialRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    pendingTimers.current.push(id);
+    return id;
+  }, []);
 
   const ruleShake = useSharedValue(0);
   const ruleAnimStyle = useAnimatedStyle(() => ({
@@ -145,7 +143,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
         withTiming(-4, { duration: 50 }),
         withTiming(0, { duration: 50 }),
       );
-      setTimeout(() => setRuleChanged(false), 1200);
+      safeTimeout(() => setRuleChanged(false), 1200);
     }
 
     const correctAnswer = nextRule.getAnswer(newStim);
@@ -162,7 +160,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
       setFeedback('timeout');
       updateDifficulty('mirrors', false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      setTimeout(() => {
+      safeTimeout(() => {
         trialRef.current += 1;
         setTrial(trialRef.current);
         if (trialRef.current >= params.totalTrials) {
@@ -173,11 +171,14 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
         }
       }, 600);
     }, params.timeLimit);
-  }, [params, activeRules, ruleShake, onComplete]);
+  }, [params, activeRules, ruleShake, onComplete, safeTimeout]);
 
   useEffect(() => {
     nextTrial(0, activeRules[0]);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      pendingTimers.current.forEach(clearTimeout);
+    };
   }, []);
 
   const handleAnswer = useCallback((answer: string) => {
@@ -202,7 +203,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
       setFeedback('wrong');
     }
 
-    setTimeout(() => {
+    safeTimeout(() => {
       trialRef.current += 1;
       setTrial(trialRef.current);
       if (trialRef.current >= params.totalTrials) {
@@ -212,9 +213,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
         nextTrial(trialRef.current, rule);
       }
     }, 500);
-  }, [feedback, rule, stimulus, params, nextTrial, onComplete]);
-
-  const progress = trial / params.totalTrials;
+  }, [feedback, rule, stimulus, params, nextTrial, onComplete, safeTimeout]);
 
   return (
     <View style={styles.container}>
@@ -222,9 +221,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
         <Text style={styles.trialText}>{trial + 1}/{params.totalTrials}</Text>
         <Text style={styles.scoreText}>{score}</Text>
       </View>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-      </View>
+      <ProgressBar value={trial} max={params.totalTrials} style={{ marginBottom: 16 }} />
 
       <Animated.View style={[styles.ruleBar, ruleAnimStyle, ruleChanged && styles.ruleBarChanged]}>
         <Text style={[styles.ruleText, ruleChanged && styles.ruleTextChanged]}>
@@ -266,8 +263,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   trialText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
-  progressBar: { width: '100%', height: 4, backgroundColor: colors.bgTertiary, borderRadius: 2, overflow: 'hidden', marginBottom: 16 },
-  progressFill: { height: '100%', backgroundColor: colors.growth, borderRadius: 2 },
   ruleBar: { backgroundColor: colors.bgElevated, borderRadius: 12, padding: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: colors.border },
   ruleBarChanged: { borderColor: colors.streak, backgroundColor: '#FBBF2415' },
   ruleText: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },

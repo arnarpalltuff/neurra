@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, Easing } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
-import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { updateDifficulty, getDifficulty, chainReactionParams } from '../../../utils/difficultyEngine';
 import { shuffle, pickRandom } from '../../../utils/arrayUtils';
+import ProgressBar from '../../ui/ProgressBar';
 
 const { width: W, height: H } = Dimensions.get('window');
 const PLAY_W = W - 40;
@@ -34,14 +35,10 @@ interface Orb {
 }
 
 function chainParams(level: number) {
-  const l = Math.round(level);
-  const numColors = Math.min(3 + Math.floor(l / 4), 6);
+  const base = chainReactionParams(level);
   return {
-    seqLength: Math.min(3 + Math.floor(l / 4), 6),
-    numOrbs: Math.min(10 + Math.floor(l / 2), 16),
-    driftSpeed: 0.3 + l * 0.08,
-    colorPool: ALL_COLORS.slice(0, numColors),
-    totalChains: Math.min(4 + Math.floor(l / 3), 10),
+    ...base,
+    colorPool: ALL_COLORS.slice(0, base.numColors),
   };
 }
 
@@ -69,14 +66,26 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
   const [score, setScore] = useState(0);
   const [comboCount, setComboCount] = useState(0);
   const [noMissRun, setNoMissRun] = useState(0);
+  const comboRef = useRef(0);
+  const noMissRef = useRef(0);
   const [feedback, setFeedback] = useState<'correct' | 'chain' | 'wrong' | null>(null);
   const [chainStartTime, setChainStartTime] = useState(Date.now());
 
   const animRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   const scoreRef = useRef(0);
   const chainCountRef = useRef(0);
+  const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // Init
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    pendingTimers.current.push(id);
+    return id;
+  }, []);
+
+  useEffect(() => {
+    return () => { pendingTimers.current.forEach(clearTimeout); };
+  }, []);
+
   useEffect(() => {
     const newOrbs = generateOrbs(params.numOrbs, params.colorPool, params.driftSpeed);
     setOrbs(newOrbs);
@@ -90,7 +99,6 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
     setChainStartTime(Date.now());
   }, [params]);
 
-  // Physics loop
   useEffect(() => {
     let running = true;
     const tick = () => {
@@ -122,9 +130,8 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
       scoreRef.current += pts;
       setScore(s => s + pts);
 
-      // Respawn orb with new color after brief death
       setOrbs(prev => prev.map(o => o.id === orb.id ? { ...o, alive: false } : o));
-      setTimeout(() => {
+      safeTimeout(() => {
         setOrbs(prev => prev.map(o => o.id === orb.id ? {
           ...o,
           alive: true,
@@ -135,18 +142,17 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
       }, 800);
 
       if (nextIdx >= sequence.length) {
-        // Chain complete!
         const elapsed = (Date.now() - chainStartTime) / 1000;
-        const newCombo = comboCount + 1;
-        setComboCount(newCombo);
+        comboRef.current += 1;
+        setComboCount(comboRef.current);
         const speedBonus = elapsed < 3 ? 2 : 1;
-        const chainPts = 150 * newCombo * speedBonus;
+        const chainPts = 150 * comboRef.current * speedBonus;
         scoreRef.current += chainPts;
         setScore(s => s + chainPts);
 
-        const newNoMiss = noMissRun + 1;
-        setNoMissRun(newNoMiss);
-        if (newNoMiss % 3 === 0 && newNoMiss > 0) {
+        noMissRef.current += 1;
+        setNoMissRun(noMissRef.current);
+        if (noMissRef.current % 3 === 0 && noMissRef.current > 0) {
           scoreRef.current += 300;
           setScore(s => s + 300);
         }
@@ -157,10 +163,10 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
         updateDifficulty('chain-reaction', true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-        setTimeout(() => {
+        safeTimeout(() => {
           setFeedback(null);
           if (chainCountRef.current >= params.totalChains) {
-            const acc = Math.min(1, comboCount / params.totalChains + 0.5);
+            const acc = Math.min(1, comboRef.current / params.totalChains + 0.5);
             onComplete(scoreRef.current, acc);
           } else {
             generateSequence();
@@ -169,34 +175,31 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
       } else {
         setSeqIndex(nextIdx);
         setFeedback('correct');
-        setTimeout(() => setFeedback(null), 300);
+        safeTimeout(() => setFeedback(null), 300);
       }
     } else {
-      // Wrong
-      setComboCount(c => Math.max(0, c - 1));
+      comboRef.current = Math.max(0, comboRef.current - 1);
+      setComboCount(comboRef.current);
+      noMissRef.current = 0;
       setNoMissRun(0);
       setFeedback('wrong');
       updateDifficulty('chain-reaction', false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      setTimeout(() => setFeedback(null), 400);
+      safeTimeout(() => setFeedback(null), 400);
     }
-  }, [sequence, seqIndex, comboCount, noMissRun, chainStartTime, params, generateSequence, onComplete]);
+  }, [sequence, seqIndex, chainStartTime, params, generateSequence, onComplete, safeTimeout]);
 
   const progress = chainCount / params.totalChains;
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.chainText}>Chain {chainCount}/{params.totalChains}</Text>
         <Text style={styles.scoreText}>{score}</Text>
         {comboCount > 1 && <Text style={styles.comboText}>{comboCount}×</Text>}
       </View>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-      </View>
+      <ProgressBar value={chainCount} max={params.totalChains} style={{ marginBottom: 12 }} />
 
-      {/* Sequence display */}
       <View style={styles.seqRow}>
         {sequence.map((color, i) => (
           <View key={i} style={[styles.seqDot, {
@@ -208,7 +211,6 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
         ))}
       </View>
 
-      {/* Play field */}
       <View style={styles.playField}>
         {orbs.filter(o => o.alive).map(orb => (
           <TouchableOpacity
@@ -226,7 +228,6 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
         ))}
       </View>
 
-      {/* Feedback */}
       {feedback === 'chain' && (
         <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.chainFeedback}>
           <Text style={styles.chainFeedbackText}>⚡ CHAIN COMPLETE!</Text>
@@ -242,8 +243,6 @@ const styles = StyleSheet.create({
   chainText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
   comboText: { color: colors.streak, fontSize: 16, fontWeight: '800' },
-  progressBar: { width: '100%', height: 4, backgroundColor: colors.bgTertiary, borderRadius: 2, overflow: 'hidden', marginBottom: 12 },
-  progressFill: { height: '100%', backgroundColor: colors.growth, borderRadius: 2 },
   seqRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 12 },
   seqDot: { width: 28, height: 28, borderRadius: 14 },
   playField: { width: PLAY_W, height: PLAY_H, backgroundColor: colors.bgSecondary, borderRadius: 24, position: 'relative', alignSelf: 'center', overflow: 'hidden', borderWidth: 1, borderColor: colors.border },

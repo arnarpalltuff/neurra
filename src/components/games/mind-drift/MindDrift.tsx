@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming, withSequence } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
-import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { updateDifficulty, getDifficulty, mindDriftParams } from '../../../utils/difficultyEngine';
+import { pickRandom } from '../../../utils/arrayUtils';
+import ProgressBar from '../../ui/ProgressBar';
 
 const { width: W } = Dimensions.get('window');
 const GRID_SIZE = W - 60;
@@ -20,17 +22,6 @@ interface HexCell {
   col: number;
   cx: number;
   cy: number;
-}
-
-function driftParams(level: number) {
-  const l = Math.round(level);
-  return {
-    gridRows: Math.min(4 + Math.floor(l / 5), 7),
-    gridCols: Math.min(4 + Math.floor(l / 5), 7),
-    pathLength: Math.min(3 + Math.floor(l / 2), 10),
-    showDelay: Math.max(300, 600 - l * 20),
-    totalRounds: Math.min(5 + Math.floor(l / 3), 10),
-  };
 }
 
 function buildHexGrid(rows: number, cols: number, size: number): HexCell[] {
@@ -63,7 +54,7 @@ function getNeighbors(cell: HexCell, grid: HexCell[]): HexCell[] {
 }
 
 function generatePath(grid: HexCell[], length: number): HexCell[] {
-  const start = grid[Math.floor(Math.random() * grid.length)];
+  const start = pickRandom(grid);
   const path: HexCell[] = [start];
   const visited = new Set<string>();
   visited.add(`${start.row},${start.col}`);
@@ -74,7 +65,7 @@ function generatePath(grid: HexCell[], length: number): HexCell[] {
       n => !visited.has(`${n.row},${n.col}`)
     );
     if (neighbors.length === 0) break;
-    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+    const next = pickRandom(neighbors);
     path.push(next);
     visited.add(`${next.row},${next.col}`);
   }
@@ -84,7 +75,7 @@ function generatePath(grid: HexCell[], length: number): HexCell[] {
 export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftProps) {
   const diff = getDifficulty('mind-drift', 0);
   const level = Math.max(initialLevel, diff.level);
-  const params = useMemo(() => driftParams(level), [level]);
+  const params = useMemo(() => mindDriftParams(level), [level]);
 
   const grid = useMemo(
     () => buildHexGrid(params.gridRows, params.gridCols, GRID_SIZE),
@@ -97,13 +88,23 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   const [tapped, setTapped] = useState<HexCell[]>([]);
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
 
   const scoreRef = useRef(0);
   const correctRef = useRef(0);
   const roundRef = useRef(1);
   const roundStartRef = useRef(Date.now());
+  const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    pendingTimers.current.push(id);
+    return id;
+  }, []);
+
+  useEffect(() => {
+    return () => { pendingTimers.current.forEach(clearTimeout); };
+  }, []);
 
   const startRound = useCallback(() => {
     const newPath = generatePath(grid, params.pathLength);
@@ -113,26 +114,36 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
     setLitIndex(-1);
     roundStartRef.current = Date.now();
 
-    // Animate path reveal
     let i = 0;
     const show = () => {
       if (i < newPath.length) {
         setLitIndex(i);
         i++;
-        setTimeout(show, params.showDelay);
+        safeTimeout(show, params.showDelay);
       } else {
-        setTimeout(() => {
+        safeTimeout(() => {
           setLitIndex(-1);
           setPhase('tracing');
         }, 400);
       }
     };
-    setTimeout(show, 500);
-  }, [grid, params]);
+    safeTimeout(show, 500);
+  }, [grid, params, safeTimeout]);
 
   useEffect(() => {
     startRound();
   }, []);
+
+  const advanceRound = useCallback(() => {
+    roundRef.current += 1;
+    setRound(roundRef.current);
+    if (roundRef.current > params.totalRounds) {
+      const acc = correctRef.current / params.totalRounds;
+      onComplete(scoreRef.current, acc);
+    } else {
+      startRound();
+    }
+  }, [params, startRound, onComplete]);
 
   const handleHexTap = useCallback((cell: HexCell) => {
     if (phase !== 'tracing') return;
@@ -149,9 +160,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
       updateDifficulty('mind-drift', true);
 
       if (newTapped.length === path.length) {
-        // Round complete
         correctRef.current += 1;
-        setCorrectCount(correctRef.current);
         const elapsed = (Date.now() - roundStartRef.current) / 1000;
         const speedBonus = elapsed < 5 ? 50 : 0;
         const pts = 100 * path.length + speedBonus;
@@ -159,43 +168,27 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
         setScore(scoreRef.current);
         setFeedback('correct');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-        setTimeout(() => {
-          setFeedback(null);
-          roundRef.current += 1;
-          setRound(roundRef.current);
-          if (roundRef.current > params.totalRounds) {
-            const acc = correctRef.current / params.totalRounds;
-            onComplete(scoreRef.current, acc);
-          } else {
-            startRound();
-          }
-        }, 800);
+        safeTimeout(() => { setFeedback(null); advanceRound(); }, 800);
       }
     } else {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       updateDifficulty('mind-drift', false);
       setFeedback('wrong');
-
-      // Show correct path briefly, then move on
-      setTimeout(() => {
-        setFeedback(null);
-        roundRef.current += 1;
-        setRound(roundRef.current);
-        if (roundRef.current > params.totalRounds) {
-          const acc = correctRef.current / params.totalRounds;
-          onComplete(scoreRef.current, acc);
-        } else {
-          startRound();
-        }
-      }, 1200);
+      safeTimeout(() => { setFeedback(null); advanceRound(); }, 1200);
     }
-  }, [phase, tapped, path, params, startRound, onComplete]);
+  }, [phase, tapped, path, safeTimeout, advanceRound]);
 
   const pathSet = useMemo(() => {
     const s = new Set<string>();
     path.forEach(c => s.add(`${c.row},${c.col}`));
     return s;
+  }, [path]);
+
+  // Cache path index per cell to avoid repeated findIndex in render
+  const pathIndexMap = useMemo(() => {
+    const m = new Map<string, number>();
+    path.forEach((c, i) => m.set(`${c.row},${c.col}`, i));
+    return m;
   }, [path]);
 
   const tappedSet = useMemo(() => {
@@ -204,7 +197,6 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
     return s;
   }, [tapped]);
 
-  const progress = (round - 1) / params.totalRounds;
   const hexR = GRID_SIZE / (params.gridCols * 2 + 1);
 
   return (
@@ -213,9 +205,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
         <Text style={styles.roundText}>Path {round}/{params.totalRounds}</Text>
         <Text style={styles.scoreText}>{score}</Text>
       </View>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-      </View>
+      <ProgressBar value={round - 1} max={params.totalRounds} style={{ marginBottom: 12 }} />
 
       {phase === 'showing' && (
         <Text style={styles.phaseText}>Watch the path...</Text>
@@ -230,9 +220,8 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
           const isLit = litIndex >= 0 && path[litIndex] &&
             cell.row === path[litIndex].row && cell.col === path[litIndex].col;
           const isTapped = tappedSet.has(key);
-          const isOnPath = phase === 'showing' && litIndex >= 0 &&
-            path.findIndex(p => p.row === cell.row && p.col === cell.col) <= litIndex &&
-            path.findIndex(p => p.row === cell.row && p.col === cell.col) >= 0;
+          const pathIdx = pathIndexMap.get(key) ?? -1;
+          const isOnPath = phase === 'showing' && litIndex >= 0 && pathIdx >= 0 && pathIdx <= litIndex;
           const showWrong = feedback === 'wrong' && pathSet.has(key) && !tappedSet.has(key);
 
           return (
@@ -280,8 +269,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   roundText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
-  progressBar: { width: '100%', height: 4, backgroundColor: colors.bgTertiary, borderRadius: 2, overflow: 'hidden', marginBottom: 12 },
-  progressFill: { height: '100%', backgroundColor: colors.growth, borderRadius: 2 },
   phaseText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   gridContainer: { alignSelf: 'center', position: 'relative' },
   hex: { position: 'absolute', backgroundColor: colors.bgTertiary, borderWidth: 1, borderColor: colors.border },

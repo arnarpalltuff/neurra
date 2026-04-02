@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-nati
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
-import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { updateDifficulty, getDifficulty, rewindParams as rewindParamsEngine } from '../../../utils/difficultyEngine';
 import { shuffle, pickRandom } from '../../../utils/arrayUtils';
+import ProgressBar from '../../ui/ProgressBar';
 
 const { width: W } = Dimensions.get('window');
 
@@ -43,16 +44,6 @@ const SCENE_OBJECTS = [
 
 const COLORS_POOL = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
 const POSITIONS = ['left', 'center', 'right'] as const;
-
-function rewindParams(level: number) {
-  const l = Math.round(level);
-  return {
-    numItems: Math.min(3 + Math.floor(l / 3), 7),
-    studyTime: Math.max(2000, 5000 - l * 150),
-    numQuestions: Math.min(3 + Math.floor(l / 4), 6),
-    totalScenes: Math.min(4 + Math.floor(l / 3), 8),
-  };
-}
 
 function buildScene(numItems: number): { items: SceneItem[]; questions: Question[] } {
   const pool = shuffle(SCENE_OBJECTS).slice(0, numItems);
@@ -123,7 +114,7 @@ const COLOR_MAP: Record<string, string> = {
 export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
   const diff = getDifficulty('rewind', 0);
   const level = Math.max(initialLevel, diff.level);
-  const params = useMemo(() => rewindParams(level), [level]);
+  const params = useMemo(() => rewindParamsEngine(level), [level]);
 
   const [phase, setPhase] = useState<Phase>('study');
   const [sceneItems, setSceneItems] = useState<SceneItem[]>([]);
@@ -140,8 +131,18 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
   const correctRef = useRef(0);
   const totalQRef = useRef(0);
   const sceneNumRef = useRef(1);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    pendingTimers.current.push(id);
+    return id;
+  }, []);
 
   const startScene = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
     const { items, questions: qs } = buildScene(params.numItems);
     setSceneItems(items);
     setQuestions(qs.slice(0, params.numQuestions));
@@ -152,21 +153,22 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
     const maxSecs = Math.floor(params.studyTime / 1000);
     let remaining = maxSecs;
     setStudyTimer(remaining);
-    const interval = setInterval(() => {
+    intervalRef.current = setInterval(() => {
       remaining -= 1;
       setStudyTimer(remaining);
       if (remaining <= 0) {
-        clearInterval(interval);
+        if (intervalRef.current) clearInterval(intervalRef.current);
         setPhase('question');
       }
     }, 1000);
-
-    return () => clearInterval(interval);
   }, [params]);
 
   useEffect(() => {
-    const cleanup = startScene();
-    return cleanup;
+    startScene();
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      pendingTimers.current.forEach(clearTimeout);
+    };
   }, []);
 
   const handleAnswer = useCallback((optionIndex: number) => {
@@ -194,14 +196,13 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
     setLastCorrect(isCorrect);
     setPhase('feedback');
 
-    setTimeout(() => {
+    safeTimeout(() => {
       setLastCorrect(null);
       const nextQ = qIndex + 1;
       if (nextQ < questions.length) {
         setQIndex(nextQ);
         setPhase('question');
       } else {
-        // Scene done
         sceneNumRef.current += 1;
         setSceneNum(sceneNumRef.current);
         if (sceneNumRef.current > params.totalScenes) {
@@ -212,9 +213,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
         }
       }
     }, 800);
-  }, [phase, questions, qIndex, params, startScene, onComplete]);
-
-  const progress = (sceneNum - 1) / params.totalScenes;
+  }, [phase, questions, qIndex, params, startScene, onComplete, safeTimeout]);
 
   return (
     <View style={styles.container}>
@@ -222,9 +221,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
         <Text style={styles.roundText}>Scene {sceneNum}/{params.totalScenes}</Text>
         <Text style={styles.scoreText}>{score}</Text>
       </View>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-      </View>
+      <ProgressBar value={sceneNum - 1} max={params.totalScenes} style={{ marginBottom: 12 }} />
 
       {phase === 'study' && (
         <Animated.View entering={FadeIn} style={styles.sceneArea}>
@@ -289,8 +286,6 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   roundText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
-  progressBar: { width: '100%', height: 4, backgroundColor: colors.bgTertiary, borderRadius: 2, overflow: 'hidden', marginBottom: 12 },
-  progressFill: { height: '100%', backgroundColor: colors.growth, borderRadius: 2 },
   sceneArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
   phaseLabel: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   sceneRow: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', gap: 8 },

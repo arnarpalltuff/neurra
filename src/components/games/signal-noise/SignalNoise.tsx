@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withSequence,
-  FadeIn, FadeOut, Easing,
+  FadeIn, FadeOut,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
-import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { updateDifficulty, getDifficulty, signalNoiseParams } from '../../../utils/difficultyEngine';
 import { pickRandom } from '../../../utils/arrayUtils';
+import ProgressBar from '../../ui/ProgressBar';
 
 const { width: W } = Dimensions.get('window');
 const SCENE_SIZE = W - 40;
@@ -42,104 +42,104 @@ function generateScene(count: number): SceneShape[] {
   }));
 }
 
-function signalParams(level: number) {
-  const l = Math.round(level);
-  return {
-    numShapes: Math.min(5 + Math.floor(l / 2), 12),
-    changeInterval: Math.max(2500, 4500 - l * 100),
-    subtlety: Math.min(l * 0.05, 0.8), // 0 = obvious, 1 = invisible
-    totalChanges: Math.min(6 + Math.floor(l / 3), 14),
-  };
-}
-
 export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNoiseProps) {
   const diff = getDifficulty('signal-noise', 0);
   const level = Math.max(initialLevel, diff.level);
-  const params = useMemo(() => signalParams(level), [level]);
+  const params = useMemo(() => signalNoiseParams(level), [level]);
 
   const [shapes, setShapes] = useState<SceneShape[]>([]);
-  const [changeId, setChangeId] = useState<number | null>(null);
   const [changePos, setChangePos] = useState<{ x: number; y: number } | null>(null);
   const [score, setScore] = useState(0);
   const [round, setRound] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'missed' | 'wrong' | null>(null);
   const [streak, setStreak] = useState(0);
-  const [waitingForTap, setWaitingForTap] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scoreRef = useRef(0);
   const correctRef = useRef(0);
   const roundRef = useRef(0);
+  const streakRef = useRef(0);
+  const waitingRef = useRef(false);
+  const changePosRef = useRef<{ x: number; y: number } | null>(null);
+  const shapesRef = useRef<SceneShape[]>([]);
 
-  // Init scene
   useEffect(() => {
-    setShapes(generateScene(params.numShapes));
+    const initial = generateScene(params.numShapes);
+    setShapes(initial);
+    shapesRef.current = initial;
   }, [params.numShapes]);
 
-  // Run changes
-  useEffect(() => {
-    if (shapes.length === 0) return;
-    const scheduleChange = () => {
-      timerRef.current = setTimeout(() => {
-        if (roundRef.current >= params.totalChanges) {
-          const acc = params.totalChanges > 0 ? correctRef.current / params.totalChanges : 1;
-          onComplete(scoreRef.current, acc);
-          return;
+  const scheduleChange = useCallback(() => {
+    timerRef.current = setTimeout(() => {
+      if (roundRef.current >= params.totalChanges) {
+        const acc = params.totalChanges > 0 ? correctRef.current / params.totalChanges : 1;
+        onComplete(scoreRef.current, acc);
+        return;
+      }
+
+      const currentShapes = shapesRef.current;
+      const targetIdx = Math.floor(Math.random() * currentShapes.length);
+      const target = currentShapes[targetIdx];
+      const newColor = pickRandom(PALETTE.filter(c => c !== target.color));
+
+      const updated = currentShapes.map((s, i) =>
+        i === targetIdx ? { ...s, color: newColor, opacity: Math.min(0.9, s.opacity + 0.1 - params.subtlety * 0.1) } : s
+      );
+      setShapes(updated);
+      shapesRef.current = updated;
+
+      const pos = { x: target.x, y: target.y };
+      setChangePos(pos);
+      changePosRef.current = pos;
+      waitingRef.current = true;
+      roundRef.current += 1;
+      setRound(roundRef.current);
+
+      tapTimerRef.current = setTimeout(() => {
+        if (waitingRef.current) {
+          waitingRef.current = false;
+          setFeedback('missed');
+          streakRef.current = 0;
+          setStreak(0);
+          updateDifficulty('signal-noise', false);
+          feedbackTimerRef.current = setTimeout(() => {
+            setFeedback(null);
+            scheduleChange();
+          }, 800);
         }
+      }, 2500);
+    }, params.changeInterval);
+  }, [params, onComplete]);
 
-        // Make a change
-        const targetIdx = Math.floor(Math.random() * shapes.length);
-        const target = shapes[targetIdx];
-        const newColor = pickRandom(PALETTE.filter(c => c !== target.color));
-
-        setShapes(prev => prev.map((s, i) =>
-          i === targetIdx ? { ...s, color: newColor, opacity: Math.min(0.9, s.opacity + 0.1 - params.subtlety * 0.1) } : s
-        ));
-        setChangeId(targetIdx);
-        setChangePos({ x: target.x, y: target.y });
-        setWaitingForTap(true);
-        roundRef.current += 1;
-        setRound(roundRef.current);
-
-        // Auto-miss after 2.5s
-        tapTimerRef.current = setTimeout(() => {
-          if (waitingForTap) {
-            setFeedback('missed');
-            setStreak(0);
-            updateDifficulty('signal-noise', false);
-            setTimeout(() => { setFeedback(null); scheduleChange(); }, 800);
-            setWaitingForTap(false);
-          }
-        }, 2500);
-      }, params.changeInterval);
-    };
-
-    const initial = setTimeout(scheduleChange, 1500);
+  useEffect(() => {
+    if (shapesRef.current.length === 0) return;
+    const initial = setTimeout(() => scheduleChange(), 1500);
     return () => {
       clearTimeout(initial);
       if (timerRef.current) clearTimeout(timerRef.current);
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
-  }, [shapes.length > 0 ? 'ready' : 'init']);
+  }, [shapesRef.current.length > 0]);
 
   const handleTap = useCallback((tapX: number, tapY: number) => {
-    if (!waitingForTap || !changePos) return;
-    setWaitingForTap(false);
+    if (!waitingRef.current || !changePosRef.current) return;
+    waitingRef.current = false;
     if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
 
-    const dist = Math.sqrt((tapX - changePos.x) ** 2 + (tapY - changePos.y) ** 2);
+    const pos = changePosRef.current;
+    const dist = Math.sqrt((tapX - pos.x) ** 2 + (tapY - pos.y) ** 2);
     const isClose = dist < 80;
 
     if (isClose) {
       correctRef.current += 1;
-      setCorrectCount(correctRef.current);
-      const newStreak = streak + 1;
-      setStreak(newStreak);
+      streakRef.current += 1;
+      setStreak(streakRef.current);
       const precisionBonus = dist < 30 ? 40 : 0;
       const speedBonus = 30;
-      const mult = 1 + newStreak * 0.25;
+      const mult = 1 + streakRef.current * 0.25;
       const pts = Math.round((100 + precisionBonus + speedBonus) * mult);
       scoreRef.current += pts;
       setScore(scoreRef.current);
@@ -148,43 +148,24 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else {
       setFeedback('wrong');
+      streakRef.current = 0;
       setStreak(0);
       updateDifficulty('signal-noise', false);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    setTimeout(() => {
+    feedbackTimerRef.current = setTimeout(() => {
       setFeedback(null);
-      setChangeId(null);
       setChangePos(null);
-      // Schedule next
+      changePosRef.current = null;
       if (roundRef.current < params.totalChanges) {
-        timerRef.current = setTimeout(() => {
-          const targetIdx = Math.floor(Math.random() * shapes.length);
-          const target = shapes[targetIdx];
-          const newColor = pickRandom(PALETTE.filter(c => c !== target.color));
-          setShapes(prev => prev.map((s, i) =>
-            i === targetIdx ? { ...s, color: newColor } : s
-          ));
-          setChangeId(targetIdx);
-          setChangePos({ x: target.x, y: target.y });
-          setWaitingForTap(true);
-          roundRef.current += 1;
-          setRound(roundRef.current);
-          tapTimerRef.current = setTimeout(() => {
-            setFeedback('missed');
-            setStreak(0);
-            updateDifficulty('signal-noise', false);
-            setTimeout(() => setFeedback(null), 800);
-            setWaitingForTap(false);
-          }, 2500);
-        }, params.changeInterval);
+        scheduleChange();
       } else {
         const acc = params.totalChanges > 0 ? correctRef.current / params.totalChanges : 1;
         onComplete(scoreRef.current, acc);
       }
     }, 600);
-  }, [waitingForTap, changePos, streak, shapes, params]);
+  }, [params, scheduleChange, onComplete]);
 
   const progress = round / params.totalChanges;
 
@@ -195,9 +176,7 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
         <Text style={styles.scoreText}>{score}</Text>
         {streak > 2 && <Text style={styles.streakText}>{streak}× streak</Text>}
       </View>
-      <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-      </View>
+      <ProgressBar value={round} max={params.totalChanges} style={{ marginBottom: 12 }} />
 
       <Pressable
         style={styles.scene}
@@ -242,8 +221,6 @@ const styles = StyleSheet.create({
   roundText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
   streakText: { color: colors.streak, fontSize: 14, fontWeight: '700' },
-  progressBar: { width: '100%', height: 4, backgroundColor: colors.bgTertiary, borderRadius: 2, overflow: 'hidden', marginBottom: 12 },
-  progressFill: { height: '100%', backgroundColor: colors.growth, borderRadius: 2 },
   scene: { width: SCENE_SIZE, height: SCENE_SIZE, backgroundColor: colors.bgSecondary, borderRadius: 24, overflow: 'hidden', position: 'relative', alignSelf: 'center', borderWidth: 1, borderColor: colors.border },
   shape: { position: 'absolute' },
   ripple: { position: 'absolute', width: 60, height: 60, borderRadius: 30, borderWidth: 3, borderColor: colors.growth },
