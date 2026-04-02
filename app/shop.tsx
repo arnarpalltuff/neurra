@@ -22,6 +22,7 @@ import {
   STREAK_FREEZE_COST,
   STREAK_REPAIR_COST,
 } from '../src/utils/coinRewards';
+import CoinRewardCard from '../src/components/ads/CoinRewardCard';
 
 type ShopTab = 'outfits' | 'accessories' | 'themes' | 'decorations' | 'utilities';
 
@@ -272,6 +273,9 @@ export default function ShopScreen() {
       {/* Utilities */}
       {tab === 'utilities' && (
         <ScrollView contentContainerStyle={styles.utilList}>
+          {/* Rewarded ad coin earning */}
+          <CoinRewardCard />
+
           {UTILITY_ITEMS.map((item) => (
             <Pressable key={item.id} style={styles.utilCard} onPress={() => handleBuyUtility(item)}>
               <Text style={styles.utilEmoji}>{item.emoji}</Text>
