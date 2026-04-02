@@ -16,6 +16,7 @@ import { useProgressStore } from '../../stores/progressStore';
 import { pickRandom } from '../../utils/arrayUtils';
 import { CoinRewardBreakdown } from '../../utils/coinRewards';
 import AdBanner from '../../components/ads/AdBanner';
+import RatePromptCard from '../../components/ui/RatePromptCard';
 
 const BRAIN_FACTS = [
   "Fun fact: your brain uses 20% of your body's energy. You just gave it a workout.",
@@ -48,6 +49,7 @@ export default function PostSession({
 }: PostSessionProps) {
   const xpDisplay = useSharedValue(0);
   const personalBests = useProgressStore(s => s.personalBests);
+  const totalSessions = useProgressStore(s => s.totalSessions);
 
   useEffect(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -153,6 +155,13 @@ export default function PostSession({
             style={styles.doneBtn}
           />
         </Animated.View>
+
+        {/* Rate prompt — only after great sessions when all conditions met */}
+        <RatePromptCard
+          totalSessions={totalSessions}
+          streak={newStreak}
+          sessionAccuracy={avgAccuracy}
+        />
 
         {/* Banner ad — free users only, delayed 2s */}
         <AdBanner />
