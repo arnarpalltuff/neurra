@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
@@ -13,6 +13,15 @@ import { KovaEmotion } from '../../components/kova/KovaStates';
 import Button from '../../components/ui/Button';
 import StreakCounter from '../../components/ui/StreakCounter';
 import { useProgressStore } from '../../stores/progressStore';
+import { pickRandom } from '../../utils/arrayUtils';
+
+const BRAIN_FACTS = [
+  "Fun fact: your brain uses 20% of your body's energy. You just gave it a workout.",
+  "Your hippocampus is growing new connections right now.",
+  "Sleep will consolidate everything you just practiced.",
+  "Consistent practice beats intense cramming — every time.",
+  "Your brain is most plastic (changeable) after challenging itself like this.",
+];
 
 interface PostSessionProps {
   results: Array<{ gameId: GameId; score: number; accuracy: number }>;
@@ -47,14 +56,7 @@ export default function PostSession({
 
   const streakMilestone = newStreak > 0 && [3, 7, 14, 30, 60, 100, 365].includes(newStreak);
 
-  const brainFacts = [
-    "Fun fact: your brain uses 20% of your body's energy. You just gave it a workout.",
-    "Your hippocampus is growing new connections right now.",
-    "Sleep will consolidate everything you just practiced.",
-    "Consistent practice beats intense cramming — every time.",
-    "Your brain is most plastic (changeable) after challenging itself like this.",
-  ];
-  const fact = brainFacts[Math.floor(Math.random() * brainFacts.length)];
+  const fact = useMemo(() => pickRandom(BRAIN_FACTS), []);
 
   return (
     <SafeAreaView style={styles.safe}>

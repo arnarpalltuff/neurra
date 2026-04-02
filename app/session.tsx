@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '../src/constants/colors';
 import GameWrapper from '../src/screens/session/GameWrapper';
 import PostSession from '../src/screens/session/PostSession';
-import { GameId } from '../src/constants/gameConfigs';
+import { GameId, gameConfigs } from '../src/constants/gameConfigs';
 import { selectDailyGames } from '../src/utils/gameSelection';
 import { useProgressStore } from '../src/stores/progressStore';
-import { useSessionStore } from '../src/stores/sessionStore';
 
 interface GameResult {
   gameId: GameId;
@@ -15,35 +14,35 @@ interface GameResult {
   accuracy: number;
 }
 
+function calcSessionXP(results: GameResult[]): number {
+  const base = results.reduce((sum, r) => sum + Math.round(40 + r.accuracy * 40), 0);
+  const perfect = results.every(r => r.accuracy >= 0.9) ? 100 : 0;
+  return base + 50 + perfect;
+}
+
 export default function SessionScreen() {
   const [gameIds] = useState<GameId[]>(() => selectDailyGames());
   const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<GameResult[]>([]);
+  const [sessionXP, setSessionXP] = useState(0);
   const [sessionComplete, setSessionComplete] = useState(false);
 
   const { addXP, addSession, updateStreak, updateBrainScores, streak } = useProgressStore();
-  const { gameConfigs } = require('../src/constants/gameConfigs');
 
-  const handleGameComplete = (score: number, accuracy: number) => {
+  const handleGameComplete = useCallback((score: number, accuracy: number) => {
     const gameId = gameIds[currentIndex];
-    const newResult = { gameId, score, accuracy };
-    const newResults = [...results, newResult];
+    const newResults = [...results, { gameId, score, accuracy }];
     setResults(newResults);
 
     if (currentIndex + 1 >= gameIds.length) {
-      // Session done — calculate XP
-      const baseXP = newResults.reduce((sum, r) => sum + Math.round(40 + r.accuracy * 40), 0);
-      const bonusXP = 50; // session completion bonus
-      const perfectBonus = newResults.every(r => r.accuracy >= 0.9) ? 100 : 0;
-      const totalXP = baseXP + bonusXP + perfectBonus;
+      const totalXP = calcSessionXP(newResults);
+      setSessionXP(totalXP);
 
       addXP(totalXP);
       updateStreak();
 
-      // Update brain scores
-      const { gameConfigs: gc } = require('../src/constants/gameConfigs');
       for (const r of newResults) {
-        const area = gc[r.gameId]?.brainArea;
+        const area = gameConfigs[r.gameId]?.brainArea;
         if (area) updateBrainScores(area, Math.round(r.accuracy * 100));
       }
 
@@ -65,19 +64,17 @@ export default function SessionScreen() {
     } else {
       setCurrentIndex(i => i + 1);
     }
-  };
+  }, [gameIds, currentIndex, results, addXP, updateStreak, updateBrainScores, addSession]);
 
-  const handleDone = () => {
+  const handleDone = useCallback(() => {
     router.replace('/(tabs)');
-  };
-
-  const totalXP = results.reduce((sum, r) => sum + Math.round(40 + r.accuracy * 40), 0) + 50;
+  }, []);
 
   if (sessionComplete) {
     return (
       <PostSession
         results={results}
-        xpEarned={totalXP}
+        xpEarned={sessionXP}
         newStreak={streak}
         onDone={handleDone}
         bonusAvailable={false}

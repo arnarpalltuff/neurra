@@ -9,7 +9,7 @@ import WordWeave from '../../components/games/word-weave/WordWeave';
 import Kova from '../../components/kova/Kova';
 import { useProgressStore } from '../../stores/progressStore';
 import Button from '../../components/ui/Button';
-import { getDayOfWeek } from '../../utils/timeUtils';
+import { pickRandom } from '../../utils/arrayUtils';
 
 interface GameWrapperProps {
   gameId: GameId;
@@ -117,7 +117,7 @@ export default function GameWrapper({ gameId, gameIndex, totalGames, onGameCompl
             </View>
           </View>
           <Text style={styles.realWorldText}>
-            {config.realWorldFraming[Math.floor(Math.random() * config.realWorldFraming.length)]}
+            {pickRandom(config.realWorldFraming)}
           </Text>
           <Button
             label={gameIndex + 1 < totalGames ? 'Next Game' : 'See Results'}

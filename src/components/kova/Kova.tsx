@@ -40,6 +40,7 @@ export default function Kova({
   const [bubble, setBubble] = useState<string | null>(null);
   const [bubbleVisible, setBubbleVisible] = useState(false);
   const lastDialogue = useRef('');
+  const bubbleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animation values
   const floatY = useSharedValue(0);
@@ -52,6 +53,11 @@ export default function Kova({
 
   const glowColor = emotionGlowColors[emotion];
   const bodyColor = stageColors[stage];
+
+  // Cleanup bubble timeout on unmount
+  useEffect(() => {
+    return () => { if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current); };
+  }, []);
 
   // Idle float animation
   useEffect(() => {
@@ -161,7 +167,8 @@ export default function Kova({
       setBubbleVisible(true);
       bubbleOpacity.value = withTiming(1, { duration: 200 });
 
-      setTimeout(() => {
+      if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current);
+      bubbleTimeoutRef.current = setTimeout(() => {
         bubbleOpacity.value = withTiming(0, { duration: 300 }, () => {
           runOnJS(setBubbleVisible)(false);
         });

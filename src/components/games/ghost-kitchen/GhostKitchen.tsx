@@ -9,6 +9,7 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
 import { ghostKitchenParams, updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { shuffle } from '../../../utils/arrayUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -35,14 +36,6 @@ interface GhostKitchenProps {
 
 type Phase = 'showing' | 'recall' | 'result';
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 
 export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboarding = false }: GhostKitchenProps) {
   const [phase, setPhase] = useState<Phase>('showing');
@@ -55,14 +48,12 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
   const [correctCount, setCorrectCount] = useState(0);
   const [totalAttempts, setTotalAttempts] = useState(0);
   const [showTimer, setShowTimer] = useState(0);
+  const [showTimerMax, setShowTimerMax] = useState(3);
   const [lastCorrect, setLastCorrect] = useState<boolean | null>(null);
   const [comboMultiplier, setComboMultiplier] = useState(1);
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const roundStartTime = useRef(Date.now());
-
-  const difficulty = getDifficulty('ghost-kitchen', 0);
-  const params = ghostKitchenParams(Math.max(initialLevel, difficulty.level));
 
   const generateRound = useCallback((currentRound: number) => {
     const lvl = Math.max(initialLevel, getDifficulty('ghost-kitchen').level);
@@ -77,7 +68,9 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
     setPhase('showing');
 
     // Timer countdown for showing phase
-    let remaining = Math.floor(p.displayTime / 1000);
+    const maxSecs = Math.floor(p.displayTime / 1000);
+    let remaining = maxSecs;
+    setShowTimerMax(maxSecs);
     setShowTimer(remaining);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
@@ -168,7 +161,7 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
             ))}
           </View>
           <View style={styles.timerBar}>
-            <View style={[styles.timerFill, { width: `${(showTimer / (params.displayTime / 1000)) * 100}%` }]} />
+            <View style={[styles.timerFill, { width: `${(showTimer / showTimerMax) * 100}%` }]} />
           </View>
           <Text style={styles.timerText}>{showTimer}s</Text>
         </Animated.View>

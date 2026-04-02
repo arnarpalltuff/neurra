@@ -65,6 +65,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
   const params = wordWeaveParams(Math.max(initialLevel, diff.level));
 
   const [letters, setLetters] = useState<LetterItem[]>([]);
+  const letterBonusMap = useRef<Map<string, boolean>>(new Map());
   const [currentWord, setCurrentWord] = useState<string[]>([]);
   const [currentWordIds, setCurrentWordIds] = useState<string[]>([]);
   const [submittedWords, setSubmittedWords] = useState<string[]>([]);
@@ -91,6 +92,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
       angle: angleStep * i,
     }));
     setLetters(items);
+    letterBonusMap.current = new Map(items.map(item => [item.id, item.isBonus]));
   }, []);
 
   // Timer
@@ -107,7 +109,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
       });
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, []);
+  }, [onComplete]);
 
   const tapLetter = useCallback((item: LetterItem) => {
     if (currentWordIds.includes(item.id)) return;
@@ -129,14 +131,14 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
 
     if (isValid && !isDuplicate) {
       submittedRef.current.add(word);
-      const bonus = currentWordIds.some((id) => letters.find((l) => l.id === id)?.isBonus);
+      const bonus = currentWordIds.some((id) => letterBonusMap.current.get(id));
       let pts = wordPoints(word.length);
       if (bonus) pts *= 2;
       scoreRef.current += pts;
       wordCountRef.current += 1;
       setScore(s => s + pts);
       setWordCount(c => c + 1);
-      setSubmittedWords(prev => [...prev, word]);
+      setSubmittedWords(prev => [...prev.slice(-19), word]);
       setLastWord({ word, valid: true, points: pts });
       updateDifficulty('word-weave', true);
       wordBarScale.value = withSequence(withSpring(1.08, { damping: 4 }), withSpring(1, { damping: 8 }));
@@ -150,7 +152,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
     setCurrentWord([]);
     setCurrentWordIds([]);
     setTimeout(() => setLastWord(null), 1200);
-  }, [currentWord, currentWordIds, letters]);
+  }, [currentWord, currentWordIds]);
 
   const clearWord = useCallback(() => {
     setCurrentWord([]);
