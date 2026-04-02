@@ -81,7 +81,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     realWorldFraming: [
       "You remembered 6 names and faces. Next networking event? You've got this.",
     ],
-    available: false,
+    available: true,
   },
   'signal-noise': {
     id: 'signal-noise',
@@ -94,7 +94,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     realWorldFraming: [
       "You caught 8 out of 10 subtle changes. Your eye for detail is getting sharper.",
     ],
-    available: false,
+    available: true,
   },
   'chain-reaction': {
     id: 'chain-reaction',
@@ -107,7 +107,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     realWorldFraming: [
       "You processed 12 decisions in 8 seconds. That's quick thinking.",
     ],
-    available: false,
+    available: true,
   },
   'mind-drift': {
     id: 'mind-drift',
@@ -120,7 +120,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     realWorldFraming: [
       "You traced a 9-step path from memory. That's the same skill that helps you navigate a new city.",
     ],
-    available: false,
+    available: true,
   },
   'rewind': {
     id: 'rewind',
@@ -133,7 +133,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     realWorldFraming: [
       "You remembered 5 out of 5 details from a scene. You notice everything.",
     ],
-    available: false,
+    available: true,
   },
   'mirrors': {
     id: 'mirrors',
@@ -146,7 +146,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     realWorldFraming: [
       "You adapted to 6 rule changes without missing a beat. Mental flexibility is rare.",
     ],
-    available: false,
+    available: true,
   },
   'zen-flow': {
     id: 'zen-flow',
@@ -159,7 +159,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     realWorldFraming: [
       "You held your focus for 48 seconds straight. Most people manage 8. Yours is getting stronger.",
     ],
-    available: false,
+    available: true,
   },
 };
 

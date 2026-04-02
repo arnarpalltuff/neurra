@@ -6,6 +6,13 @@ import { GameId, gameConfigs } from '../../constants/gameConfigs';
 import GhostKitchen from '../../components/games/ghost-kitchen/GhostKitchen';
 import Pulse from '../../components/games/pulse/Pulse';
 import WordWeave from '../../components/games/word-weave/WordWeave';
+import FacePlace from '../../components/games/face-place/FacePlace';
+import SignalNoise from '../../components/games/signal-noise/SignalNoise';
+import ChainReaction from '../../components/games/chain-reaction/ChainReaction';
+import MindDrift from '../../components/games/mind-drift/MindDrift';
+import Rewind from '../../components/games/rewind/Rewind';
+import Mirrors from '../../components/games/mirrors/Mirrors';
+import ZenFlow from '../../components/games/zen-flow/ZenFlow';
 import Kova from '../../components/kova/Kova';
 import { useProgressStore } from '../../stores/progressStore';
 import Button from '../../components/ui/Button';
@@ -92,6 +99,27 @@ export default function GameWrapper({ gameId, gameIndex, totalGames, onGameCompl
             )}
             {gameId === 'word-weave' && (
               <WordWeave onComplete={handleGameComplete} initialLevel={level} />
+            )}
+            {gameId === 'face-place' && (
+              <FacePlace onComplete={handleGameComplete} initialLevel={level} />
+            )}
+            {gameId === 'signal-noise' && (
+              <SignalNoise onComplete={handleGameComplete} initialLevel={level} />
+            )}
+            {gameId === 'chain-reaction' && (
+              <ChainReaction onComplete={handleGameComplete} initialLevel={level} />
+            )}
+            {gameId === 'mind-drift' && (
+              <MindDrift onComplete={handleGameComplete} initialLevel={level} />
+            )}
+            {gameId === 'rewind' && (
+              <Rewind onComplete={handleGameComplete} initialLevel={level} />
+            )}
+            {gameId === 'mirrors' && (
+              <Mirrors onComplete={handleGameComplete} initialLevel={level} />
+            )}
+            {gameId === 'zen-flow' && (
+              <ZenFlow onComplete={handleGameComplete} initialLevel={level} />
             )}
           </View>
         </Animated.View>
