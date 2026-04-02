@@ -30,11 +30,16 @@ export default function SessionScreen() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [coinRewards, setCoinRewards] = useState<CoinRewardBreakdown | null>(null);
 
-  const {
-    addXP, addSession, updateStreak, updateBrainScores,
-    streak, level, addCoins, personalBests, gameHistory, isSessionDoneToday,
-  } = useProgressStore();
-  const { markAreaTrained } = useGroveStore();
+  const addXP = useProgressStore(s => s.addXP);
+  const addSession = useProgressStore(s => s.addSession);
+  const updateStreak = useProgressStore(s => s.updateStreak);
+  const updateBrainScores = useProgressStore(s => s.updateBrainScores);
+  const level = useProgressStore(s => s.level);
+  const addCoins = useProgressStore(s => s.addCoins);
+  const personalBests = useProgressStore(s => s.personalBests);
+  const gameHistory = useProgressStore(s => s.gameHistory);
+  const isSessionDoneToday = useProgressStore(s => s.isSessionDoneToday);
+  const markAreaTrained = useGroveStore(s => s.markAreaTrained);
 
   const handleGameComplete = useCallback((score: number, accuracy: number) => {
     const gameId = gameIds[currentIndex];

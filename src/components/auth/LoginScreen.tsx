@@ -4,6 +4,7 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { colors } from '../../constants/colors';
 import { useAuthStore, AuthProvider } from '../../stores/authStore';
 import Kova from '../kova/Kova';
+import AuthButtons from './AuthButtons';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -38,21 +39,8 @@ export default function LoginScreen({ onLogin, onStartFresh }: LoginScreenProps)
           <Text style={styles.subtitle}>Sign in to restore your progress</Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(300)} style={styles.authButtons}>
-          <Pressable style={styles.authBtn} onPress={() => handleAuth('google')}>
-            <Text style={styles.authBtnIcon}>G</Text>
-            <Text style={styles.authBtnText}>Continue with Google</Text>
-          </Pressable>
-
-          <Pressable style={[styles.authBtn, styles.authBtnApple]} onPress={() => handleAuth('apple')}>
-            <Text style={[styles.authBtnIcon, { color: '#FFF' }]}></Text>
-            <Text style={[styles.authBtnText, { color: '#FFF' }]}>Continue with Apple</Text>
-          </Pressable>
-
-          <Pressable style={[styles.authBtn, styles.authBtnEmail]} onPress={() => handleAuth('email')}>
-            <Text style={styles.authBtnIcon}>✉️</Text>
-            <Text style={styles.authBtnTextDark}>Sign in with email</Text>
-          </Pressable>
+        <Animated.View entering={FadeInDown.delay(300)}>
+          <AuthButtons onAuth={handleAuth} />
         </Animated.View>
 
         <Animated.View entering={FadeInDown.delay(500)}>
@@ -86,21 +74,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 15,
   },
-  authButtons: { gap: 12 },
-  authBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#FFF',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-  },
-  authBtnApple: { backgroundColor: '#000' },
-  authBtnEmail: { backgroundColor: colors.bgSecondary, borderWidth: 1, borderColor: colors.border },
-  authBtnIcon: { fontSize: 18, width: 24, textAlign: 'center' },
-  authBtnText: { color: '#333', fontSize: 16, fontWeight: '600', flex: 1, textAlign: 'center' },
-  authBtnTextDark: { color: colors.textPrimary, fontSize: 16, fontWeight: '600', flex: 1, textAlign: 'center' },
   freshBtn: {
     alignSelf: 'center',
     paddingVertical: 14,

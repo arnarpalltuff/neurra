@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { todayStr } from '../utils/timeUtils';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -43,10 +44,6 @@ interface AuthState {
   dismissAccountPrompt: () => void;
   shouldShowAccountPrompt: (totalSessions: number) => boolean;
   deleteAccount: () => void;
-}
-
-function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
 }
 
 export const useAuthStore = create<AuthState>()(

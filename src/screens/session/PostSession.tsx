@@ -54,7 +54,8 @@ export default function PostSession({
   useEffect(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     xpDisplay.value = withTiming(xpEarned, { duration: 1200 });
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [xpEarned]);
 
   const avgAccuracy = results.reduce((a, r) => a + r.accuracy, 0) / results.length;
   const isPerfect = avgAccuracy >= 0.9;

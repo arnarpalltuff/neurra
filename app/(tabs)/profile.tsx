@@ -13,7 +13,10 @@ import { stageFromXP, stageNames } from '../../src/components/kova/KovaStates';
 export default function ProfileScreen() {
   const { name } = useUserStore();
   const { xp, level, streak, longestStreak, totalSessions, coins } = useProgressStore();
-  const { soundEnabled, setSoundEnabled, hapticsEnabled, setHapticsEnabled } = useSettingsStore();
+  const soundEnabled = useSettingsStore(s => s.soundEnabled);
+  const setSoundEnabled = useSettingsStore(s => s.setSoundEnabled);
+  const hapticsEnabled = useSettingsStore(s => s.hapticsEnabled);
+  const setHapticsEnabled = useSettingsStore(s => s.setHapticsEnabled);
   const stage = stageFromXP(xp);
 
   return (

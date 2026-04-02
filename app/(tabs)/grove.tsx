@@ -141,15 +141,14 @@ export default function GroveScreen() {
   const [pendingPlacement, setPendingPlacement] = useState<string | null>(null);
 
   // Recalc zone growths and visitors when entering the screen
+  // Read zoneGrowths.speed.currentGrowth via ref to avoid circular dependency
+  const speedGrowthRef = React.useRef(zoneGrowths.speed.currentGrowth);
+  speedGrowthRef.current = zoneGrowths.speed.currentGrowth;
+
   useEffect(() => {
     recalcAllZones(brainScores);
-    updateVisitors(
-      streak,
-      level,
-      brainScores.focus,
-      zoneGrowths.speed.currentGrowth,
-    );
-  }, [brainScores, streak, level]);
+    updateVisitors(streak, level, brainScores.focus, speedGrowthRef.current);
+  }, [brainScores, streak, level, recalcAllZones, updateVisitors]);
 
   const handleZoneTap = useCallback((zone: ZoneConfig) => {
     if (editMode) return; // Ignore zone taps in edit mode

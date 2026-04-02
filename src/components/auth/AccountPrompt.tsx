@@ -6,6 +6,7 @@ import { useAuthStore, AuthProvider } from '../../stores/authStore';
 import { useProgressStore } from '../../stores/progressStore';
 import Kova from '../kova/Kova';
 import { stageFromXP } from '../kova/KovaStates';
+import AuthButtons from './AuthButtons';
 
 interface AccountPromptProps {
   visible: boolean;
@@ -52,23 +53,7 @@ export default function AccountPrompt({ visible, onClose }: AccountPromptProps) 
               Let's make sure you never lose them.
             </Text>
 
-            {/* Auth buttons */}
-            <View style={styles.authButtons}>
-              <Pressable style={styles.authBtn} onPress={() => handleAuth('google')}>
-                <Text style={styles.authBtnIcon}>G</Text>
-                <Text style={styles.authBtnText}>Continue with Google</Text>
-              </Pressable>
-
-              <Pressable style={[styles.authBtn, styles.authBtnApple]} onPress={() => handleAuth('apple')}>
-                <Text style={styles.authBtnIcon}></Text>
-                <Text style={styles.authBtnText}>Continue with Apple</Text>
-              </Pressable>
-
-              <Pressable style={[styles.authBtn, styles.authBtnEmail]} onPress={() => handleAuth('email')}>
-                <Text style={styles.authBtnIcon}>✉️</Text>
-                <Text style={styles.authBtnText}>Sign up with email</Text>
-              </Pressable>
-            </View>
+            <AuthButtons onAuth={handleAuth} emailLabel="Sign up with email" />
 
             {/* Dismiss */}
             <Pressable style={styles.dismissBtn} onPress={handleDismiss}>
@@ -110,20 +95,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginBottom: 20,
   },
-  authButtons: { gap: 10 },
-  authBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#FFF',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-  },
-  authBtnApple: { backgroundColor: '#000' },
-  authBtnEmail: { backgroundColor: colors.bgTertiary },
-  authBtnIcon: { fontSize: 18, width: 24, textAlign: 'center' },
-  authBtnText: { color: '#333', fontSize: 15, fontWeight: '600', flex: 1, textAlign: 'center' },
   dismissBtn: {
     alignSelf: 'center',
     paddingVertical: 14,

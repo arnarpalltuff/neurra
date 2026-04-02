@@ -7,7 +7,6 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { colors } from '../src/constants/colors';
 import { useUserStore } from '../src/stores/userStore';
-import { useProgressStore } from '../src/stores/progressStore';
 import { useSettingsStore } from '../src/stores/settingsStore';
 import { useProStatus, useProStore } from '../src/stores/proStore';
 import type { BrainArea } from '../src/constants/gameConfigs';
@@ -85,19 +84,71 @@ function Divider() {
 // ── Main Screen ──────────────────────────────────────
 
 export default function SettingsScreen() {
-  const user = useUserStore();
-  const progress = useProgressStore();
-  const settings = useSettingsStore();
+  const name = useUserStore(s => s.name);
+  const setName = useUserStore(s => s.setName);
   const { isPro, plan } = useProStatus();
-  const proStore = useProStore();
+  const expirationDate = useProStore(s => s.expirationDate);
+
+  // Settings — select individual slices to avoid re-rendering entire screen
+  const soundEnabled = useSettingsStore(s => s.soundEnabled);
+  const musicEnabled = useSettingsStore(s => s.musicEnabled);
+  const hapticsEnabled = useSettingsStore(s => s.hapticsEnabled);
+  const dailyReminder = useSettingsStore(s => s.dailyReminder);
+  const reminderTime = useSettingsStore(s => s.reminderTime);
+  const streakProtectionAlert = useSettingsStore(s => s.streakProtectionAlert);
+  const leagueUpdates = useSettingsStore(s => s.leagueUpdates);
+  const friendActivity = useSettingsStore(s => s.friendActivity);
+  const sessionLength = useSettingsStore(s => s.sessionLength);
+  const focusAreas = useSettingsStore(s => s.focusAreas);
+  const difficultyPref = useSettingsStore(s => s.difficultyPref);
+  const zenFlowInclusion = useSettingsStore(s => s.zenFlowInclusion);
+  const leaguesEnabled = useSettingsStore(s => s.leaguesEnabled);
+  const friendActivityEnabled = useSettingsStore(s => s.friendActivityEnabled);
+  const allowFriendRequests = useSettingsStore(s => s.allowFriendRequests);
+  const showOnLeaderboards = useSettingsStore(s => s.showOnLeaderboards);
+  const theme = useSettingsStore(s => s.theme);
+  const kovaSize = useSettingsStore(s => s.kovaSize);
+  const reduceAnimations = useSettingsStore(s => s.reduceAnimations);
+  const textSize = useSettingsStore(s => s.textSize);
+  const highContrast = useSettingsStore(s => s.highContrast);
+  const screenReaderOptimized = useSettingsStore(s => s.screenReaderOptimized);
+  const reduceMotion = useSettingsStore(s => s.reduceMotion);
+  const colorBlindMode = useSettingsStore(s => s.colorBlindMode);
+  const tapTargetSize = useSettingsStore(s => s.tapTargetSize);
+
+  // Setters
+  const setSoundEnabled = useSettingsStore(s => s.setSoundEnabled);
+  const setMusicEnabled = useSettingsStore(s => s.setMusicEnabled);
+  const setHapticsEnabled = useSettingsStore(s => s.setHapticsEnabled);
+  const setDailyReminder = useSettingsStore(s => s.setDailyReminder);
+  const setStreakProtectionAlert = useSettingsStore(s => s.setStreakProtectionAlert);
+  const setLeagueUpdates = useSettingsStore(s => s.setLeagueUpdates);
+  const setFriendActivityNotif = useSettingsStore(s => s.setFriendActivityNotif);
+  const setSessionLength = useSettingsStore(s => s.setSessionLength);
+  const setFocusArea = useSettingsStore(s => s.setFocusArea);
+  const setDifficultyPref = useSettingsStore(s => s.setDifficultyPref);
+  const setZenFlowInclusion = useSettingsStore(s => s.setZenFlowInclusion);
+  const setLeaguesEnabled = useSettingsStore(s => s.setLeaguesEnabled);
+  const setFriendActivityEnabled = useSettingsStore(s => s.setFriendActivityEnabled);
+  const setAllowFriendRequests = useSettingsStore(s => s.setAllowFriendRequests);
+  const setShowOnLeaderboards = useSettingsStore(s => s.setShowOnLeaderboards);
+  const setTheme = useSettingsStore(s => s.setTheme);
+  const setKovaSize = useSettingsStore(s => s.setKovaSize);
+  const setReduceAnimations = useSettingsStore(s => s.setReduceAnimations);
+  const setTextSize = useSettingsStore(s => s.setTextSize);
+  const setHighContrast = useSettingsStore(s => s.setHighContrast);
+  const setScreenReaderOptimized = useSettingsStore(s => s.setScreenReaderOptimized);
+  const setReduceMotion = useSettingsStore(s => s.setReduceMotion);
+  const setColorBlindMode = useSettingsStore(s => s.setColorBlindMode);
+  const setTapTargetSize = useSettingsStore(s => s.setTapTargetSize);
 
   const [editingName, setEditingName] = useState(false);
-  const [nameInput, setNameInput] = useState(user.name);
+  const [nameInput, setNameInput] = useState(name);
 
   const handleSaveName = useCallback(() => {
-    user.setName(nameInput.trim());
+    setName(nameInput.trim());
     setEditingName(false);
-  }, [nameInput, user]);
+  }, [nameInput, setName]);
 
   const handleClearHistory = useCallback(() => {
     Alert.alert(
@@ -166,7 +217,7 @@ export default function SettingsScreen() {
               </Pressable>
             </View>
           ) : (
-            <SettingRow label="Display name" value={user.name || 'Not set'} onPress={() => setEditingName(true)} />
+            <SettingRow label="Display name" value={name || 'Not set'} onPress={() => setEditingName(true)} />
           )}
           <Divider />
           <SettingRow label="Email" value="Not set" onPress={() => {}} />
@@ -180,10 +231,10 @@ export default function SettingsScreen() {
           <SettingRow label="Current plan" value={isPro ? `Pro ${plan ?? ''}` : 'Free'} />
           <Divider />
           <SettingRow label="Status" value={isPro ? 'Active' : 'Free'} />
-          {isPro && proStore.expirationDate && (
+          {isPro && expirationDate && (
             <>
               <Divider />
-              <SettingRow label="Next billing" value={proStore.expirationDate} />
+              <SettingRow label="Next billing" value={expirationDate} />
             </>
           )}
           <Divider />
@@ -195,15 +246,15 @@ export default function SettingsScreen() {
         {/* NOTIFICATIONS */}
         <SectionHeader title="Notifications" />
         <View style={styles.card}>
-          <ToggleRow label="Daily reminder" value={settings.dailyReminder} onChange={settings.setDailyReminder} />
+          <ToggleRow label="Daily reminder" value={dailyReminder} onChange={setDailyReminder} />
           <Divider />
-          <SettingRow label="Reminder time" value={settings.reminderTime} onPress={() => {}} />
+          <SettingRow label="Reminder time" value={reminderTime} onPress={() => {}} />
           <Divider />
-          <ToggleRow label="Streak protection alert" value={settings.streakProtectionAlert} onChange={settings.setStreakProtectionAlert} />
+          <ToggleRow label="Streak protection alert" value={streakProtectionAlert} onChange={setStreakProtectionAlert} />
           <Divider />
-          <ToggleRow label="League updates" value={settings.leagueUpdates} onChange={settings.setLeagueUpdates} />
+          <ToggleRow label="League updates" value={leagueUpdates} onChange={setLeagueUpdates} />
           <Divider />
-          <ToggleRow label="Friend activity" value={settings.friendActivity} onChange={settings.setFriendActivityNotif} />
+          <ToggleRow label="Friend activity" value={friendActivity} onChange={setFriendActivityNotif} />
         </View>
 
         {/* SESSION PREFERENCES */}
@@ -211,7 +262,7 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <SegmentRow
             label="Session length"
-            value={String(settings.sessionLength) as '3' | '5'}
+            value={String(sessionLength) as '3' | '5'}
             options={[
               { key: '3', label: '3 games' },
               { key: '5', label: `5 games ${!isPro ? '(Pro)' : ''}` },
@@ -219,7 +270,7 @@ export default function SettingsScreen() {
             onChange={(v) => {
               const n = Number(v) as 3 | 5;
               if (n === 5 && !isPro) return;
-              settings.setSessionLength(n);
+              setSessionLength(n);
             }}
           />
           <Divider />
@@ -228,54 +279,54 @@ export default function SettingsScreen() {
             <ToggleRow
               key={area.key}
               label={area.label}
-              value={settings.focusAreas[area.key]}
-              onChange={(v) => settings.setFocusArea(area.key, v)}
+              value={focusAreas[area.key]}
+              onChange={(v) => setFocusArea(area.key, v)}
             />
           ))}
           <Divider />
           <SegmentRow
             label="Difficulty"
-            value={settings.difficultyPref}
+            value={difficultyPref}
             options={[
               { key: 'adaptive', label: 'Adaptive' },
               { key: 'challenge', label: 'Challenge' },
               { key: 'easy', label: 'Easy' },
             ]}
-            onChange={settings.setDifficultyPref}
+            onChange={setDifficultyPref}
           />
           <Divider />
           <SegmentRow
             label="Zen Flow"
-            value={settings.zenFlowInclusion}
+            value={zenFlowInclusion}
             options={[
               { key: 'always', label: 'Always' },
               { key: 'sometimes', label: 'Sometimes' },
               { key: 'never', label: 'Never' },
             ]}
-            onChange={settings.setZenFlowInclusion}
+            onChange={setZenFlowInclusion}
           />
         </View>
 
         {/* SOUND & HAPTICS */}
         <SectionHeader title="Sound & Haptics" />
         <View style={styles.card}>
-          <ToggleRow label="Game sounds" value={settings.soundEnabled} onChange={settings.setSoundEnabled} />
+          <ToggleRow label="Game sounds" value={soundEnabled} onChange={setSoundEnabled} />
           <Divider />
-          <ToggleRow label="Music" value={settings.musicEnabled} onChange={settings.setMusicEnabled} />
+          <ToggleRow label="Music" value={musicEnabled} onChange={setMusicEnabled} />
           <Divider />
-          <ToggleRow label="Haptic feedback" value={settings.hapticsEnabled} onChange={settings.setHapticsEnabled} />
+          <ToggleRow label="Haptic feedback" value={hapticsEnabled} onChange={setHapticsEnabled} />
         </View>
 
         {/* COMPETITION */}
         <SectionHeader title="Competition" />
         <View style={styles.card}>
-          <ToggleRow label="Leagues" value={settings.leaguesEnabled} onChange={settings.setLeaguesEnabled} />
+          <ToggleRow label="Leagues" value={leaguesEnabled} onChange={setLeaguesEnabled} />
           <Divider />
-          <ToggleRow label="Show friend activity" value={settings.friendActivityEnabled} onChange={settings.setFriendActivityEnabled} disabled={!settings.leaguesEnabled} />
+          <ToggleRow label="Show friend activity" value={friendActivityEnabled} onChange={setFriendActivityEnabled} disabled={!leaguesEnabled} />
           <Divider />
-          <ToggleRow label="Allow friend requests" value={settings.allowFriendRequests} onChange={settings.setAllowFriendRequests} />
+          <ToggleRow label="Allow friend requests" value={allowFriendRequests} onChange={setAllowFriendRequests} />
           <Divider />
-          <ToggleRow label="Show on leaderboards" value={settings.showOnLeaderboards} onChange={settings.setShowOnLeaderboards} disabled={!settings.leaguesEnabled} />
+          <ToggleRow label="Show on leaderboards" value={showOnLeaderboards} onChange={setShowOnLeaderboards} disabled={!leaguesEnabled} />
         </View>
 
         {/* APPEARANCE */}
@@ -283,27 +334,27 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <SegmentRow
             label="Theme"
-            value={settings.theme}
+            value={theme}
             options={[
               { key: 'auto', label: 'Auto' },
               { key: 'dark', label: 'Dark' },
               { key: 'light', label: 'Light' },
             ]}
-            onChange={settings.setTheme}
+            onChange={setTheme}
           />
           <Divider />
           <SegmentRow
             label="Kova size"
-            value={settings.kovaSize}
+            value={kovaSize}
             options={[
               { key: 'small', label: 'S' },
               { key: 'medium', label: 'M' },
               { key: 'large', label: 'L' },
             ]}
-            onChange={settings.setKovaSize}
+            onChange={setKovaSize}
           />
           <Divider />
-          <ToggleRow label="Reduce animations" value={settings.reduceAnimations} onChange={settings.setReduceAnimations} />
+          <ToggleRow label="Reduce animations" value={reduceAnimations} onChange={setReduceAnimations} />
         </View>
 
         {/* ACCESSIBILITY */}
@@ -311,7 +362,7 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <SegmentRow
             label="Text size"
-            value={settings.textSize}
+            value={textSize}
             options={[
               { key: 'system', label: 'Sys' },
               { key: 'small', label: 'S' },
@@ -319,35 +370,35 @@ export default function SettingsScreen() {
               { key: 'large', label: 'L' },
               { key: 'xlarge', label: 'XL' },
             ]}
-            onChange={settings.setTextSize}
+            onChange={setTextSize}
           />
           <Divider />
-          <ToggleRow label="High contrast" value={settings.highContrast} onChange={settings.setHighContrast} />
+          <ToggleRow label="High contrast" value={highContrast} onChange={setHighContrast} />
           <Divider />
-          <ToggleRow label="Screen reader optimized" value={settings.screenReaderOptimized} onChange={settings.setScreenReaderOptimized} />
+          <ToggleRow label="Screen reader optimized" value={screenReaderOptimized} onChange={setScreenReaderOptimized} />
           <Divider />
-          <ToggleRow label="Reduce motion" value={settings.reduceMotion} onChange={settings.setReduceMotion} />
+          <ToggleRow label="Reduce motion" value={reduceMotion} onChange={setReduceMotion} />
           <Divider />
           <SegmentRow
             label="Color blind mode"
-            value={settings.colorBlindMode}
+            value={colorBlindMode}
             options={[
               { key: 'off', label: 'Off' },
               { key: 'deuteranopia', label: 'Deut' },
               { key: 'protanopia', label: 'Prot' },
               { key: 'tritanopia', label: 'Trit' },
             ]}
-            onChange={settings.setColorBlindMode}
+            onChange={setColorBlindMode}
           />
           <Divider />
           <SegmentRow
             label="Tap targets"
-            value={settings.tapTargetSize}
+            value={tapTargetSize}
             options={[
               { key: 'standard', label: 'Standard' },
               { key: 'large', label: 'Large (48pt)' },
             ]}
-            onChange={settings.setTapTargetSize}
+            onChange={setTapTargetSize}
           />
         </View>
 

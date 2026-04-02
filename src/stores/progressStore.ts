@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GameId, BrainArea } from '../constants/gameConfigs';
+import { todayStr } from '../utils/timeUtils';
 
 export interface GameResult {
   gameId: GameId;
@@ -75,10 +76,6 @@ function levelFromXP(xp: number): number {
     if (level > 100) break;
   }
   return level;
-}
-
-function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
 }
 
 export const useProgressStore = create<ProgressState>()(

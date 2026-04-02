@@ -113,8 +113,9 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
     }, params.changeInterval);
   }, [params, onComplete]);
 
+  const scenReady = shapes.length > 0;
   useEffect(() => {
-    if (shapesRef.current.length === 0) return;
+    if (!scenReady) return;
     const initial = setTimeout(() => scheduleChange(), 1500);
     return () => {
       clearTimeout(initial);
@@ -122,7 +123,7 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
       if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
     };
-  }, [shapesRef.current.length > 0]);
+  }, [scenReady, scheduleChange]);
 
   const handleTap = useCallback((tapX: number, tapY: number) => {
     if (!waitingRef.current || !changePosRef.current) return;

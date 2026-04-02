@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { todayStr } from './timeUtils';
 
 // ── Ad Placement Rules (Non-negotiable) ────────────────
 //
@@ -25,10 +26,6 @@ interface AdState {
   bonusRoundUnlocked: boolean;
 }
 
-function todayStr(): string {
-  return new Date().toISOString().split('T')[0];
-}
-
 function defaultState(): AdState {
   return {
     date: todayStr(),
@@ -42,12 +39,13 @@ function defaultState(): AdState {
 let cachedState: AdState | null = null;
 
 async function getState(): Promise<AdState> {
-  if (cachedState && cachedState.date === todayStr()) return cachedState;
+  const today = todayStr();
+  if (cachedState && cachedState.date === today) return cachedState;
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed: AdState = JSON.parse(raw);
-      if (parsed.date === todayStr()) {
+      if (parsed.date === today) {
         cachedState = parsed;
         return parsed;
       }

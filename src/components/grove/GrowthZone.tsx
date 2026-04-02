@@ -337,5 +337,6 @@ export default function GrowthZone({ zone, growth, isWilting, palette, size }: G
     case 'speed': return <LivingStream {...props} />;
     case 'flexibility': return <WindingGarden {...props} />;
     case 'creativity': return <MyceliumNetwork {...props} />;
+    default: return <AncestorTree {...props} />;
   }
 }

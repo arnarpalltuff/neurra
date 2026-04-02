@@ -17,6 +17,21 @@ const CANCEL_REASONS = [
   'Other',
 ];
 
+const KEEP_ITEMS = [
+  'Kova (same stage)',
+  'Your grove & decorations',
+  'All progress, streaks & history',
+  '1 daily session',
+];
+
+const LOSE_ITEMS = [
+  'Unlimited sessions',
+  'Ad-free experience',
+  'Brain map history',
+  'Pro-exclusive cosmetics (unequipped but kept)',
+  'Monthly bonus coins',
+];
+
 interface SubscriptionManagerProps {
   onClose: () => void;
   onGoToPro: () => void;
@@ -67,7 +82,7 @@ export default function SubscriptionManager({ onClose, onGoToPro }: Subscription
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>What you'll keep</Text>
                 <View style={styles.keepList}>
-                  {['Kova (same stage)', 'Your grove & decorations', 'All progress, streaks & history', '1 daily session'].map((item) => (
+                  {KEEP_ITEMS.map((item) => (
                     <View key={item} style={styles.keepItem}>
                       <Text style={styles.keepCheck}>✓</Text>
                       <Text style={styles.keepText}>{item}</Text>
@@ -79,7 +94,7 @@ export default function SubscriptionManager({ onClose, onGoToPro }: Subscription
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>What you'll lose</Text>
                 <View style={styles.loseList}>
-                  {['Unlimited sessions', 'Ad-free experience', 'Brain map history', 'Pro-exclusive cosmetics (unequipped but kept)', 'Monthly bonus coins'].map((item) => (
+                  {LOSE_ITEMS.map((item) => (
                     <View key={item} style={styles.loseItem}>
                       <Text style={styles.loseX}>✕</Text>
                       <Text style={styles.loseText}>{item}</Text>
