@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { router } from 'expo-router';
 import { colors } from '../../src/constants/colors';
 import Kova from '../../src/components/kova/Kova';
 import Card from '../../src/components/ui/Card';
@@ -45,9 +46,9 @@ export default function ProfileScreen() {
           </Card>
         </Animated.View>
 
-        {/* Settings */}
+        {/* Quick settings + full settings link */}
         <Animated.View entering={FadeInDown.delay(300)}>
-          <Text style={styles.sectionTitle}>Settings</Text>
+          <Text style={styles.sectionTitle}>Quick Settings</Text>
           <Card>
             <ToggleRow
               label="Sound Effects"
@@ -60,7 +61,21 @@ export default function ProfileScreen() {
               value={hapticsEnabled}
               onToggle={() => setHapticsEnabled(!hapticsEnabled)}
             />
+            <View style={styles.divider} />
+            <TouchableOpacity style={styles.allSettingsRow} onPress={() => router.push('/settings')}>
+              <Text style={styles.allSettingsText}>All Settings</Text>
+              <Text style={styles.allSettingsArrow}>›</Text>
+            </TouchableOpacity>
           </Card>
+        </Animated.View>
+
+        {/* Shop link */}
+        <Animated.View entering={FadeInDown.delay(350)}>
+          <TouchableOpacity style={styles.shopLink} onPress={() => router.push('/shop')}>
+            <Text style={styles.shopLinkEmoji}>🏪</Text>
+            <Text style={styles.shopLinkText}>Kova Shop</Text>
+            <Text style={styles.allSettingsArrow}>›</Text>
+          </TouchableOpacity>
         </Animated.View>
 
         {/* About */}
@@ -125,6 +140,21 @@ const styles = StyleSheet.create({
   toggleOn: { backgroundColor: colors.growth },
   toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: colors.textSecondary },
   toggleThumbOn: { backgroundColor: colors.textInverse, transform: [{ translateX: 20 }] },
+  allSettingsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
+  allSettingsText: { color: colors.sky, fontSize: 15, fontWeight: '600' },
+  allSettingsArrow: { color: colors.textTertiary, fontSize: 18, fontWeight: '600' },
+  shopLink: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius: 16,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  shopLinkEmoji: { fontSize: 22 },
+  shopLinkText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700', flex: 1 },
   aboutCard: { gap: 8 },
   aboutTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
   aboutText: { color: colors.textSecondary, fontSize: 13, lineHeight: 20 },
