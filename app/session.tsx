@@ -7,6 +7,8 @@ import PostSession from '../src/screens/session/PostSession';
 import { GameId, gameConfigs } from '../src/constants/gameConfigs';
 import { selectDailyGames } from '../src/utils/gameSelection';
 import { useProgressStore } from '../src/stores/progressStore';
+import { useGroveStore } from '../src/stores/groveStore';
+import { calcSessionCoinRewards, CoinRewardBreakdown } from '../src/utils/coinRewards';
 
 interface GameResult {
   gameId: GameId;
@@ -26,8 +28,13 @@ export default function SessionScreen() {
   const [results, setResults] = useState<GameResult[]>([]);
   const [sessionXP, setSessionXP] = useState(0);
   const [sessionComplete, setSessionComplete] = useState(false);
+  const [coinRewards, setCoinRewards] = useState<CoinRewardBreakdown | null>(null);
 
-  const { addXP, addSession, updateStreak, updateBrainScores, streak } = useProgressStore();
+  const {
+    addXP, addSession, updateStreak, updateBrainScores,
+    streak, level, addCoins, personalBests, gameHistory, isSessionDoneToday,
+  } = useProgressStore();
+  const { markAreaTrained } = useGroveStore();
 
   const handleGameComplete = useCallback((score: number, accuracy: number) => {
     const gameId = gameIds[currentIndex];
@@ -38,13 +45,31 @@ export default function SessionScreen() {
       const totalXP = calcSessionXP(newResults);
       setSessionXP(totalXP);
 
+      const prevLevel = level;
+      const wasSessionDone = isSessionDoneToday();
+
       addXP(totalXP);
       updateStreak();
 
+      // Determine personal bests and first-time games
+      const pbGameIds: GameId[] = [];
+      const firstTimeGameIds: GameId[] = [];
+
       for (const r of newResults) {
         const area = gameConfigs[r.gameId]?.brainArea;
-        if (area) updateBrainScores(area, Math.round(r.accuracy * 100));
+        if (area) {
+          updateBrainScores(area, Math.round(r.accuracy * 100));
+          markAreaTrained(area);
+        }
+        // Check personal best
+        const prevBest = personalBests[r.gameId] ?? 0;
+        if (r.score > prevBest && r.score > 0) pbGameIds.push(r.gameId);
+        // Check first time playing
+        const history = gameHistory[r.gameId];
+        if (!history || history.length === 0) firstTimeGameIds.push(r.gameId);
       }
+
+      const isPerfect = newResults.every(r => r.accuracy >= 0.9);
 
       addSession({
         id: Date.now().toString(),
@@ -54,17 +79,35 @@ export default function SessionScreen() {
           score: r.score,
           accuracy: r.accuracy,
           date: new Date().toISOString(),
-          personalBest: false,
+          personalBest: pbGameIds.includes(r.gameId),
         })),
         totalXP,
-        perfect: newResults.every(r => r.accuracy >= 0.9),
+        perfect: isPerfect,
       });
+
+      // Calculate and award coin rewards
+      const newLevel = useProgressStore.getState().level;
+      const newStreak = useProgressStore.getState().streak;
+      const rewards = calcSessionCoinRewards({
+        isFirstSessionToday: !wasSessionDone,
+        streak: newStreak,
+        isPerfect,
+        personalBestGameIds: pbGameIds,
+        firstTimeGameIds,
+        previousLevel: prevLevel,
+        newLevel,
+      });
+
+      if (rewards.total > 0) {
+        addCoins(rewards.total);
+      }
+      setCoinRewards(rewards);
 
       setSessionComplete(true);
     } else {
       setCurrentIndex(i => i + 1);
     }
-  }, [gameIds, currentIndex, results, addXP, updateStreak, updateBrainScores, addSession]);
+  }, [gameIds, currentIndex, results, addXP, updateStreak, updateBrainScores, addSession, level, personalBests, gameHistory, addCoins, markAreaTrained, isSessionDoneToday]);
 
   const handleDone = useCallback(() => {
     router.replace('/(tabs)');
@@ -75,9 +118,10 @@ export default function SessionScreen() {
       <PostSession
         results={results}
         xpEarned={sessionXP}
-        newStreak={streak}
+        newStreak={useProgressStore.getState().streak}
         onDone={handleDone}
         bonusAvailable={false}
+        coinRewards={coinRewards}
       />
     );
   }

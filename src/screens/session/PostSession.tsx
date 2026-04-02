@@ -14,6 +14,7 @@ import Button from '../../components/ui/Button';
 import StreakCounter from '../../components/ui/StreakCounter';
 import { useProgressStore } from '../../stores/progressStore';
 import { pickRandom } from '../../utils/arrayUtils';
+import { CoinRewardBreakdown } from '../../utils/coinRewards';
 
 const BRAIN_FACTS = [
   "Fun fact: your brain uses 20% of your body's energy. You just gave it a workout.",
@@ -31,6 +32,7 @@ interface PostSessionProps {
   onBonusRound?: () => void;
   bonusAvailable?: boolean;
   isFirstSession?: boolean;
+  coinRewards?: CoinRewardBreakdown | null;
 }
 
 export default function PostSession({
@@ -41,6 +43,7 @@ export default function PostSession({
   onBonusRound,
   bonusAvailable = false,
   isFirstSession = false,
+  coinRewards,
 }: PostSessionProps) {
   const xpDisplay = useSharedValue(0);
   const personalBests = useProgressStore(s => s.personalBests);
@@ -90,6 +93,19 @@ export default function PostSession({
             <StreakCounter streak={newStreak} />
           </View>
         </Animated.View>
+
+        {/* Coin rewards */}
+        {coinRewards && coinRewards.total > 0 && (
+          <Animated.View entering={FadeInDown.delay(300)} style={styles.coinCard}>
+            <View style={styles.coinHeader}>
+              <Text style={styles.coinEmoji}>🪙</Text>
+              <Text style={styles.coinTotal}>+{coinRewards.total}</Text>
+            </View>
+            {coinRewards.details.map((d, i) => (
+              <Text key={i} style={styles.coinDetail}>{d}</Text>
+            ))}
+          </Animated.View>
+        )}
 
         {/* Game results */}
         <Animated.View entering={FadeInDown.delay(350)} style={styles.section}>
@@ -186,6 +202,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  coinCard: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+  },
+  coinHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  coinEmoji: { fontSize: 20 },
+  coinTotal: { color: colors.warm, fontSize: 24, fontWeight: '900' },
+  coinDetail: { color: colors.textTertiary, fontSize: 12, fontWeight: '600' },
   section: {
     gap: 10,
   },

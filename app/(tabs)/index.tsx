@@ -79,10 +79,10 @@ export default function HomeScreen() {
       >
         {/* Top status bar */}
         <Animated.View entering={FadeIn.delay(100)} style={styles.statusBar}>
-          <View style={styles.coinsDisplay}>
+          <TouchableOpacity style={styles.coinsDisplay} onPress={() => router.push('/shop')}>
             <Text style={styles.coinIcon}>🪙</Text>
             <Text style={styles.coinText}>{coins}</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.leagueBadge}>
             <Text style={styles.leagueText}>{league} League</Text>
           </View>
