@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BrainArea } from '../constants/gameConfigs';
+import { Language } from '../i18n/translations';
 
 export type AppTheme = 'auto' | 'dark' | 'light';
 export type DifficultyPref = 'adaptive' | 'challenge' | 'easy';
@@ -29,6 +30,7 @@ interface SettingsState {
 
   // Session preferences
   sessionLength: 3 | 5;
+  relaxedMode: boolean;
   focusAreas: Record<BrainArea, boolean>;
   difficultyPref: DifficultyPref;
   zenFlowInclusion: ZenFlowPref;
@@ -45,6 +47,7 @@ interface SettingsState {
   reduceAnimations: boolean;
 
   // Accessibility
+  language: Language;
   textSize: TextSize;
   highContrast: boolean;
   screenReaderOptimized: boolean;
@@ -64,6 +67,7 @@ interface SettingsState {
   setFriendActivityNotif: (v: boolean) => void;
   setQuietHours: (start: string, end: string) => void;
   setSessionLength: (v: 3 | 5) => void;
+  setRelaxedMode: (v: boolean) => void;
   setFocusArea: (area: BrainArea, enabled: boolean) => void;
   setDifficultyPref: (v: DifficultyPref) => void;
   setZenFlowInclusion: (v: ZenFlowPref) => void;
@@ -74,6 +78,7 @@ interface SettingsState {
   setTheme: (v: AppTheme) => void;
   setKovaSize: (v: KovaSize) => void;
   setReduceAnimations: (v: boolean) => void;
+  setLanguage: (v: Language) => void;
   setTextSize: (v: TextSize) => void;
   setHighContrast: (v: boolean) => void;
   setScreenReaderOptimized: (v: boolean) => void;
@@ -100,6 +105,7 @@ export const useSettingsStore = create<SettingsState>()(
       quietHoursEnd: '07:00',
 
       sessionLength: 3,
+      relaxedMode: false,
       focusAreas: {
         memory: true,
         focus: true,
@@ -119,6 +125,7 @@ export const useSettingsStore = create<SettingsState>()(
       kovaSize: 'medium',
       reduceAnimations: false,
 
+      language: 'en',
       textSize: 'system',
       highContrast: false,
       screenReaderOptimized: false,
@@ -138,6 +145,7 @@ export const useSettingsStore = create<SettingsState>()(
       setFriendActivityNotif: (friendActivity) => set({ friendActivity }),
       setQuietHours: (quietHoursStart, quietHoursEnd) => set({ quietHoursStart, quietHoursEnd }),
       setSessionLength: (sessionLength) => set({ sessionLength }),
+      setRelaxedMode: (relaxedMode) => set({ relaxedMode }),
       setFocusArea: (area, enabled) =>
         set((s) => ({
           focusAreas: { ...s.focusAreas, [area]: enabled },
@@ -151,6 +159,7 @@ export const useSettingsStore = create<SettingsState>()(
       setTheme: (theme) => set({ theme }),
       setKovaSize: (kovaSize) => set({ kovaSize }),
       setReduceAnimations: (reduceAnimations) => set({ reduceAnimations }),
+      setLanguage: (language) => set({ language }),
       setTextSize: (textSize) => set({ textSize }),
       setHighContrast: (highContrast) => set({ highContrast }),
       setScreenReaderOptimized: (screenReaderOptimized) => set({ screenReaderOptimized }),

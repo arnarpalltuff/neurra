@@ -7,13 +7,16 @@ import Animated, {
   withSequence,
 } from 'react-native-reanimated';
 import { colors } from '../../constants/colors';
+import StreakFlame from './StreakFlame';
 
 interface StreakCounterProps {
   streak: number;
   size?: 'sm' | 'md' | 'lg';
+  /** 0-1 urgency dim factor (1 = full, 0 = nearly out) */
+  urgencyDim?: number;
 }
 
-export default function StreakCounter({ streak, size = 'md' }: StreakCounterProps) {
+export default function StreakCounter({ streak, size = 'md', urgencyDim = 1 }: StreakCounterProps) {
   const scale = useSharedValue(1);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -30,11 +33,11 @@ export default function StreakCounter({ streak, size = 'md' }: StreakCounterProp
   }, [streak]);
 
   const fontSize = size === 'sm' ? 13 : size === 'lg' ? 20 : 16;
-  const iconSize = size === 'sm' ? 14 : size === 'lg' ? 22 : 18;
+  const flameSize = size === 'sm' ? 16 : size === 'lg' ? 26 : 20;
 
   return (
     <Animated.View style={[styles.container, animStyle]}>
-      <Text style={[styles.icon, { fontSize: iconSize }]}>🔥</Text>
+      <StreakFlame streak={streak} size={flameSize} urgencyDim={urgencyDim} />
       <Text style={[styles.count, { fontSize }]}>{streak}</Text>
     </Animated.View>
   );
@@ -45,15 +48,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.streakDim,
+    backgroundColor: colors.streakTint,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: 999,
+    shadowColor: colors.streakGlow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  icon: {},
   count: {
+    fontFamily: 'Nunito_700Bold',
     color: colors.streak,
-    fontWeight: '800',
     letterSpacing: 0.5,
   },
 });

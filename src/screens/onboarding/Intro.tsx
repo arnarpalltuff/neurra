@@ -33,6 +33,20 @@ export default function Intro({ onNext }: IntroProps) {
         </Text>
       </Animated.View>
 
+      <Animated.View entering={FadeInDown.delay(600)} style={styles.stepsPreview}>
+        <Text style={styles.stepsTitle}>Here's what's next (~2 min)</Text>
+        {[
+          { icon: '🧠', label: 'Quick brain assessment' },
+          { icon: '📊', label: 'Your brain profile' },
+          { icon: '✨', label: 'Personalize your experience' },
+        ].map((item, i) => (
+          <View key={i} style={styles.stepRow}>
+            <Text style={styles.stepIcon}>{item.icon}</Text>
+            <Text style={styles.stepText}>{item.label}</Text>
+          </View>
+        ))}
+      </Animated.View>
+
       <Animated.View entering={FadeInDown.delay(700)} style={styles.btnArea}>
         <Button
           label="Nice to meet you, Kova"
@@ -51,7 +65,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgPrimary,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 60,
+    paddingVertical: 70,
     paddingHorizontal: 28,
   },
   kovaArea: {
@@ -64,25 +78,50 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   bubble: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: colors.bgCard,
     borderRadius: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
   },
   bubbleText: {
-    color: colors.textPrimary,
-    fontSize: 17,
-    fontWeight: '600',
+    fontFamily: 'Caveat_400Regular',
+    color: colors.textHero,
+    fontSize: 20,
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: 28,
   },
   description: {
+    fontFamily: 'Nunito_400Regular',
     color: colors.textSecondary,
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  stepsPreview: {
+    backgroundColor: colors.bgCard,
+    borderRadius: 18,
+    padding: 18,
+    gap: 12,
+    width: '100%',
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
+  },
+  stepsTitle: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.textTertiary,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  stepIcon: { fontSize: 18 },
+  stepText: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.textSecondary,
+    fontSize: 14,
   },
   btnArea: {
     width: '100%',

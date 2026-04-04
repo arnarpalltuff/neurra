@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, rewindParams as rewindParamsEngine } from '../../../utils/difficultyEngine';
 import { shuffle, pickRandom } from '../../../utils/arrayUtils';
 import ProgressBar from '../../ui/ProgressBar';
@@ -132,6 +133,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
   const totalQRef = useRef(0);
   const sceneNumRef = useRef(1);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const safeTimeout = useCallback((fn: () => void, ms: number) => {
@@ -187,10 +189,10 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
       scoreRef.current += pts;
       setScore(scoreRef.current);
       updateDifficulty('rewind', true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      burstCorrect({ x: W / 2, y: 350 });
     } else {
       updateDifficulty('rewind', false);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      burstWrong({ x: W / 2, y: 350 });
     }
 
     setLastCorrect(isCorrect);
@@ -217,6 +219,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
 
   return (
     <View style={styles.container}>
+      <FeedbackBurst {...burstFeedback} />
       <View style={styles.header}>
         <Text style={styles.roundText}>Scene {sceneNum}/{params.totalScenes}</Text>
         <Text style={styles.scoreText}>{score}</Text>

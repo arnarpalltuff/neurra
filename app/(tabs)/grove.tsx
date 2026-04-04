@@ -8,6 +8,8 @@ import { useGroveStore, ZoneConfig, ZONE_CONFIGS } from '../../src/stores/groveS
 import GroveIsland from '../../src/components/grove/GroveIsland';
 import GroveShop from '../../src/components/grove/GroveShop';
 import GroveEditMode from '../../src/components/grove/GroveEditMode';
+import FloatingParticles from '../../src/components/ui/FloatingParticles';
+import { startGroveAmbient, stopAmbient } from '../../src/utils/sound';
 
 function formatDate(iso: string | null): string {
   if (!iso) return 'Never';
@@ -30,7 +32,6 @@ function growthLabel(growth: number): string {
   return 'Legendary';
 }
 
-// Games that train a given brain area
 function gamesForArea(area: BrainArea): { name: string; icon: string }[] {
   return Object.values(gameConfigs)
     .filter((g) => g.brainArea === area && g.available)
@@ -44,13 +45,13 @@ interface ZoneSheetProps {
 }
 
 function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
-  const { zoneGrowths } = useGroveStore();
-  const { brainScores } = useProgressStore();
+  const zoneGrowths = useGroveStore(s => s.zoneGrowths);
+  const brainScores = useProgressStore(s => s.brainScores);
 
   if (!zone) return null;
 
   const zg = zoneGrowths[zone.area];
-  const score = Math.round(brainScores[zone.area]);
+  const score = Math.round(brainScores[zone.area] ?? 0);
   const games = gamesForArea(zone.area);
 
   return (
@@ -68,7 +69,7 @@ function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
               </View>
               {zg.isWilting && (
                 <View style={styles.wiltTag}>
-                  <Text style={styles.wiltTagText}>💧 Wilting</Text>
+                  <Text style={styles.wiltTagText}>Wilting</Text>
                 </View>
               )}
             </View>
@@ -131,8 +132,11 @@ function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
 }
 
 export default function GroveScreen() {
-  const { brainScores, streak, level } = useProgressStore();
-  const { recalcAllZones, updateVisitors, zoneGrowths } = useGroveStore();
+  const brainScores = useProgressStore(s => s.brainScores);
+  const streak = useProgressStore(s => s.streak);
+  const level = useProgressStore(s => s.level);
+  const recalcAllZones = useGroveStore(s => s.recalcAllZones);
+  const updateVisitors = useGroveStore(s => s.updateVisitors);
 
   const [selectedZone, setSelectedZone] = useState<ZoneConfig | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -140,25 +144,25 @@ export default function GroveScreen() {
   const [shopVisible, setShopVisible] = useState(false);
   const [pendingPlacement, setPendingPlacement] = useState<string | null>(null);
 
-  // Recalc zone growths and visitors when entering the screen
-  // Read zoneGrowths.speed.currentGrowth via ref to avoid circular dependency
-  const speedGrowthRef = React.useRef(zoneGrowths.speed.currentGrowth);
-  speedGrowthRef.current = zoneGrowths.speed.currentGrowth;
+  useEffect(() => {
+    startGroveAmbient();
+    return () => stopAmbient();
+  }, []);
 
   useEffect(() => {
     recalcAllZones(brainScores);
-    updateVisitors(streak, level, brainScores.focus, speedGrowthRef.current);
-  }, [brainScores, streak, level, recalcAllZones, updateVisitors]);
+    const speedGrowth = useGroveStore.getState().zoneGrowths.speed.currentGrowth;
+    updateVisitors(streak, level, brainScores.focus, speedGrowth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brainScores, streak, level]);
 
   const handleZoneTap = useCallback((zone: ZoneConfig) => {
-    if (editMode) return; // Ignore zone taps in edit mode
+    if (editMode) return;
     setSelectedZone(zone);
     setSheetVisible(true);
   }, [editMode]);
 
-  const handleKovaTap = useCallback(() => {
-    // Kova interaction — will be expanded in later sections
-  }, []);
+  const handleKovaTap = useCallback(() => {}, []);
 
   const handleCloseSheet = useCallback(() => {
     setSheetVisible(false);
@@ -171,19 +175,15 @@ export default function GroveScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <FloatingParticles count={8} color={colors.growthDim} />
       <GroveIsland onZoneTap={handleZoneTap} onKovaTap={handleKovaTap} />
 
-      {/* Edit mode toggle button */}
       {!editMode && (
-        <Pressable
-          style={styles.editBtn}
-          onPress={() => setEditMode(true)}
-        >
+        <Pressable style={styles.editBtn} onPress={() => setEditMode(true)}>
           <Text style={styles.editBtnText}>✏️</Text>
         </Pressable>
       )}
 
-      {/* Edit mode overlay */}
       <GroveEditMode
         visible={editMode}
         onDone={() => { setEditMode(false); setPendingPlacement(null); }}
@@ -192,14 +192,12 @@ export default function GroveScreen() {
         onPlacementComplete={() => setPendingPlacement(null)}
       />
 
-      {/* Shop modal */}
       <GroveShop
         visible={shopVisible}
         onClose={() => setShopVisible(false)}
         onPlaceDecoration={handlePlaceDecoration}
       />
 
-      {/* Zone info sheet */}
       <ZoneInfoSheet
         zone={selectedZone}
         visible={sheetVisible}
@@ -210,43 +208,48 @@ export default function GroveScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bgPrimary },
+  safe: { flex: 1, backgroundColor: colors.bgDeep },
 
-  // Edit button
   editBtn: {
     position: 'absolute',
     top: 60,
     right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.bgSecondary + 'DD',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(11,14,23,0.75)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0.5,
+    borderColor: colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   editBtnText: { fontSize: 18 },
 
   // Bottom sheet
   sheetBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'flex-end',
   },
   sheetContent: {
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.bgCard,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: 40,
     maxHeight: '70%',
+    borderTopWidth: 0.5,
+    borderColor: colors.borderLight,
   },
   sheetHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.border,
+    backgroundColor: colors.borderLight,
     alignSelf: 'center',
     marginBottom: 16,
   },
@@ -254,38 +257,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sheetIcon: { fontSize: 36 },
-  sheetTitle: { color: colors.textPrimary, fontSize: 20, fontWeight: '800' },
+  sheetTitle: {
+    fontFamily: 'Quicksand_700Bold',
+    color: colors.textPrimary,
+    fontSize: 20,
+  },
   sheetSubtitle: {
+    fontFamily: 'Nunito_400Regular',
     color: colors.textTertiary,
     fontSize: 13,
-    fontWeight: '600',
     textTransform: 'capitalize',
   },
   wiltTag: {
-    backgroundColor: '#F59E0B22',
-    paddingHorizontal: 8,
+    backgroundColor: colors.streakTint,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 999,
   },
-  wiltTagText: { color: '#F59E0B', fontSize: 12, fontWeight: '700' },
+  wiltTagText: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.streak,
+    fontSize: 11,
+    letterSpacing: 0.3,
+  },
 
   // Growth
-  growthSection: { marginBottom: 20 },
+  growthSection: { marginBottom: 24 },
   growthBarRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  growthLabel: { color: colors.growth, fontSize: 14, fontWeight: '700' },
-  growthValue: { color: colors.textTertiary, fontSize: 13, fontWeight: '600' },
+  growthLabel: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.growth,
+    fontSize: 14,
+  },
+  growthValue: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.textTertiary,
+    fontSize: 13,
+  },
   growthBar: {
     width: '100%',
     height: 8,
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: colors.surfaceDim,
     borderRadius: 4,
     overflow: 'hidden',
     position: 'relative',
@@ -308,54 +328,73 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 20,
-    paddingVertical: 12,
-    backgroundColor: colors.bgPrimary,
-    borderRadius: 12,
+    marginBottom: 24,
+    paddingVertical: 14,
+    backgroundColor: colors.bgDeep,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
   },
   statItem: { alignItems: 'center', gap: 4 },
-  statValue: { color: colors.textPrimary, fontSize: 16, fontWeight: '800' },
-  statLabel: { color: colors.textTertiary, fontSize: 11, fontWeight: '600' },
+  statValue: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.textPrimary,
+    fontSize: 16,
+  },
+  statLabel: {
+    fontFamily: 'Nunito_400Regular',
+    color: colors.textTertiary,
+    fontSize: 11,
+  },
 
   // Games
   gamesTitle: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 11,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
+    letterSpacing: 1,
+    marginBottom: 10,
   },
   gamesList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   gameChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.bgPrimary,
-    paddingHorizontal: 10,
+    backgroundColor: colors.bgDeep,
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
   },
   gameChipIcon: { fontSize: 14 },
-  gameChipName: { color: colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  gameChipName: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
 
-  // Wilt hint
   wiltHint: {
-    color: '#F59E0B',
-    fontSize: 13,
+    fontFamily: 'Caveat_400Regular',
+    color: colors.streak,
+    fontSize: 16,
     textAlign: 'center',
     marginBottom: 16,
-    fontStyle: 'italic',
+    lineHeight: 22,
   },
 
-  // Close button
   closeBtn: {
-    backgroundColor: colors.bgTertiary,
-    paddingVertical: 12,
-    borderRadius: 12,
+    backgroundColor: colors.bgHover,
+    paddingVertical: 14,
+    borderRadius: 999,
     alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
   },
-  closeBtnText: { color: colors.textSecondary, fontSize: 15, fontWeight: '700' },
+  closeBtnText: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.textSecondary,
+    fontSize: 15,
+  },
 });

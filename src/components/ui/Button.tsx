@@ -2,6 +2,8 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { colors } from '../../constants/colors';
+import { tapLight } from '../../utils/haptics';
+import { playTap } from '../../utils/sound';
 
 interface ButtonProps {
   label: string;
@@ -35,10 +37,12 @@ export default function Button({
   }));
 
   const handlePressIn = () => {
-    scale.value = withSpring(0.96, { damping: 10 });
+    tapLight();
+    playTap();
+    scale.value = withSpring(0.95, { damping: 15, stiffness: 300 });
   };
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 10 });
+    scale.value = withSpring(1, { damping: 8, stiffness: 200 });
   };
 
   return (
@@ -63,33 +67,39 @@ export default function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
   },
   primary: {
     backgroundColor: colors.growth,
+    borderRadius: 999,
+    shadowColor: colors.growth,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 6,
   },
   secondary: {
-    backgroundColor: colors.bgElevated,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.transparent,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: 'rgba(125,211,168,0.4)',
   },
   ghost: {
     backgroundColor: colors.transparent,
+    borderRadius: 12,
   },
   disabled: {
     opacity: 0.45,
   },
-  size_sm: { paddingHorizontal: 16, paddingVertical: 10 },
-  size_md: { paddingHorizontal: 24, paddingVertical: 14 },
-  size_lg: { paddingHorizontal: 32, paddingVertical: 18 },
-  text: { fontWeight: '700', letterSpacing: 0.2 },
+  size_sm: { paddingHorizontal: 20, paddingVertical: 10, minHeight: 36 },
+  size_md: { paddingHorizontal: 28, paddingVertical: 14, minHeight: 48 },
+  size_lg: { paddingHorizontal: 36, paddingVertical: 18, minHeight: 56 },
+  text: { fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 },
   text_primary: { color: colors.textInverse },
-  text_secondary: { color: colors.textPrimary },
+  text_secondary: { color: colors.growth },
   text_ghost: { color: colors.textSecondary },
   textSize_sm: { fontSize: 13 },
-  textSize_md: { fontSize: 16 },
-  textSize_lg: { fontSize: 18 },
+  textSize_md: { fontSize: 15 },
+  textSize_lg: { fontSize: 17 },
 });

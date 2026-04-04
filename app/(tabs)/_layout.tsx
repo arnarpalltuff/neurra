@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Platform } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
-import { colors } from '../../src/constants/colors';
+import { C } from '../../src/constants/colors';
+import { fonts } from '../../src/constants/typography';
+import { glow } from '../../src/utils/glow';
 
 interface TabIconProps {
   emoji: string;
@@ -10,14 +13,25 @@ interface TabIconProps {
   focused: boolean;
 }
 
-function TabIcon({ emoji, label, focused }: TabIconProps) {
+const TabIcon = React.memo(function TabIcon({ emoji, label, focused }: TabIconProps) {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    scale.value = withSpring(focused ? 1.1 : 1, { damping: 12, stiffness: 200 });
+  }, [focused]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <View style={[styles.tabItem, focused && styles.tabItemFocused]}>
+    <Animated.View style={[styles.tabItem, animStyle]}>
       <Text style={[styles.tabEmoji, focused && styles.tabEmojiFocused]}>{emoji}</Text>
-      <Text style={[styles.tabLabel, focused && styles.tabLabelFocused]}>{label}</Text>
-    </View>
+      {focused && <Text style={styles.tabLabelActive}>{label}</Text>}
+      {focused && <View style={styles.glowDot} />}
+    </Animated.View>
   );
-}
+});
 
 export default function TabLayout() {
   return (
@@ -27,9 +41,11 @@ export default function TabLayout() {
         tabBarStyle: styles.tabBar,
         tabBarBackground: () =>
           Platform.OS === 'ios' ? (
-            <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+            <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill}>
+              <View style={styles.tabBarBg} />
+            </BlurView>
           ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: `${colors.bgSecondary}F0` }]} />
+            <View style={[StyleSheet.absoluteFill, styles.tabBarBg]} />
           ),
         tabBarShowLabel: false,
       }}
@@ -76,33 +92,42 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
-    borderTopWidth: 0,
-    borderTopColor: `${colors.border}80`,
-    height: Platform.OS === 'ios' ? 84 : 64,
+    borderTopWidth: 0.5,
+    borderTopColor: C.border,
+    height: Platform.OS === 'ios' ? 84 : 68,
     paddingBottom: Platform.OS === 'ios' ? 24 : 8,
     backgroundColor: 'transparent',
     elevation: 0,
   },
+  tabBarBg: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: C.bg3,
+  },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 2,
-    paddingTop: 4,
+    gap: 3,
+    paddingTop: 8,
   },
-  tabItemFocused: {},
   tabEmoji: {
     fontSize: 22,
-    opacity: 0.5,
+    opacity: 0.35,
   },
   tabEmojiFocused: {
     opacity: 1,
   },
-  tabLabel: {
-    color: colors.textTertiary,
+  tabLabelActive: {
+    fontFamily: fonts.bodySemi,
+    color: C.green,
     fontSize: 10,
-    fontWeight: '600',
+    letterSpacing: 0.3,
   },
-  tabLabelFocused: {
-    color: colors.growth,
+  glowDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: C.green,
+    marginTop: 2,
+    ...glow(C.green, 8, 0.8),
   },
 });

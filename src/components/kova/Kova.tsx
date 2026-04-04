@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,6 +12,8 @@ import Animated, {
   interpolate,
   runOnJS,
 } from 'react-native-reanimated';
+import { tapLight, tapMedium, tapHeavy } from '../../utils/haptics';
+import { playKovaHappy, playKovaExcited, playKovaGiggle, playKovaWow } from '../../utils/sound';
 import { Svg, Circle, Ellipse, Path, G } from 'react-native-svg';
 import { colors } from '../../constants/colors';
 import { KovaEmotion, KovaStage, emotionGlowColors, stageColors } from './KovaStates';
@@ -39,24 +41,34 @@ export default function Kova({
 }: KovaProps) {
   const [bubble, setBubble] = useState<string | null>(null);
   const [bubbleVisible, setBubbleVisible] = useState(false);
+  const [blinking, setBlinking] = useState(false);
   const lastDialogue = useRef('');
   const bubbleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tapCountRef = useRef(0);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animation values
   const floatY = useSharedValue(0);
   const scaleVal = useSharedValue(1);
+  const breathScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.4);
   const glowScale = useSharedValue(1);
   const wiggle = useSharedValue(0);
   const bounce = useSharedValue(0);
   const bubbleOpacity = useSharedValue(0);
+  const lookX = useSharedValue(0);
 
   const glowColor = emotionGlowColors[emotion];
   const bodyColor = stageColors[stage];
 
-  // Cleanup bubble timeout on unmount
+  // Cleanup timers on unmount
   useEffect(() => {
-    return () => { if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current); };
+    return () => {
+      if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current);
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
+    };
   }, []);
 
   // Idle float animation
@@ -85,6 +97,96 @@ export default function Kova({
       -1,
       true
     );
+  }, []);
+
+  // Breathing animation (subtle body scale pulse)
+  useEffect(() => {
+    breathScale.value = withRepeat(
+      withSequence(
+        withTiming(1.02, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.0, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
+      ),
+      -1,
+      true,
+    );
+  }, []);
+
+  // Blink animation (random interval 2-6s)
+  useEffect(() => {
+    let cancelled = false;
+    const scheduleBlink = () => {
+      const delay = 2000 + Math.random() * 4000;
+      blinkTimerRef.current = setTimeout(() => {
+        if (cancelled) return;
+        setBlinking(true);
+        setTimeout(() => {
+          if (!cancelled) setBlinking(false);
+          scheduleBlink();
+        }, 150);
+      }, delay);
+    };
+    scheduleBlink();
+    return () => {
+      cancelled = true;
+      if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
+    };
+  }, []);
+
+  // Random idle actions (every 8-15s)
+  useEffect(() => {
+    let cancelled = false;
+    const actions = [
+      // Look left, then right, then center
+      () => {
+        lookX.value = withSequence(
+          withTiming(-8, { duration: 400 }),
+          withDelay(800, withTiming(8, { duration: 400 })),
+          withDelay(800, withTiming(0, { duration: 300 })),
+        );
+      },
+      // Little bounce
+      () => {
+        bounce.value = withSequence(
+          withSpring(-10, { damping: 4 }),
+          withSpring(0, { damping: 8 }),
+        );
+      },
+      // Quick wiggle (dance)
+      () => {
+        wiggle.value = withSequence(
+          withTiming(-6, { duration: 120 }),
+          withTiming(6, { duration: 120 }),
+          withTiming(-4, { duration: 120 }),
+          withTiming(4, { duration: 120 }),
+          withTiming(-2, { duration: 120 }),
+          withTiming(0, { duration: 120 }),
+        );
+      },
+      // Wave (tilt back and forth)
+      () => {
+        wiggle.value = withSequence(
+          withTiming(10, { duration: 200 }),
+          withTiming(-10, { duration: 200 }),
+          withTiming(10, { duration: 200 }),
+          withTiming(0, { duration: 200 }),
+        );
+      },
+    ];
+
+    const scheduleAction = () => {
+      const delay = 8000 + Math.random() * 7000;
+      idleTimerRef.current = setTimeout(() => {
+        if (cancelled) return;
+        const action = actions[Math.floor(Math.random() * actions.length)];
+        action();
+        scheduleAction();
+      }, delay);
+    };
+    scheduleAction();
+    return () => {
+      cancelled = true;
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
   }, []);
 
   // Emotion-based animations
@@ -134,11 +236,62 @@ export default function Kova({
   }, [emotion]);
 
   const handleTap = useCallback(() => {
-    scaleVal.value = withSequence(
-      withSpring(0.88, { damping: 6 }),
-      withSpring(1.08, { damping: 5 }),
-      withSpring(1, { damping: 8 })
-    );
+    tapCountRef.current += 1;
+    const taps = tapCountRef.current;
+
+    // Escalating tap reactions
+    if (taps >= 10) {
+      // Rocket launch
+      tapHeavy();
+      playKovaWow();
+      bounce.value = withSequence(
+        withTiming(-80, { duration: 300, easing: Easing.out(Easing.cubic) }),
+        withDelay(200, withSpring(0, { damping: 6, stiffness: 100 })),
+      );
+      scaleVal.value = withSequence(
+        withTiming(0.7, { duration: 150 }),
+        withDelay(300, withSpring(1.1, { damping: 4 })),
+        withSpring(1, { damping: 8 }),
+      );
+      tapCountRef.current = 0; // Reset cycle
+    } else if (taps >= 5) {
+      // Dizzy spin
+      tapMedium();
+      playKovaGiggle();
+      wiggle.value = withSequence(
+        withTiming(360, { duration: 600 }),
+        withTiming(380, { duration: 100 }),
+        withTiming(360, { duration: 200 }),
+        withTiming(0, { duration: 10 }),
+      );
+      scaleVal.value = withSequence(
+        withSpring(0.85, { damping: 4 }),
+        withSpring(1.05, { damping: 5 }),
+        withSpring(1, { damping: 8 }),
+      );
+    } else if (taps >= 3) {
+      // Spin
+      tapMedium();
+      playKovaExcited();
+      wiggle.value = withSequence(
+        withTiming(360, { duration: 400, easing: Easing.out(Easing.cubic) }),
+        withTiming(0, { duration: 10 }),
+      );
+      scaleVal.value = withSequence(
+        withSpring(0.9, { damping: 5 }),
+        withSpring(1.05, { damping: 6 }),
+        withSpring(1, { damping: 8 }),
+      );
+    } else {
+      // Normal bounce
+      tapLight();
+      playKovaHappy();
+      scaleVal.value = withSequence(
+        withSpring(0.88, { damping: 6 }),
+        withSpring(1.08, { damping: 5 }),
+        withSpring(1, { damping: 8 }),
+      );
+    }
 
     if (showSpeechBubble) {
       let line: string;
@@ -181,7 +334,8 @@ export default function Kova({
   const kovaStyle = useAnimatedStyle(() => ({
     transform: [
       { translateY: floatY.value + bounce.value },
-      { scale: scaleVal.value },
+      { translateX: lookX.value },
+      { scale: scaleVal.value * breathScale.value },
       { rotate: `${wiggle.value}deg` },
     ],
   }));
@@ -217,6 +371,7 @@ export default function Kova({
             height: s * 1.4,
             borderRadius: s * 0.7,
             backgroundColor: glowColor,
+            shadowColor: glowColor,
             top: s * 0.2,
             left: s * 0.2,
           },
@@ -228,9 +383,9 @@ export default function Kova({
         <Animated.View style={[styles.kovaWrapper, kovaStyle, { top: s * 0.2, left: s * 0.2 }]}>
           <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
             {/* Stage-specific rendering */}
-            {stage === 1 && <SeedStage size={s} bodyColor={bodyColor} glowColor={glowColor} emotion={emotion} />}
-            {stage === 2 && <SproutStage size={s} bodyColor={bodyColor} glowColor={glowColor} emotion={emotion} />}
-            {stage >= 3 && <BloomingStage size={s} bodyColor={bodyColor} glowColor={glowColor} emotion={emotion} stage={stage} />}
+            {stage === 1 && <SeedStage size={s} bodyColor={bodyColor} glowColor={glowColor} emotion={emotion} blinking={blinking} />}
+            {stage === 2 && <SproutStage size={s} bodyColor={bodyColor} glowColor={glowColor} emotion={emotion} blinking={blinking} />}
+            {stage >= 3 && <BloomingStage size={s} bodyColor={bodyColor} glowColor={glowColor} emotion={emotion} stage={stage} blinking={blinking} />}
           </Svg>
         </Animated.View>
       </TouchableWithoutFeedback>
@@ -247,7 +402,7 @@ export default function Kova({
 }
 
 // Stage 1: A glowing orb in soil
-function SeedStage({ size: s, bodyColor, glowColor, emotion }: { size: number; bodyColor: string; glowColor: string; emotion: KovaEmotion }) {
+function SeedStage({ size: s, bodyColor, glowColor, emotion, blinking }: { size: number; bodyColor: string; glowColor: string; emotion: KovaEmotion; blinking: boolean }) {
   const cx = s / 2, cy = s / 2;
   return (
     <G>
@@ -265,7 +420,7 @@ function SeedStage({ size: s, bodyColor, glowColor, emotion }: { size: number; b
 }
 
 // Stage 2: Small round body with leaf on top
-function SproutStage({ size: s, bodyColor, glowColor, emotion }: { size: number; bodyColor: string; glowColor: string; emotion: KovaEmotion }) {
+function SproutStage({ size: s, bodyColor, glowColor, emotion, blinking }: { size: number; bodyColor: string; glowColor: string; emotion: KovaEmotion; blinking: boolean }) {
   const cx = s / 2, cy = s / 2 + s * 0.06;
   const r = s * 0.26;
   const isHappy = emotion === 'happy' || emotion === 'proud' || emotion === 'celebrating' || emotion === 'excited';
@@ -278,10 +433,19 @@ function SproutStage({ size: s, bodyColor, glowColor, emotion }: { size: number;
       <Circle cx={cx} cy={cy} r={r} fill={bodyColor} opacity={0.95} />
       <Circle cx={cx} cy={cy - r * 0.3} r={r * 0.6} fill="#FFFFFF" opacity={0.12} />
       {/* Eyes */}
-      <Circle cx={cx - r * 0.32} cy={cy - r * 0.1} r={r * 0.11} fill="#0B0E17" />
-      <Circle cx={cx + r * 0.32} cy={cy - r * 0.1} r={r * 0.11} fill="#0B0E17" />
-      <Circle cx={cx - r * 0.27} cy={cy - r * 0.15} r={r * 0.04} fill="#FFFFFF" opacity={0.8} />
-      <Circle cx={cx + r * 0.37} cy={cy - r * 0.15} r={r * 0.04} fill="#FFFFFF" opacity={0.8} />
+      {blinking ? (
+        <>
+          <Path d={`M${cx - r * 0.42} ${cy - r * 0.1} Q${cx - r * 0.32} ${cy + r * 0.02} ${cx - r * 0.22} ${cy - r * 0.1}`} stroke="#0B0E17" strokeWidth={2} fill="none" strokeLinecap="round" />
+          <Path d={`M${cx + r * 0.22} ${cy - r * 0.1} Q${cx + r * 0.32} ${cy + r * 0.02} ${cx + r * 0.42} ${cy - r * 0.1}`} stroke="#0B0E17" strokeWidth={2} fill="none" strokeLinecap="round" />
+        </>
+      ) : (
+        <>
+          <Circle cx={cx - r * 0.32} cy={cy - r * 0.1} r={r * 0.11} fill="#0B0E17" />
+          <Circle cx={cx + r * 0.32} cy={cy - r * 0.1} r={r * 0.11} fill="#0B0E17" />
+          <Circle cx={cx - r * 0.27} cy={cy - r * 0.15} r={r * 0.04} fill="#FFFFFF" opacity={0.8} />
+          <Circle cx={cx + r * 0.37} cy={cy - r * 0.15} r={r * 0.04} fill="#FFFFFF" opacity={0.8} />
+        </>
+      )}
       {/* Smile */}
       {isHappy && (
         <Path
@@ -321,7 +485,7 @@ function SproutStage({ size: s, bodyColor, glowColor, emotion }: { size: number;
 }
 
 // Stage 3+: Full Kova with leaf-ears and vine tail
-function BloomingStage({ size: s, bodyColor, glowColor, emotion, stage }: { size: number; bodyColor: string; glowColor: string; emotion: KovaEmotion; stage: KovaStage }) {
+function BloomingStage({ size: s, bodyColor, glowColor, emotion, stage, blinking }: { size: number; bodyColor: string; glowColor: string; emotion: KovaEmotion; stage: KovaStage; blinking: boolean }) {
   const cx = s / 2, cy = s / 2 + s * 0.04;
   const r = s * 0.28;
   const isHappy = ['happy', 'proud', 'celebrating', 'excited', 'relieved'].includes(emotion);
@@ -363,7 +527,7 @@ function BloomingStage({ size: s, bodyColor, glowColor, emotion, stage }: { size
       />
 
       {/* Eyes */}
-      {isZen ? (
+      {(isZen || blinking) ? (
         <>
           {/* Closed eyes */}
           <Path d={`M${cx - r * 0.32} ${cy - r * 0.08} Q${cx - r * 0.22} ${cy + r * 0.02} ${cx - r * 0.12} ${cy - r * 0.08}`} stroke="#0B0E17" strokeWidth={2} fill="none" strokeLinecap="round" />
@@ -442,40 +606,43 @@ const styles = StyleSheet.create({
   glow: {
     position: 'absolute',
     opacity: 0.3,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
   },
   kovaWrapper: {
     position: 'absolute',
   },
   bubble: {
     position: 'absolute',
-    backgroundColor: colors.bgElevated,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    maxWidth: 200,
+    backgroundColor: colors.bgCard,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    maxWidth: 210,
     alignSelf: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
   bubbleText: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'Caveat_400Regular',
+    color: colors.textHero,
+    fontSize: 16,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 22,
   },
   bubbleTail: {
     position: 'absolute',
-    bottom: -7,
+    bottom: -6,
     left: '50%',
-    marginLeft: -7,
-    width: 14,
-    height: 7,
-    backgroundColor: colors.bgElevated,
+    marginLeft: -6,
+    width: 12,
+    height: 6,
+    backgroundColor: colors.bgCard,
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
   },

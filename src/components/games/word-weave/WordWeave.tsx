@@ -4,8 +4,10 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withSequence, FadeIn, FadeOut, Easing,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { selection } from '../../../utils/haptics';
 import { colors } from '../../../constants/colors';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 import { wordWeaveParams, updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
 
 const { width } = Dimensions.get('window');
@@ -75,7 +77,9 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
   const [wordCount, setWordCount] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cancelledRef = useRef(false);
   const scoreRef = useRef(0);
+  const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
   const wordCountRef = useRef(0);
   const submittedRef = useRef<Set<string>>(new Set());
 
@@ -97,7 +101,9 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
 
   // Timer
   useEffect(() => {
+    cancelledRef.current = false;
     timerRef.current = setInterval(() => {
+      if (cancelledRef.current) return;
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
@@ -108,12 +114,15 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
         return t - 1;
       });
     }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      cancelledRef.current = true;
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [onComplete]);
 
   const tapLetter = useCallback((item: LetterItem) => {
     if (currentWordIds.includes(item.id)) return;
-    Haptics.selectionAsync();
+    selection();
     setCurrentWord((w) => [...w, item.char]);
     setCurrentWordIds((ids) => [...ids, item.id]);
   }, [currentWordIds]);
@@ -142,16 +151,16 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
       setLastWord({ word, valid: true, points: pts });
       updateDifficulty('word-weave', true);
       wordBarScale.value = withSequence(withSpring(1.08, { damping: 4 }), withSpring(1, { damping: 8 }));
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      burstCorrect({ x: width / 2, y: 120 });
     } else {
       setLastWord({ word, valid: false, points: 0 });
       updateDifficulty('word-weave', false);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      burstWrong({ x: width / 2, y: 120 });
     }
 
     setCurrentWord([]);
     setCurrentWordIds([]);
-    setTimeout(() => setLastWord(null), 1200);
+    setTimeout(() => { if (!cancelledRef.current) setLastWord(null); }, 1200);
   }, [currentWord, currentWordIds]);
 
   const clearWord = useCallback(() => {
@@ -168,7 +177,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <FeedbackBurst {...burstFeedback} />
       <View style={styles.header}>
         <Text style={styles.wordCountText}>{wordCount} words</Text>
         <Text style={[styles.timerText, isUrgent && styles.timerUrgent]}>{timeLeft}s</Text>

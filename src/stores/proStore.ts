@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useShallow } from 'zustand/react/shallow';
 import { todayStr } from '../utils/timeUtils';
 
 // ── Types ──────────────────────────────────────────────
@@ -265,7 +266,7 @@ export const useProStore = create<ProStoreState>()(
 // ── Convenience Hook ───────────────────────────────────
 
 export function useProStatus(): ProStatus {
-  return useProStore((s) => ({
+  return useProStore(useShallow((s) => ({
     isPro: s.isPro,
     plan: s.plan,
     expirationDate: s.expirationDate,
@@ -273,5 +274,5 @@ export function useProStatus(): ProStatus {
     trialEndDate: s.trialEndDate,
     familyRole: s.familyRole,
     isFoundingMember: s.isFoundingMember,
-  }));
+  })));
 }

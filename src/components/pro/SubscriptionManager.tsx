@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable, Linking,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess, warning as hapticWarning } from '../../utils/haptics';
 import { colors } from '../../constants/colors';
 import { useProStore, PLAN_DEFS } from '../../stores/proStore';
 
@@ -38,10 +38,15 @@ interface SubscriptionManagerProps {
 }
 
 export default function SubscriptionManager({ onClose, onGoToPro }: SubscriptionManagerProps) {
-  const {
-    isPro, plan, expirationDate, trialActive, trialEndDate,
-    isFoundingMember, familyRole, cancelSubscription, restorePurchase,
-  } = useProStore();
+  const isPro = useProStore(s => s.isPro);
+  const plan = useProStore(s => s.plan);
+  const expirationDate = useProStore(s => s.expirationDate);
+  const trialActive = useProStore(s => s.trialActive);
+  const trialEndDate = useProStore(s => s.trialEndDate);
+  const isFoundingMember = useProStore(s => s.isFoundingMember);
+  const familyRole = useProStore(s => s.familyRole);
+  const cancelSubscription = useProStore(s => s.cancelSubscription);
+  const restorePurchase = useProStore(s => s.restorePurchase);
 
   const [cancelling, setCancelling] = useState(false);
   const [cancelStep, setCancelStep] = useState<CancelStep>('info');
@@ -57,7 +62,7 @@ export default function SubscriptionManager({ onClose, onGoToPro }: Subscription
 
   const handleRestore = () => {
     // In production, this calls RevenueCat.restorePurchases()
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
   };
 
   const handleStartCancel = () => {
@@ -68,7 +73,7 @@ export default function SubscriptionManager({ onClose, onGoToPro }: Subscription
   const handleConfirmCancel = () => {
     cancelSubscription();
     setCancelStep('done');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    hapticWarning();
   };
 
   if (cancelling) {

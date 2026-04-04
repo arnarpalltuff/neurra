@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess } from '../../utils/haptics';
 import { colors } from '../../constants/colors';
 import Kova from '../kova/Kova';
 import { useProStore, PLAN_DEFS, PRO_FEATURES, PlanDef } from '../../stores/proStore';
@@ -51,7 +51,7 @@ export default function PaywallFull({ onClose }: PaywallFullProps) {
     // In production, this would go through RevenueCat/StoreKit
     subscribe(selectedPlan.plan);
     recordFullPaywall();
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
     onClose();
   };
 

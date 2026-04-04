@@ -60,7 +60,7 @@ interface ProgressState {
   isSessionDoneToday: () => boolean;
 }
 
-function xpForLevel(level: number): number {
+export function xpForLevel(level: number): number {
   if (level <= 10) return level * 500;
   if (level <= 25) return 5000 + (level - 10) * 1000;
   if (level <= 50) return 20000 + (level - 25) * 2000;

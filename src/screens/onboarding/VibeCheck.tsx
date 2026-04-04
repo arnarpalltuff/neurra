@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { colors } from '../../constants/colors';
 import Kova from '../../components/kova/Kova';
@@ -57,21 +57,22 @@ export default function VibeCheck({ onComplete }: VibeCheckProps) {
           <Kova size={100} emotion="curious" showSpeechBubble={false} />
 
           <View style={styles.introText}>
-            <Text style={styles.checkLabel}>{gameIndex + 1} of 3</Text>
+            <View style={styles.checkBadge}>
+              <Text style={styles.checkLabel}>{gameIndex + 1} of 3</Text>
+            </View>
             <Text style={styles.checkName}>{meta.name}</Text>
             <Text style={styles.checkDesc}>{meta.desc}</Text>
             <Text style={styles.noPresure}>No pressure — just play.</Text>
           </View>
 
-          <View
+          <Pressable
             style={styles.startArea}
-            onTouchEnd={() => setPhase('playing')}
-            accessible
+            onPress={() => setPhase('playing')}
             accessibilityRole="button"
             accessibilityLabel="Start this game"
           >
             <Text style={styles.startText}>Tap to start</Text>
-          </View>
+          </Pressable>
         </Animated.View>
       )}
 
@@ -105,56 +106,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
-    gap: 24,
+    gap: 28,
   },
   progressRow: {
     flexDirection: 'row',
     gap: 8,
   },
   pip: {
-    width: 32,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.bgTertiary,
+    width: 36,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceDim,
   },
   pipDone: { backgroundColor: colors.growth },
-  pipActive: { backgroundColor: colors.growth, opacity: 0.6 },
+  pipActive: { backgroundColor: colors.growth, opacity: 0.5 },
   introText: {
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+  },
+  checkBadge: {
+    backgroundColor: colors.growthTint,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginBottom: 4,
   },
   checkLabel: {
-    color: colors.textTertiary,
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
+    fontFamily: 'Nunito_700Bold',
+    color: colors.growth,
+    fontSize: 11,
     letterSpacing: 1,
   },
   checkName: {
-    color: colors.textPrimary,
-    fontSize: 26,
-    fontWeight: '800',
+    fontFamily: 'Quicksand_700Bold',
+    color: colors.textHero,
+    fontSize: 28,
+    letterSpacing: -0.5,
   },
   checkDesc: {
+    fontFamily: 'Nunito_400Regular',
     color: colors.textSecondary,
     fontSize: 16,
     textAlign: 'center',
   },
   noPresure: {
+    fontFamily: 'Caveat_400Regular',
     color: colors.textTertiary,
-    fontSize: 14,
-    fontStyle: 'italic',
+    fontSize: 18,
   },
   startArea: {
     backgroundColor: colors.growth,
-    paddingHorizontal: 40,
-    paddingVertical: 18,
-    borderRadius: 18,
+    paddingHorizontal: 44,
+    paddingVertical: 16,
+    borderRadius: 999,
+    shadowColor: colors.growthGlow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 16,
   },
   startText: {
+    fontFamily: 'Nunito_700Bold',
     color: colors.textInverse,
     fontSize: 17,
-    fontWeight: '800',
   },
   gameContainer: {
     flex: 1,
@@ -164,8 +177,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   gameHeaderText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textSecondary,
     fontSize: 14,
-    fontWeight: '600',
   },
 });

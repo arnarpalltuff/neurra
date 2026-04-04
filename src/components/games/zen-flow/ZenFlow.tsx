@@ -4,8 +4,10 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence,
   FadeIn, FadeOut, Easing,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { tapLight } from '../../../utils/haptics';
 import { colors } from '../../../constants/colors';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
 
 const { width: W } = Dimensions.get('window');
@@ -39,6 +41,7 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
   const tapRef = useRef(0);
   const missRef = useRef(0);
   const targetVisibleRef = useRef(false);
+  const { feedback: burstFeedback, fireCorrect: burstCorrect } = useGameFeedback();
 
   const breathScale = useSharedValue(0.6);
   const breathOpacity = useSharedValue(0.4);
@@ -63,7 +66,7 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
       setBreathLabel('Breathe in');
       breathScale.value = withTiming(1.2, { duration: 4000, easing: Easing.inOut(Easing.ease) });
       breathOpacity.value = withTiming(0.8, { duration: 4000 });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      tapLight();
 
       setTimeout(() => {
         if (cancelled) return;
@@ -153,11 +156,12 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
     const pts = 80;
     scoreRef.current += pts;
     setScore(scoreRef.current);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
+    burstCorrect({ x: targetPos.x + 25, y: targetPos.y + 100 });
+  }, [burstCorrect, targetPos]);
 
   return (
     <View style={styles.container}>
+      <FeedbackBurst {...burstFeedback} />
       {phase === 'breathing' && (
         <View style={styles.breathArea}>
           <Text style={styles.breathLabel}>{breathLabel}</Text>

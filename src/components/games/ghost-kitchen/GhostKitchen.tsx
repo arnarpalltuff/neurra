@@ -6,10 +6,11 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withSequence, FadeIn, FadeOut, SlideInDown,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
 import { ghostKitchenParams, updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
 import { shuffle } from '../../../utils/arrayUtils';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 
 const { width } = Dimensions.get('window');
 
@@ -53,7 +54,10 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
   const [comboMultiplier, setComboMultiplier] = useState(1);
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cancelledRef = useRef(false);
   const roundStartTime = useRef(Date.now());
+  const { feedback, fireCorrect, fireWrong } = useGameFeedback();
+  const lastTapPos = useRef({ x: width / 2, y: 300 });
 
   const generateRound = useCallback((currentRound: number) => {
     const lvl = Math.max(initialLevel, getDifficulty('ghost-kitchen').level);
@@ -74,6 +78,7 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
     setShowTimer(remaining);
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
+      if (cancelledRef.current) { clearInterval(timerRef.current!); return; }
       remaining -= 1;
       setShowTimer(remaining);
       if (remaining <= 0) {
@@ -84,17 +89,27 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
   }, [initialLevel]);
 
   useEffect(() => {
+    cancelledRef.current = false;
     generateRound(round);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      cancelledRef.current = true;
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
-  const handleIngredientTap = (ingredientId: string) => {
+  const handleIngredientTap = (ingredientId: string, tapX?: number, tapY?: number) => {
     if (phase !== 'recall') return;
     const expectedIndex = selected.length;
     const expectedId = order[expectedIndex]?.id;
     const isCorrect = ingredientId === expectedId;
 
-    Haptics.impactAsync(isCorrect ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
+    const pos = { x: tapX ?? lastTapPos.current.x, y: tapY ?? lastTapPos.current.y };
+    lastTapPos.current = pos;
+    if (isCorrect) {
+      fireCorrect(pos);
+    } else {
+      fireWrong(pos);
+    }
     setLastCorrect(isCorrect);
     setTotalAttempts(prev => prev + 1);
 
@@ -119,6 +134,7 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
       if (newSelected.length === order.length) {
         // Round complete
         setTimeout(() => {
+          if (cancelledRef.current) return;
           if (round >= totalRounds) {
             const accuracy = (correctCount + 1) / (totalAttempts + 1);
             onComplete(score + points, accuracy);
@@ -134,12 +150,12 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
       setComboMultiplier(prev => Math.max(1, prev - 0.5));
     }
 
-    setTimeout(() => setLastCorrect(null), 500);
+    setTimeout(() => { if (!cancelledRef.current) setLastCorrect(null); }, 500);
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <FeedbackBurst {...feedback} />
       <View style={styles.header}>
         <Text style={styles.roundText}>Order {round}/{totalRounds}</Text>
         <Text style={styles.scoreText}>{score} pts</Text>
@@ -190,7 +206,7 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
                 <TouchableOpacity
                   key={item.id}
                   style={[styles.trayItem, isDone && styles.trayItemDone]}
-                  onPress={() => handleIngredientTap(item.id)}
+                  onPress={(e) => handleIngredientTap(item.id, e.nativeEvent.pageX, e.nativeEvent.pageY)}
                   disabled={isDone}
                   accessibilityLabel={item.label}
                 >

@@ -4,9 +4,10 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat,
   withSequence, Easing, FadeIn, FadeOut,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
 import { pulseParams, updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 
 const { width, height } = Dimensions.get('window');
 
@@ -38,12 +39,17 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
   const shapeIdRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shapeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelledRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
   const tappedRef = useRef(false);
   const countRef = useRef(0);
   const correctRef = useRef(0);
   const attemptsRef = useRef(0);
   const scoreRef = useRef(0);
   const ruleRef = useRef<'tap_green' | 'tap_red'>('tap_green');
+
+  const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
 
   const pulseScale = useSharedValue(1);
   const pulseOpacity = useSharedValue(0.6);
@@ -86,7 +92,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
       ruleRef.current = newRule;
       setRule(newRule);
       setRuleAnnounced(true);
-      setTimeout(() => setRuleAnnounced(false), 1200);
+      setTimeout(() => { if (!cancelledRef.current) setRuleAnnounced(false); }, 1200);
     }
 
     // Pick color
@@ -109,6 +115,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
     // Animate out after interval
     if (shapeTimeoutRef.current) clearTimeout(shapeTimeoutRef.current);
     shapeTimeoutRef.current = setTimeout(() => {
+      if (cancelledRef.current) return;
       shapeOpacity.value = withTiming(0, { duration: 150 });
       shapeScale.value = withTiming(0.7, { duration: 150 });
 
@@ -135,19 +142,21 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (shapeTimeoutRef.current) clearTimeout(shapeTimeoutRef.current);
     const accuracy = attemptsRef.current > 0 ? correctRef.current / attemptsRef.current : 1;
-    onComplete(scoreRef.current, accuracy);
-  }, [onComplete]);
+    onCompleteRef.current(scoreRef.current, accuracy);
+  }, []);
 
   useEffect(() => {
+    cancelledRef.current = false;
     const delay = 800;
     const start = setTimeout(() => {
       nextShape();
       intervalRef.current = setInterval(() => {
-        nextShape();
+        if (!cancelledRef.current) nextShape();
       }, intervalMs);
     }, delay);
 
     return () => {
+      cancelledRef.current = true;
       clearTimeout(start);
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (shapeTimeoutRef.current) clearTimeout(shapeTimeoutRef.current);
@@ -171,13 +180,13 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
       setScore(s => s + pts);
       setCorrectCount(c => c + 1);
       setFeedback('correct');
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      burstCorrect({ x: width / 2, y: height / 2 });
       updateDifficulty('pulse', true);
     } else {
       setPerfectStreak(0);
       setFeedback('wrong');
       bgFlash.value = withSequence(withTiming(1, { duration: 80 }), withTiming(0, { duration: 200 }));
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      burstWrong({ x: width / 2, y: height / 2 });
       updateDifficulty('pulse', false);
     }
 
@@ -188,6 +197,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
     shapeOpacity.value = withTiming(0, { duration: 200 });
 
     setTimeout(() => {
+      if (cancelledRef.current) return;
       setFeedback(null);
       setCurrentShape(null);
     }, 250);
@@ -218,7 +228,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
   return (
     <TouchableWithoutFeedback onPress={handleTap} accessible={false}>
       <View style={styles.container}>
-        {/* Red flash overlay */}
+        <FeedbackBurst {...burstFeedback} />
         <Animated.View style={[styles.flashOverlay, bgStyle]} pointerEvents="none" />
 
         {/* Rule display */}

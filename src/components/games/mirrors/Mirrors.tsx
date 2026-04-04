@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { tapMedium } from '../../../utils/haptics';
 import { colors } from '../../../constants/colors';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, mirrorsParams as mirrorsParamsEngine } from '../../../utils/difficultyEngine';
 import { pickRandom, shuffle } from '../../../utils/arrayUtils';
 import ProgressBar from '../../ui/ProgressBar';
@@ -116,6 +118,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
   const trialRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
 
   const safeTimeout = useCallback((fn: () => void, ms: number) => {
     const id = setTimeout(fn, ms);
@@ -159,7 +162,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
     timerRef.current = setTimeout(() => {
       setFeedback('timeout');
       updateDifficulty('mirrors', false);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      tapMedium();
       safeTimeout(() => {
         trialRef.current += 1;
         setTrial(trialRef.current);
@@ -195,11 +198,11 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
       scoreRef.current += pts;
       setScore(scoreRef.current);
       updateDifficulty('mirrors', true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      burstCorrect({ x: W / 2, y: 400 });
       setFeedback('correct');
     } else {
       updateDifficulty('mirrors', false);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      burstWrong({ x: W / 2, y: 400 });
       setFeedback('wrong');
     }
 
@@ -217,6 +220,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
 
   return (
     <View style={styles.container}>
+      <FeedbackBurst {...burstFeedback} />
       <View style={styles.header}>
         <Text style={styles.trialText}>{trial + 1}/{params.totalTrials}</Text>
         <Text style={styles.scoreText}>{score}</Text>

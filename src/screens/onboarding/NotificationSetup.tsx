@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 28,
-    paddingVertical: 60,
+    paddingVertical: 70,
   },
   kovaArea: {
     flex: 1,
@@ -56,15 +56,17 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: 26,
-    fontWeight: '800',
+    fontFamily: 'Quicksand_700Bold',
+    color: colors.textHero,
+    fontSize: 28,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   description: {
+    fontFamily: 'Nunito_400Regular',
     color: colors.textSecondary,
     fontSize: 16,
     textAlign: 'center',
@@ -81,8 +83,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   skipText: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textTertiary,
     fontSize: 15,
-    fontWeight: '600',
   },
 });

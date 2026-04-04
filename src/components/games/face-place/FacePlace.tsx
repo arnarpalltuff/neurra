@@ -4,7 +4,8 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withSequence, FadeIn, FadeOut, SlideInRight,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 import { Svg, Circle, Ellipse, Rect, Path, G, Text as SvgText } from 'react-native-svg';
 import { colors } from '../../../constants/colors';
 import { updateDifficulty, getDifficulty, facePlaceParams } from '../../../utils/difficultyEngine';
@@ -152,16 +153,20 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
   const [typedName, setTypedName] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelledRef = useRef(false);
   const startTimeRef = useRef(Date.now());
   const scoreRef = useRef(0);
   const correctCountRef = useRef(0);
+  const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
 
   // Init faces
   useEffect(() => {
+    cancelledRef.current = false;
     const selected = shuffle(FACE_POOL).slice(0, params.numFaces);
     setFaces(selected);
     setRecallOrder(shuffle([...selected]));
     startTimeRef.current = Date.now();
+    return () => { cancelledRef.current = true; };
   }, [params.numFaces]);
 
   // Auto-advance study phase
@@ -222,9 +227,9 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
       const pts = 120 + speedBonus;
       scoreRef.current += pts;
       setScore(s => s + pts);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      burstCorrect({ x: width / 2, y: 300 });
     } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      burstWrong({ x: width / 2, y: 300 });
     }
 
     setFeedback({ correct: isCorrect, answer: currentFace.name });
@@ -232,6 +237,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
 
     if (answerTimerRef.current) clearTimeout(answerTimerRef.current);
     answerTimerRef.current = setTimeout(() => {
+      if (cancelledRef.current) return;
       setFeedback(null);
       if (recallIndex + 1 < recallOrder.length) {
         setRecallIndex(i => i + 1);
@@ -249,7 +255,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      <FeedbackBurst {...burstFeedback} />
       <View style={styles.header}>
         <Text style={styles.phaseText}>{phase === 'study' ? 'Study' : 'Recall'}</Text>
         <Text style={styles.scoreText}>{score} pts</Text>

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess } from '../../../utils/haptics';
 import { colors } from '../../../constants/colors';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, mindDriftParams } from '../../../utils/difficultyEngine';
 import { pickRandom } from '../../../utils/arrayUtils';
 import ProgressBar from '../../ui/ProgressBar';
@@ -93,6 +95,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   const scoreRef = useRef(0);
   const correctRef = useRef(0);
   const roundRef = useRef(1);
+  const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
   const roundStartRef = useRef(Date.now());
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -154,7 +157,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
     const isCorrect = cell.row === expected.row && cell.col === expected.col;
 
     if (isCorrect) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      burstCorrect({ x: cell.cx + 30, y: cell.cy + 100 });
       const newTapped = [...tapped, cell];
       setTapped(newTapped);
       updateDifficulty('mind-drift', true);
@@ -167,11 +170,11 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
         scoreRef.current += pts;
         setScore(scoreRef.current);
         setFeedback('correct');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        hapticSuccess();
         safeTimeout(() => { setFeedback(null); advanceRound(); }, 800);
       }
     } else {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      burstWrong({ x: cell.cx + 30, y: cell.cy + 100 });
       updateDifficulty('mind-drift', false);
       setFeedback('wrong');
       safeTimeout(() => { setFeedback(null); advanceRound(); }, 1200);
@@ -201,6 +204,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
 
   return (
     <View style={styles.container}>
+      <FeedbackBurst {...burstFeedback} />
       <View style={styles.header}>
         <Text style={styles.roundText}>Path {round}/{params.totalRounds}</Text>
         <Text style={styles.scoreText}>{score}</Text>

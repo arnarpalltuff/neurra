@@ -24,7 +24,12 @@ interface AdState {
   rewardedAdsShown: number;
   coinRewardsCollected: number;
   bonusRoundUnlocked: boolean;
+  lastAdTimestamp: number; // ms since epoch
+  adFeedback: Array<{ timestamp: number; reason: string }>;
 }
+
+// Minimum 3 minutes between any ad impressions
+const AD_COOLDOWN_MS = 3 * 60 * 1000;
 
 function defaultState(): AdState {
   return {
@@ -33,6 +38,8 @@ function defaultState(): AdState {
     rewardedAdsShown: 0,
     coinRewardsCollected: 0,
     bonusRoundUnlocked: false,
+    lastAdTimestamp: 0,
+    adFeedback: [],
   };
 }
 
@@ -62,23 +69,39 @@ async function saveState(state: AdState): Promise<void> {
 
 // ── Public API ─────────────────────────────────────────
 
-/** Can we show a banner ad on the session summary? */
-export async function canShowBanner(): Promise<boolean> {
+function cooldownActive(state: AdState): boolean {
+  return Date.now() - state.lastAdTimestamp < AD_COOLDOWN_MS;
+}
+
+/**
+ * Can we show a banner ad on the session summary?
+ * Respects daily limits, cooldown, and session context.
+ */
+export async function canShowBanner(sessionAccuracy?: number): Promise<boolean> {
   const state = await getState();
-  return state.bannerImpressions < 3;
+  // Daily limit
+  if (state.bannerImpressions >= 3) return false;
+  // Cooldown
+  if (cooldownActive(state)) return false;
+  // Don't show ads after frustrating sessions (accuracy < 40%)
+  if (sessionAccuracy !== undefined && sessionAccuracy < 0.4) return false;
+  return true;
 }
 
 /** Record a banner impression */
 export async function recordBannerImpression(): Promise<void> {
   const state = await getState();
   state.bannerImpressions += 1;
+  state.lastAdTimestamp = Date.now();
   await saveState(state);
 }
 
 /** Can the user watch a rewarded ad for the bonus round? */
 export async function canShowBonusRoundAd(): Promise<boolean> {
   const state = await getState();
-  return !state.bonusRoundUnlocked && state.rewardedAdsShown < 4;
+  if (state.bonusRoundUnlocked || state.rewardedAdsShown >= 4) return false;
+  if (cooldownActive(state)) return false;
+  return true;
 }
 
 /** Record bonus round ad watched */
@@ -86,6 +109,7 @@ export async function recordBonusRoundAd(): Promise<void> {
   const state = await getState();
   state.bonusRoundUnlocked = true;
   state.rewardedAdsShown += 1;
+  state.lastAdTimestamp = Date.now();
   await saveState(state);
 }
 
@@ -98,7 +122,9 @@ export async function coinRewardAdsRemaining(): Promise<number> {
 /** Can the user watch a rewarded ad for coins? */
 export async function canShowCoinRewardAd(): Promise<boolean> {
   const state = await getState();
-  return state.coinRewardsCollected < 3 && state.rewardedAdsShown < 4;
+  if (state.coinRewardsCollected >= 3 || state.rewardedAdsShown >= 4) return false;
+  if (cooldownActive(state)) return false;
+  return true;
 }
 
 /** Record coin reward ad watched */
@@ -106,6 +132,7 @@ export async function recordCoinRewardAd(): Promise<void> {
   const state = await getState();
   state.coinRewardsCollected += 1;
   state.rewardedAdsShown += 1;
+  state.lastAdTimestamp = Date.now();
   await saveState(state);
 }
 
@@ -119,5 +146,20 @@ export async function isBonusUnlocked(): Promise<boolean> {
 export async function grantFreeBonusUnlock(): Promise<void> {
   const state = await getState();
   state.bonusRoundUnlocked = true;
+  await saveState(state);
+}
+
+/**
+ * Should ads be suppressed for streak milestones?
+ * No ads on milestone days — let the celebration breathe.
+ */
+export function shouldSuppressForStreak(streak: number): boolean {
+  return [7, 14, 30, 60, 100, 365].includes(streak);
+}
+
+/** Record user feedback about a bad ad */
+export async function reportBadAd(reason: string): Promise<void> {
+  const state = await getState();
+  state.adFeedback.push({ timestamp: Date.now(), reason });
   await saveState(state);
 }

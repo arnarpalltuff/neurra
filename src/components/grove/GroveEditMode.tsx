@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, Pressable, Dimensions, Alert,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { tapLight, tapMedium, success as hapticSuccess } from '../../utils/haptics';
 import { colors } from '../../constants/colors';
 import {
   useGroveStore,
@@ -32,15 +32,13 @@ export default function GroveEditMode({
   pendingPlacement,
   onPlacementComplete,
 }: GroveEditModeProps) {
-  const {
-    placedDecorations,
-    ownedDecorations,
-    placeDecoration,
-    moveDecoration,
-    storeDecoration,
-    sellDecoration,
-  } = useGroveStore();
-  const { addCoins } = useProgressStore();
+  const placedDecorations = useGroveStore(s => s.placedDecorations);
+  const ownedDecorations = useGroveStore(s => s.ownedDecorations);
+  const placeDecoration = useGroveStore(s => s.placeDecoration);
+  const moveDecoration = useGroveStore(s => s.moveDecoration);
+  const storeDecoration = useGroveStore(s => s.storeDecoration);
+  const sellDecoration = useGroveStore(s => s.sellDecoration);
+  const addCoins = useProgressStore(s => s.addCoins);
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -49,7 +47,7 @@ export default function GroveEditMode({
       // If we have a pending placement from inventory, place it here
       if (pendingPlacement) {
         placeDecoration(pendingPlacement, x, y);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        hapticSuccess();
         onPlacementComplete();
         return;
       }
@@ -61,11 +59,11 @@ export default function GroveEditMode({
 
       if (hitIdx >= 0) {
         setSelectedIdx(hitIdx);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        tapLight();
       } else if (selectedIdx !== null) {
         // Move selected decoration to new position
         moveDecoration(selectedIdx, x, y);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        tapMedium();
         setSelectedIdx(null);
       }
     },
@@ -76,7 +74,7 @@ export default function GroveEditMode({
     if (selectedIdx === null) return;
     storeDecoration(selectedIdx);
     setSelectedIdx(null);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    tapLight();
   }, [selectedIdx, storeDecoration]);
 
   const handleSell = useCallback(() => {
@@ -98,7 +96,7 @@ export default function GroveEditMode({
             sellDecoration(selectedIdx);
             if (refund > 0) addCoins(refund);
             setSelectedIdx(null);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            hapticSuccess();
           },
         },
       ],

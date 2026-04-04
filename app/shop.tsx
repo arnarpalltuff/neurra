@@ -3,7 +3,8 @@ import {
   View, Text, StyleSheet, SafeAreaView, Pressable, FlatList, ScrollView, Alert,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { tapLight, success as hapticSuccess } from '../src/utils/haptics';
 import { router } from 'expo-router';
 import { colors } from '../src/constants/colors';
 import { useProgressStore } from '../src/stores/progressStore';
@@ -26,8 +27,6 @@ import CoinRewardCard from '../src/components/ads/CoinRewardCard';
 
 type ShopTab = 'outfits' | 'accessories' | 'themes' | 'decorations' | 'utilities';
 
-// ── Utilities items ───────────────────────────────────
-
 interface UtilityItem {
   id: string;
   name: string;
@@ -42,24 +41,30 @@ const UTILITY_ITEMS: UtilityItem[] = [
   { id: 'gift-flower', name: 'Gift Flower', emoji: '🌸', cost: 50, description: "Plant a flower in a friend's grove." },
 ];
 
-// ── Shop Screen ───────────────────────────────────────
-
 export default function ShopScreen() {
   const [tab, setTab] = useState<ShopTab>('outfits');
-  const { coins, spendCoins, addStreakFreeze, streakFreezes } = useProgressStore();
-  const {
-    ownedOutfits, ownedAccessories, equippedOutfit, equippedAccessory,
-    buyOutfit, buyAccessory, equipOutfit, equipAccessory,
-  } = useCosmeticsStore();
-  const {
-    activeTheme, unlockedThemes, setTheme, unlockTheme,
-  } = useGroveStore();
+  const coins = useProgressStore(s => s.coins);
+  const spendCoins = useProgressStore(s => s.spendCoins);
+  const addStreakFreeze = useProgressStore(s => s.addStreakFreeze);
+  const streakFreezes = useProgressStore(s => s.streakFreezes);
+  const ownedOutfits = useCosmeticsStore(s => s.ownedOutfits);
+  const ownedAccessories = useCosmeticsStore(s => s.ownedAccessories);
+  const equippedOutfit = useCosmeticsStore(s => s.equippedOutfit);
+  const equippedAccessory = useCosmeticsStore(s => s.equippedAccessory);
+  const buyOutfit = useCosmeticsStore(s => s.buyOutfit);
+  const buyAccessory = useCosmeticsStore(s => s.buyAccessory);
+  const equipOutfit = useCosmeticsStore(s => s.equipOutfit);
+  const equipAccessory = useCosmeticsStore(s => s.equipAccessory);
+  const activeTheme = useGroveStore(s => s.activeTheme);
+  const unlockedThemes = useGroveStore(s => s.unlockedThemes);
+  const setTheme = useGroveStore(s => s.setTheme);
+  const unlockTheme = useGroveStore(s => s.unlockTheme);
 
   const handleBuyOutfit = useCallback((def: OutfitDef) => {
     if (def.cost === -1) return;
     if (ownedOutfits.includes(def.id)) {
       equipOutfit(equippedOutfit === def.id ? null : def.id);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      tapLight();
       return;
     }
     if (!spendCoins(def.cost)) {
@@ -68,14 +73,14 @@ export default function ShopScreen() {
     }
     buyOutfit(def.id);
     equipOutfit(def.id);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
   }, [ownedOutfits, equippedOutfit, spendCoins, buyOutfit, equipOutfit]);
 
   const handleBuyAccessory = useCallback((def: AccessoryDef) => {
     if (def.cost === -1) return;
     if (ownedAccessories.includes(def.id)) {
       equipAccessory(equippedAccessory === def.id ? null : def.id);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      tapLight();
       return;
     }
     if (!spendCoins(def.cost)) {
@@ -84,14 +89,14 @@ export default function ShopScreen() {
     }
     buyAccessory(def.id);
     equipAccessory(def.id);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
   }, [ownedAccessories, equippedAccessory, spendCoins, buyAccessory, equipAccessory]);
 
   const handleBuyTheme = useCallback((themeId: GroveThemeId, cost: number) => {
     if (cost === -1) return;
     if (unlockedThemes.includes(themeId)) {
       setTheme(themeId);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      tapLight();
       return;
     }
     if (!spendCoins(cost)) {
@@ -100,7 +105,7 @@ export default function ShopScreen() {
     }
     unlockTheme(themeId);
     setTheme(themeId);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
   }, [unlockedThemes, spendCoins, unlockTheme, setTheme]);
 
   const handleBuyUtility = useCallback((item: UtilityItem) => {
@@ -114,14 +119,13 @@ export default function ShopScreen() {
         return;
       }
       addStreakFreeze();
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      hapticSuccess();
     } else if (item.id === 'streak-repair') {
-      // Streak repair logic handled at session level
       if (!spendCoins(item.cost)) {
         Alert.alert('Not enough coins', `You need ${item.cost} coins.`);
         return;
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      hapticSuccess();
     }
   }, [streakFreezes, spendCoins, addStreakFreeze]);
 
@@ -147,7 +151,7 @@ export default function ShopScreen() {
         </View>
       </View>
 
-      {/* Tabs */}
+      {/* Tabs — pill chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll} contentContainerStyle={styles.tabRow}>
         {tabs.map((t) => (
           <Pressable
@@ -175,11 +179,12 @@ export default function ShopScreen() {
             const isPro = item.cost === -1;
             return (
               <Pressable style={[styles.card, equipped && styles.cardEquipped]} onPress={() => handleBuyOutfit(item)}>
+                <LinearGradient colors={[colors.bgCardTop, colors.bgCard]} style={StyleSheet.absoluteFill} />
                 <Text style={styles.cardEmoji}>{item.emoji}</Text>
                 <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
                 {equipped ? (
-                  <Text style={styles.equippedTag}>Equipped</Text>
+                  <View style={styles.equippedBadge}><Text style={styles.equippedBadgeText}>Equipped</Text></View>
                 ) : owned ? (
                   <Text style={styles.ownedTag}>Tap to equip</Text>
                 ) : isPro ? (
@@ -206,10 +211,11 @@ export default function ShopScreen() {
             const isPro = item.cost === -1;
             return (
               <Pressable style={[styles.cardSmall, equipped && styles.cardEquipped]} onPress={() => handleBuyAccessory(item)}>
+                <LinearGradient colors={[colors.bgCardTop, colors.bgCard]} style={StyleSheet.absoluteFill} />
                 <Text style={styles.cardEmoji}>{item.emoji}</Text>
                 <Text style={styles.cardNameSmall} numberOfLines={1}>{item.name}</Text>
                 {equipped ? (
-                  <Text style={styles.equippedTagSmall}>Equipped</Text>
+                  <View style={styles.equippedBadgeSmall}><Text style={styles.equippedBadgeTextSmall}>On</Text></View>
                 ) : owned ? (
                   <Text style={styles.ownedTagSmall}>Equip</Text>
                 ) : isPro ? (
@@ -245,7 +251,7 @@ export default function ShopScreen() {
                 <Text style={styles.themeName}>{theme.name}</Text>
                 <Text style={styles.themeDesc} numberOfLines={2}>{theme.description}</Text>
                 {isActive ? (
-                  <Text style={styles.equippedTag}>Active</Text>
+                  <View style={styles.equippedBadge}><Text style={styles.equippedBadgeText}>Active</Text></View>
                 ) : isOwned ? (
                   <Text style={styles.ownedTag}>Tap to apply</Text>
                 ) : isPro ? (
@@ -259,7 +265,7 @@ export default function ShopScreen() {
         </ScrollView>
       )}
 
-      {/* Decorations — redirect to grove shop */}
+      {/* Decorations */}
       {tab === 'decorations' && (
         <View style={styles.centered}>
           <Text style={styles.centeredEmoji}>🌿</Text>
@@ -273,11 +279,11 @@ export default function ShopScreen() {
       {/* Utilities */}
       {tab === 'utilities' && (
         <ScrollView contentContainerStyle={styles.utilList}>
-          {/* Rewarded ad coin earning */}
           <CoinRewardCard />
 
           {UTILITY_ITEMS.map((item) => (
             <Pressable key={item.id} style={styles.utilCard} onPress={() => handleBuyUtility(item)}>
+              <LinearGradient colors={[colors.bgCardTop, colors.bgCard]} style={StyleSheet.absoluteFill} />
               <Text style={styles.utilEmoji}>{item.emoji}</Text>
               <View style={styles.utilInfo}>
                 <Text style={styles.utilName}>{item.name}</Text>
@@ -301,119 +307,207 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingBottom: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.borderSubtle,
   },
-  backText: { color: colors.sky, fontSize: 16, fontWeight: '600' },
-  title: { color: colors.textPrimary, fontSize: 20, fontWeight: '800' },
+  backText: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.sky,
+    fontSize: 15,
+  },
+  title: {
+    fontFamily: 'Quicksand_700Bold',
+    color: colors.textPrimary,
+    fontSize: 20,
+  },
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.bgSecondary,
-    paddingHorizontal: 10,
+    backgroundColor: colors.warmTint,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: 16,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: 'rgba(232,168,124,0.2)',
   },
-  coinIcon: { fontSize: 14 },
-  coinCount: { color: colors.warm, fontSize: 15, fontWeight: '800' },
+  coinIcon: { fontSize: 13 },
+  coinCount: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.warm,
+    fontSize: 15,
+  },
 
   // Tabs
-  tabScroll: { maxHeight: 44 },
-  tabRow: { paddingHorizontal: 12, paddingVertical: 8, gap: 6 },
+  tabScroll: { maxHeight: 48 },
+  tabRow: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
   tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: colors.bgSecondary,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.bgHover,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
   },
-  tabActive: { backgroundColor: colors.growth },
-  tabText: { color: colors.textTertiary, fontSize: 13, fontWeight: '700' },
+  tabActive: {
+    backgroundColor: colors.growth,
+    borderColor: colors.growth,
+  },
+  tabText: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.textTertiary,
+    fontSize: 13,
+  },
   tabTextActive: { color: colors.bgPrimary },
 
   // Grid
-  grid: { paddingHorizontal: 12, paddingTop: 8, gap: 10, paddingBottom: 40 },
+  grid: { paddingHorizontal: 14, paddingTop: 10, gap: 10, paddingBottom: 40 },
 
   // Outfit cards (2 col)
   card: {
     flex: 1,
     maxWidth: '48%',
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 20,
+    padding: 16,
     alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 6,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
     marginHorizontal: 4,
+    overflow: 'hidden',
   },
-  cardEquipped: { borderColor: colors.growth, borderWidth: 2 },
+  cardEquipped: { borderColor: colors.growth, borderWidth: 1.5 },
   cardEmoji: { fontSize: 32 },
-  cardName: { color: colors.textPrimary, fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  cardDesc: { color: colors.textTertiary, fontSize: 11, textAlign: 'center', lineHeight: 15 },
-  equippedTag: { color: colors.growth, fontSize: 12, fontWeight: '700', marginTop: 4 },
-  ownedTag: { color: colors.sky, fontSize: 11, fontWeight: '600', marginTop: 4 },
-  costText: { color: colors.warm, fontSize: 13, fontWeight: '700', marginTop: 4 },
-  proBadge: {
-    backgroundColor: '#7C3AED',
+  cardName: {
+    fontFamily: 'Quicksand_600SemiBold',
+    color: colors.textPrimary,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  cardDesc: {
+    fontFamily: 'Nunito_400Regular',
+    color: colors.textTertiary,
+    fontSize: 11,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  equippedBadge: {
+    backgroundColor: colors.growthTint,
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: 999,
     marginTop: 4,
   },
-  proText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  equippedBadgeText: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.growth,
+    fontSize: 11,
+  },
+  ownedTag: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.sky,
+    fontSize: 11,
+    marginTop: 4,
+  },
+  costText: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.warm,
+    fontSize: 13,
+    marginTop: 4,
+  },
+  proBadge: {
+    backgroundColor: colors.lavender,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginTop: 4,
+  },
+  proText: {
+    fontFamily: 'Nunito_700Bold',
+    color: '#FFF',
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
 
   // Accessory cards (3 col)
   cardSmall: {
     flex: 1,
     maxWidth: '31%',
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 14,
-    padding: 10,
+    borderRadius: 16,
+    padding: 12,
     alignItems: 'center',
-    gap: 3,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 4,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
     marginHorizontal: 3,
+    overflow: 'hidden',
   },
-  cardNameSmall: { color: colors.textSecondary, fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  equippedTagSmall: { color: colors.growth, fontSize: 10, fontWeight: '700' },
-  ownedTagSmall: { color: colors.sky, fontSize: 10, fontWeight: '600' },
-  costTextSmall: { color: colors.warm, fontSize: 11, fontWeight: '700' },
-  proBadgeSmall: {
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 6,
+  cardNameSmall: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.textSecondary,
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  equippedBadgeSmall: {
+    backgroundColor: colors.growthTint,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 999,
   },
-  proTextSmall: { color: '#FFF', fontSize: 9, fontWeight: '800' },
+  equippedBadgeTextSmall: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.growth,
+    fontSize: 9,
+  },
+  ownedTagSmall: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.sky,
+    fontSize: 10,
+  },
+  costTextSmall: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.warm,
+    fontSize: 11,
+  },
+  proBadgeSmall: {
+    backgroundColor: colors.lavender,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  proTextSmall: {
+    fontFamily: 'Nunito_700Bold',
+    color: '#FFF',
+    fontSize: 9,
+  },
 
   // Themes grid
   themesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     gap: 12,
-    paddingTop: 8,
+    paddingTop: 10,
     paddingBottom: 40,
   },
   themeCard: {
     width: '47%',
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 16,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: 20,
+    padding: 12,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
+    backgroundColor: colors.bgCard,
+    overflow: 'hidden',
   },
-  themeCardActive: { borderColor: colors.growth, borderWidth: 2 },
+  themeCardActive: { borderColor: colors.growth, borderWidth: 1.5 },
   themePreview: {
     height: 56,
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 10,
     position: 'relative',
   },
   themeGround: {
@@ -442,37 +536,77 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     opacity: 0.7,
   },
-  themeName: { color: colors.textPrimary, fontSize: 13, fontWeight: '700' },
-  themeDesc: { color: colors.textTertiary, fontSize: 11, marginTop: 2, marginBottom: 6 },
+  themeName: {
+    fontFamily: 'Quicksand_600SemiBold',
+    color: colors.textPrimary,
+    fontSize: 13,
+  },
+  themeDesc: {
+    fontFamily: 'Nunito_400Regular',
+    color: colors.textTertiary,
+    fontSize: 11,
+    marginTop: 2,
+    marginBottom: 8,
+  },
 
   // Centered placeholder
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
   centeredEmoji: { fontSize: 48 },
-  centeredText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600' },
+  centeredText: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.textSecondary,
+    fontSize: 15,
+  },
   gotoBtn: {
     backgroundColor: colors.growth,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 999,
+    shadowColor: colors.growth,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
   },
-  gotoBtnText: { color: colors.bgPrimary, fontSize: 14, fontWeight: '700' },
+  gotoBtnText: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.bgPrimary,
+    fontSize: 14,
+  },
 
   // Utilities
-  utilList: { padding: 16, gap: 12, paddingBottom: 40 },
+  utilList: { padding: 20, gap: 12, paddingBottom: 40 },
   utilCard: {
-    backgroundColor: colors.bgSecondary,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 14,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
+    overflow: 'hidden',
   },
   utilEmoji: { fontSize: 28 },
-  utilInfo: { flex: 1, gap: 2 },
-  utilName: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
-  utilDesc: { color: colors.textTertiary, fontSize: 12 },
-  utilExtra: { color: colors.sky, fontSize: 11, fontWeight: '600', marginTop: 2 },
-  utilCost: { color: colors.warm, fontSize: 15, fontWeight: '800' },
+  utilInfo: { flex: 1, gap: 3 },
+  utilName: {
+    fontFamily: 'Quicksand_600SemiBold',
+    color: colors.textPrimary,
+    fontSize: 14,
+  },
+  utilDesc: {
+    fontFamily: 'Nunito_400Regular',
+    color: colors.textTertiary,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  utilExtra: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.sky,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  utilCost: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.warm,
+    fontSize: 15,
+  },
 });

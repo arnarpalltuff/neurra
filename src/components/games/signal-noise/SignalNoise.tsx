@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
 import Animated, {
   FadeIn, FadeOut,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 import { colors } from '../../../constants/colors';
 import { updateDifficulty, getDifficulty, signalNoiseParams } from '../../../utils/difficultyEngine';
 import { pickRandom } from '../../../utils/arrayUtils';
 import ProgressBar from '../../ui/ProgressBar';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 
 const { width: W } = Dimensions.get('window');
 const SCENE_SIZE = W - 40;
@@ -53,6 +54,7 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
   const [round, setRound] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'missed' | 'wrong' | null>(null);
   const [streak, setStreak] = useState(0);
+  const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -64,6 +66,11 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
   const waitingRef = useRef(false);
   const changePosRef = useRef<{ x: number; y: number } | null>(null);
   const shapesRef = useRef<SceneShape[]>([]);
+  const cancelledRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  const paramsRef = useRef(params);
+  onCompleteRef.current = onComplete;
+  paramsRef.current = params;
 
   useEffect(() => {
     const initial = generateScene(params.numShapes);
@@ -71,11 +78,20 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
     shapesRef.current = initial;
   }, [params.numShapes]);
 
+  const clearAllTimers = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+  }, []);
+
   const scheduleChange = useCallback(() => {
+    if (cancelledRef.current) return;
+    const p = paramsRef.current;
     timerRef.current = setTimeout(() => {
-      if (roundRef.current >= params.totalChanges) {
-        const acc = params.totalChanges > 0 ? correctRef.current / params.totalChanges : 1;
-        onComplete(scoreRef.current, acc);
+      if (cancelledRef.current) return;
+      if (roundRef.current >= p.totalChanges) {
+        const acc = p.totalChanges > 0 ? correctRef.current / p.totalChanges : 1;
+        onCompleteRef.current(scoreRef.current, acc);
         return;
       }
 
@@ -85,8 +101,9 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
       const newColor = pickRandom(PALETTE.filter(c => c !== target.color));
 
       const updated = currentShapes.map((s, i) =>
-        i === targetIdx ? { ...s, color: newColor, opacity: Math.min(0.9, s.opacity + 0.1 - params.subtlety * 0.1) } : s
+        i === targetIdx ? { ...s, color: newColor, opacity: Math.min(0.9, s.opacity + 0.1 - p.subtlety * 0.1) } : s
       );
+      if (cancelledRef.current) return;
       setShapes(updated);
       shapesRef.current = updated;
 
@@ -98,6 +115,7 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
       setRound(roundRef.current);
 
       tapTimerRef.current = setTimeout(() => {
+        if (cancelledRef.current) return;
         if (waitingRef.current) {
           waitingRef.current = false;
           setFeedback('missed');
@@ -105,27 +123,29 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
           setStreak(0);
           updateDifficulty('signal-noise', false);
           feedbackTimerRef.current = setTimeout(() => {
+            if (cancelledRef.current) return;
             setFeedback(null);
             scheduleChange();
           }, 800);
         }
       }, 2500);
-    }, params.changeInterval);
-  }, [params, onComplete]);
+    }, p.changeInterval);
+  }, []);
 
   const scenReady = shapes.length > 0;
   useEffect(() => {
     if (!scenReady) return;
+    cancelledRef.current = false;
     const initial = setTimeout(() => scheduleChange(), 1500);
     return () => {
+      cancelledRef.current = true;
       clearTimeout(initial);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
-      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+      clearAllTimers();
     };
-  }, [scenReady, scheduleChange]);
+  }, [scenReady, scheduleChange, clearAllTimers]);
 
   const handleTap = useCallback((tapX: number, tapY: number) => {
+    if (cancelledRef.current) return;
     if (!waitingRef.current || !changePosRef.current) return;
     waitingRef.current = false;
     if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
@@ -133,6 +153,7 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
     const pos = changePosRef.current;
     const dist = Math.sqrt((tapX - pos.x) ** 2 + (tapY - pos.y) ** 2);
     const isClose = dist < 80;
+    const p = paramsRef.current;
 
     if (isClose) {
       correctRef.current += 1;
@@ -146,32 +167,34 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
       setScore(scoreRef.current);
       setFeedback('correct');
       updateDifficulty('signal-noise', true);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      burstCorrect({ x: tapX, y: tapY });
     } else {
       setFeedback('wrong');
       streakRef.current = 0;
       setStreak(0);
       updateDifficulty('signal-noise', false);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      burstWrong({ x: tapX, y: tapY });
     }
 
     feedbackTimerRef.current = setTimeout(() => {
+      if (cancelledRef.current) return;
       setFeedback(null);
       setChangePos(null);
       changePosRef.current = null;
-      if (roundRef.current < params.totalChanges) {
+      if (roundRef.current < p.totalChanges) {
         scheduleChange();
       } else {
-        const acc = params.totalChanges > 0 ? correctRef.current / params.totalChanges : 1;
-        onComplete(scoreRef.current, acc);
+        const acc = p.totalChanges > 0 ? correctRef.current / p.totalChanges : 1;
+        onCompleteRef.current(scoreRef.current, acc);
       }
     }, 600);
-  }, [params, scheduleChange, onComplete]);
+  }, [scheduleChange]);
 
   const progress = round / params.totalChanges;
 
   return (
     <View style={styles.container}>
+      <FeedbackBurst {...burstFeedback} />
       <View style={styles.header}>
         <Text style={styles.roundText}>{round}/{params.totalChanges}</Text>
         <Text style={styles.scoreText}>{score}</Text>

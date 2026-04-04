@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess } from '../../utils/haptics';
+import { playCoinEarned } from '../../utils/sound';
 import { colors } from '../../constants/colors';
 import { useProStatus } from '../../stores/proStore';
 import { useProgressStore } from '../../stores/progressStore';
@@ -20,7 +21,9 @@ export default function CoinRewardCard() {
 
   useEffect(() => {
     if (isPro) return;
-    coinRewardAdsRemaining().then(setRemaining);
+    let cancelled = false;
+    coinRewardAdsRemaining().then((r) => { if (!cancelled) setRemaining(r); });
+    return () => { cancelled = true; };
   }, [isPro]);
 
   const handleWatch = useCallback(async () => {
@@ -28,7 +31,8 @@ export default function CoinRewardCard() {
     // In production: show actual rewarded ad via SDK, then on success:
     await recordCoinRewardAd();
     addCoins(REWARDED_AD_COINS);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
+    playCoinEarned();
     const newRemaining = await coinRewardAdsRemaining();
     setRemaining(newRemaining);
   }, [addCoins]);

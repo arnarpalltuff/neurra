@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, Modal, Pressable, ScrollView, FlatList,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { tapLight, success as hapticSuccess } from '../../utils/haptics';
 import { colors } from '../../constants/colors';
 import { GROVE_PALETTES } from '../../constants/groveThemes';
 import { useProgressStore } from '../../stores/progressStore';
@@ -122,11 +122,14 @@ function DecorationCard({
 export default function GroveShop({ visible, onClose, onPlaceDecoration }: GroveShopProps) {
   const [tab, setTab] = useState<ShopTab>('themes');
   const [decoFilter, setDecoFilter] = useState<DecoFilterCategory>('all');
-  const { coins, spendCoins } = useProgressStore();
-  const {
-    activeTheme, unlockedThemes, ownedDecorations,
-    setTheme, unlockTheme, buyDecoration,
-  } = useGroveStore();
+  const coins = useProgressStore(s => s.coins);
+  const spendCoins = useProgressStore(s => s.spendCoins);
+  const activeTheme = useGroveStore(s => s.activeTheme);
+  const unlockedThemes = useGroveStore(s => s.unlockedThemes);
+  const ownedDecorations = useGroveStore(s => s.ownedDecorations);
+  const setTheme = useGroveStore(s => s.setTheme);
+  const unlockTheme = useGroveStore(s => s.unlockTheme);
+  const buyDecoration = useGroveStore(s => s.buyDecoration);
 
   const filteredDecos = useMemo(() => {
     if (decoFilter === 'all') return DECORATION_DEFS;
@@ -146,20 +149,20 @@ export default function GroveShop({ visible, onClose, onPlaceDecoration }: Grove
     if (cost === -1) return; // Pro only — skip for now
     if (unlockedThemes.includes(themeId)) {
       setTheme(themeId);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      tapLight();
       return;
     }
     if (!spendCoins(cost)) return;
     unlockTheme(themeId);
     setTheme(themeId);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
   };
 
   const handleBuyDecoration = (def: DecorationDef) => {
     if (def.cost === -1) return; // Pro only
     if (!spendCoins(def.cost)) return;
     buyDecoration(def.id);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
   };
 
   const handlePlaceFromInventory = (defId: string) => {
@@ -216,7 +219,7 @@ export default function GroveShop({ visible, onClose, onPlaceDecoration }: Grove
                 isActive={activeTheme === theme.id}
                 isOwned={unlockedThemes.includes(theme.id)}
                 onBuy={() => handleBuyTheme(theme.id, theme.cost)}
-                onSelect={() => { setTheme(theme.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                onSelect={() => { setTheme(theme.id); tapLight(); }}
               />
             ))}
           </ScrollView>
@@ -304,22 +307,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.borderSubtle,
   },
-  closeText: { color: colors.sky, fontSize: 16, fontWeight: '600' },
-  title: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' },
+  closeText: { fontFamily: 'Nunito_600SemiBold', color: colors.sky, fontSize: 15 },
+  title: { fontFamily: 'Quicksand_700Bold', color: colors.textPrimary, fontSize: 18 },
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.warmTint,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 16,
+    borderRadius: 999,
   },
   coinIcon: { fontSize: 14 },
-  coinCount: { color: colors.warm, fontSize: 14, fontWeight: '800' },
+  coinCount: { fontFamily: 'Nunito_700Bold', color: colors.warm, fontSize: 14 },
 
   // Tabs
   tabs: {
@@ -331,13 +334,13 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 999,
     alignItems: 'center',
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.surfaceDim,
   },
   tabActive: { backgroundColor: colors.growth },
-  tabText: { color: colors.textTertiary, fontSize: 13, fontWeight: '700' },
-  tabTextActive: { color: colors.bgPrimary },
+  tabText: { fontFamily: 'Nunito_600SemiBold', color: colors.textTertiary, fontSize: 13 },
+  tabTextActive: { color: colors.textInverse },
 
   content: { flex: 1, paddingTop: 12 },
 
@@ -351,13 +354,13 @@ const styles = StyleSheet.create({
   },
   themeCard: {
     width: '47%',
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.bgCard,
     borderRadius: 16,
     padding: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
   },
-  themeCardActive: { borderColor: colors.growth, borderWidth: 2 },
+  themeCardActive: { borderColor: colors.growth, borderWidth: 1.5 },
   themePreview: {
     height: 60,
     borderRadius: 10,
@@ -391,19 +394,19 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     opacity: 0.7,
   },
-  themeName: { color: colors.textPrimary, fontSize: 13, fontWeight: '700' },
-  themeDesc: { color: colors.textTertiary, fontSize: 11, marginTop: 2, marginBottom: 6 },
-  themeActive: { color: colors.growth, fontSize: 12, fontWeight: '700' },
-  themeOwned: { color: colors.sky, fontSize: 12, fontWeight: '600' },
-  themeCost: { color: colors.warm, fontSize: 12, fontWeight: '700' },
+  themeName: { fontFamily: 'Nunito_700Bold', color: colors.textPrimary, fontSize: 13 },
+  themeDesc: { fontFamily: 'Nunito_400Regular', color: colors.textTertiary, fontSize: 11, marginTop: 2, marginBottom: 6 },
+  themeActive: { fontFamily: 'Nunito_700Bold', color: colors.growth, fontSize: 12 },
+  themeOwned: { fontFamily: 'Nunito_600SemiBold', color: colors.sky, fontSize: 12 },
+  themeCost: { fontFamily: 'Nunito_700Bold', color: colors.warm, fontSize: 12 },
   proBadge: {
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 8,
+    backgroundColor: colors.lavender,
+    paddingHorizontal: 10,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 999,
     alignSelf: 'flex-start',
   },
-  proBadgeText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  proBadgeText: { fontFamily: 'Nunito_700Bold', color: '#FFF', fontSize: 10 },
 
   // Category filter
   filterRow: {
@@ -414,43 +417,43 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: colors.bgSecondary,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceDim,
     marginRight: 6,
   },
   filterChipActive: { backgroundColor: colors.growth },
-  filterText: { color: colors.textTertiary, fontSize: 12, fontWeight: '600' },
-  filterTextActive: { color: colors.bgPrimary },
+  filterText: { fontFamily: 'Nunito_600SemiBold', color: colors.textTertiary, fontSize: 12 },
+  filterTextActive: { color: colors.textInverse },
 
   // Decorations grid
   decoGrid: { paddingHorizontal: 12, gap: 8, paddingBottom: 40 },
   decoCard: {
     flex: 1,
     maxWidth: '32%',
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.bgCard,
     borderRadius: 14,
     padding: 10,
     alignItems: 'center',
     gap: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
     marginHorizontal: 2,
   },
   decoEmoji: { fontSize: 28 },
-  decoName: { color: colors.textSecondary, fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  decoPlace: { color: colors.growth, fontSize: 11, fontWeight: '700' },
-  decoCost: { color: colors.warm, fontSize: 12, fontWeight: '700' },
+  decoName: { fontFamily: 'Nunito_600SemiBold', color: colors.textSecondary, fontSize: 11, textAlign: 'center' },
+  decoPlace: { fontFamily: 'Nunito_700Bold', color: colors.growth, fontSize: 11 },
+  decoCost: { fontFamily: 'Nunito_700Bold', color: colors.warm, fontSize: 12 },
   proBadgeSmall: {
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 6,
+    backgroundColor: colors.lavender,
+    paddingHorizontal: 8,
     paddingVertical: 1,
-    borderRadius: 4,
+    borderRadius: 999,
   },
-  proBadgeSmallText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
+  proBadgeSmallText: { fontFamily: 'Nunito_700Bold', color: '#FFF', fontSize: 9 },
 
   // Empty state
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   emptyEmoji: { fontSize: 40 },
-  emptyText: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  emptySubtext: { color: colors.textTertiary, fontSize: 13 },
+  emptyText: { fontFamily: 'Quicksand_700Bold', color: colors.textPrimary, fontSize: 16 },
+  emptySubtext: { fontFamily: 'Nunito_400Regular', color: colors.textTertiary, fontSize: 13 },
 });

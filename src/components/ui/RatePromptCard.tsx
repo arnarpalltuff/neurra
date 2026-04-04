@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess } from '../../utils/haptics';
 import { colors } from '../../constants/colors';
 import { shouldShowRatePrompt, recordRatePromptShown, recordRated } from '../../utils/ratePrompt';
 
@@ -24,15 +24,17 @@ export default function RatePromptCard({
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     shouldShowRatePrompt({ totalSessions, streak, sessionAccuracy }).then((show) => {
-      if (show) setVisible(true);
+      if (!cancelled && show) setVisible(true);
     });
+    return () => { cancelled = true; };
   }, [totalSessions, streak, sessionAccuracy]);
 
   const handleRate = async () => {
     await recordRated();
     setVisible(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    hapticSuccess();
 
     // In production: use expo-store-review
     // import * as StoreReview from 'expo-store-review';
@@ -70,31 +72,31 @@ export default function RatePromptCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.bgSecondary,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
     gap: 12,
   },
   emoji: { fontSize: 24 },
   textArea: { gap: 2 },
-  title: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
-  subtitle: { color: colors.textTertiary, fontSize: 13 },
+  title: { fontFamily: 'Nunito_700Bold', color: colors.textPrimary, fontSize: 15 },
+  subtitle: { fontFamily: 'Nunito_400Regular', color: colors.textTertiary, fontSize: 13 },
   buttons: { flexDirection: 'row', gap: 10 },
   rateBtn: {
     flex: 1,
     backgroundColor: colors.growth,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 999,
     alignItems: 'center',
   },
-  rateBtnText: { color: colors.bgPrimary, fontSize: 14, fontWeight: '700' },
+  rateBtnText: { fontFamily: 'Nunito_700Bold', color: colors.textInverse, fontSize: 14 },
   notNowBtn: {
     flex: 1,
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: colors.surfaceDim,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 999,
     alignItems: 'center',
   },
-  notNowText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
+  notNowText: { fontFamily: 'Nunito_600SemiBold', color: colors.textSecondary, fontSize: 14 },
 });

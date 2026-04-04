@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { colors } from '../src/constants/colors';
@@ -9,25 +9,20 @@ import { selectDailyGames } from '../src/utils/gameSelection';
 import { useProgressStore } from '../src/stores/progressStore';
 import { useGroveStore } from '../src/stores/groveStore';
 import { calcSessionCoinRewards, CoinRewardBreakdown } from '../src/utils/coinRewards';
-
-interface GameResult {
-  gameId: GameId;
-  score: number;
-  accuracy: number;
-}
-
-function calcSessionXP(results: GameResult[]): number {
-  const base = results.reduce((sum, r) => sum + Math.round(40 + r.accuracy * 40), 0);
-  const perfect = results.every(r => r.accuracy >= 0.9) ? 100 : 0;
-  return base + 50 + perfect;
-}
+import { startSessionAmbient, stopAmbient } from '../src/utils/sound';
+import { SessionGameResult, calcSessionXP } from '../src/utils/sessionUtils';
 
 export default function SessionScreen() {
   const [gameIds] = useState<GameId[]>(() => selectDailyGames());
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [results, setResults] = useState<GameResult[]>([]);
+  const [results, setResults] = useState<SessionGameResult[]>([]);
   const [sessionXP, setSessionXP] = useState(0);
   const [sessionComplete, setSessionComplete] = useState(false);
+
+  useEffect(() => {
+    startSessionAmbient();
+    return () => stopAmbient();
+  }, []);
   const [coinRewards, setCoinRewards] = useState<CoinRewardBreakdown | null>(null);
 
   const addXP = useProgressStore(s => s.addXP);
@@ -134,6 +129,7 @@ export default function SessionScreen() {
   return (
     <View style={styles.container}>
       <GameWrapper
+        key={`game-${currentIndex}`}
         gameId={gameIds[currentIndex]}
         gameIndex={currentIndex}
         totalGames={gameIds.length}

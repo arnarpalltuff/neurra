@@ -1,3 +1,5 @@
+import { colors } from './colors';
+
 export type GameId =
   | 'ghost-kitchen'
   | 'pulse'
@@ -8,7 +10,8 @@ export type GameId =
   | 'mind-drift'
   | 'rewind'
   | 'mirrors'
-  | 'zen-flow';
+  | 'zen-flow'
+  | 'split-focus';
 
 export type BrainArea = 'memory' | 'focus' | 'speed' | 'flexibility' | 'creativity';
 
@@ -161,6 +164,31 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     ],
     available: true,
   },
+  'split-focus': {
+    id: 'split-focus',
+    name: 'Split Focus',
+    description: 'Handle two tasks at once',
+    brainArea: 'flexibility',
+    icon: '🔀',
+    color: '#E87C8A',
+    maxLevel: 20,
+    realWorldFraming: [
+      "You just juggled two tasks simultaneously. That's real-world multitasking at its finest.",
+      "Divided attention is one of the hardest cognitive skills. You're getting better at it.",
+      "Handling multiple demands at once? That's a skill that transfers to everything.",
+    ],
+    available: true,
+  },
 };
 
 export const availableGames = Object.values(gameConfigs).filter(g => g.available);
+
+export const AREA_LABELS: Record<BrainArea, string> = {
+  memory: 'Memory', focus: 'Focus', speed: 'Speed',
+  flexibility: 'Flexibility', creativity: 'Creativity',
+};
+
+export const AREA_COLORS: Record<BrainArea, string> = {
+  memory: colors.growth, focus: colors.sky, speed: colors.streak,
+  flexibility: colors.lavender, creativity: colors.coral,
+};

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, Easing } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { success as hapticSuccess } from '../../../utils/haptics';
 import { colors } from '../../../constants/colors';
+import { useGameFeedback } from '../../../hooks/useGameFeedback';
+import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, chainReactionParams } from '../../../utils/difficultyEngine';
 import { shuffle, pickRandom } from '../../../utils/arrayUtils';
 import ProgressBar from '../../ui/ProgressBar';
@@ -73,6 +75,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
 
   const animRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   const scoreRef = useRef(0);
+  const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
   const chainCountRef = useRef(0);
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -124,7 +127,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
     if (!expectedColor) return;
 
     if (orb.color === expectedColor) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      burstCorrect({ x: orb.x + 20, y: orb.y + 100 });
       const nextIdx = seqIndex + 1;
       const pts = 30;
       scoreRef.current += pts;
@@ -161,7 +164,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
         setChainCount(chainCountRef.current);
         setFeedback('chain');
         updateDifficulty('chain-reaction', true);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        hapticSuccess();
 
         safeTimeout(() => {
           setFeedback(null);
@@ -184,7 +187,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
       setNoMissRun(0);
       setFeedback('wrong');
       updateDifficulty('chain-reaction', false);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      burstWrong({ x: orb.x + 20, y: orb.y + 100 });
       safeTimeout(() => setFeedback(null), 400);
     }
   }, [sequence, seqIndex, chainStartTime, params, generateSequence, onComplete, safeTimeout]);
@@ -193,6 +196,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
 
   return (
     <View style={styles.container}>
+      <FeedbackBurst {...burstFeedback} />
       <View style={styles.header}>
         <Text style={styles.chainText}>Chain {chainCount}/{params.totalChains}</Text>
         <Text style={styles.scoreText}>{score}</Text>

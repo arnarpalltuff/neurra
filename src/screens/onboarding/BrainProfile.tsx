@@ -105,7 +105,7 @@ export default function BrainProfile({ scores, onNext }: BrainProfileProps) {
       <View style={styles.scoreCards}>
         {areas.map((area, i) => (
           <Animated.View entering={FadeInDown.delay(500 + i * 100)} key={area.key} style={styles.scoreCard}>
-            <View style={[styles.scoreBar, { backgroundColor: area.color }]}>
+            <View style={[styles.scoreBar, { backgroundColor: colors.surfaceDim }]}>
               <View style={[styles.scoreFill, { width: `${area.score}%`, backgroundColor: area.color }]} />
             </View>
             <Text style={styles.scoreAreaLabel}>{area.label}</Text>
@@ -131,15 +131,16 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: 26,
-    fontWeight: '800',
+    fontFamily: 'Quicksand_700Bold',
+    color: colors.textHero,
+    fontSize: 28,
     marginTop: 20,
+    letterSpacing: -0.5,
   },
   subtitle: {
+    fontFamily: 'Caveat_400Regular',
     color: colors.textTertiary,
-    fontSize: 14,
-    fontStyle: 'italic',
+    fontSize: 18,
   },
   petalContainer: {
     width: 200,
@@ -168,33 +169,32 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   scoreCard: {
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: colors.bgCard,
     borderRadius: 16,
     padding: 14,
     gap: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 0.5,
+    borderColor: colors.borderSubtle,
   },
   scoreBar: {
     width: '100%',
     height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.bgTertiary,
+    borderRadius: 999,
     overflow: 'hidden',
   },
   scoreFill: {
     height: '100%',
-    borderRadius: 2,
+    borderRadius: 999,
   },
   scoreAreaLabel: {
+    fontFamily: 'Nunito_600SemiBold',
     color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: '700',
   },
   scoreAreaText: {
+    fontFamily: 'Caveat_400Regular',
     color: colors.textSecondary,
-    fontSize: 12,
-    fontStyle: 'italic',
+    fontSize: 15,
   },
   btnArea: {
     width: '100%',
@@ -202,10 +202,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   kovaLine: {
+    fontFamily: 'Caveat_700Bold',
     color: colors.growth,
-    fontSize: 15,
-    fontWeight: '600',
-    fontStyle: 'italic',
+    fontSize: 18,
     textAlign: 'center',
   },
   btn: { width: '100%' },

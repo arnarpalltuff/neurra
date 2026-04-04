@@ -1,34 +1,57 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { StyleSheet, View, Text, Platform } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useFonts } from 'expo-font';
+import {
+  Quicksand_500Medium,
+  Quicksand_600SemiBold,
+  Quicksand_700Bold,
+} from '@expo-google-fonts/quicksand';
+import {
+  Nunito_400Regular,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+} from '@expo-google-fonts/nunito';
+import {
+  Caveat_400Regular,
+  Caveat_700Bold,
+} from '@expo-google-fonts/caveat';
+import * as SplashScreen from 'expo-splash-screen';
 import { useUserStore } from '../src/stores/userStore';
+import ErrorBoundary from '../src/components/ui/ErrorBoundary';
+import NoiseOverlay from '../src/components/ui/NoiseOverlay';
+import { preloadAllSounds } from '../src/utils/sound';
 import { colors } from '../src/constants/colors';
 
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | null }
-> {
-  state = { error: null as Error | null };
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  render() {
-    if (this.state.error) {
-      return (
-        <View style={{ flex: 1, backgroundColor: colors.bgPrimary, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <Text style={{ color: '#FF4444', fontSize: 18, fontWeight: '700', marginBottom: 12 }}>Something went wrong</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center' }}>{this.state.error.message}</Text>
-        </View>
-      );
-    }
-    return this.props.children;
-  }
-}
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const onboardingComplete = useUserStore(s => s.onboardingComplete);
+
+  const [fontsLoaded] = useFonts({
+    Quicksand_500Medium,
+    Quicksand_600SemiBold,
+    Quicksand_700Bold,
+    Nunito_400Regular,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Caveat_400Regular,
+    Caveat_700Bold,
+  });
+
+  useEffect(() => {
+    preloadAllSounds();
+  }, []);
+
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return <View style={styles.splash} />;
+  }
 
   return (
     <ErrorBoundary>
@@ -67,6 +90,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+      <NoiseOverlay />
     </GestureHandlerRootView>
     </ErrorBoundary>
   );
@@ -74,4 +98,5 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  splash: { flex: 1, backgroundColor: colors.bgVoid },
 });

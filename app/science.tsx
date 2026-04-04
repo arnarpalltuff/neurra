@@ -115,56 +115,72 @@ export default function ScienceScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bgPrimary },
-  content: { padding: 20, paddingBottom: 40 },
+  content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  backText: { color: colors.sky, fontSize: 16, fontWeight: '600' },
-  title: { color: colors.textPrimary, fontSize: 22, fontWeight: '800' },
+  backText: {
+    fontFamily: 'Nunito_600SemiBold',
+    color: colors.sky,
+    fontSize: 15,
+  },
+  title: {
+    fontFamily: 'Quicksand_700Bold',
+    color: colors.textPrimary,
+    fontSize: 22,
+    letterSpacing: -0.3,
+  },
   subtitle: {
+    fontFamily: 'Nunito_400Regular',
     color: colors.textSecondary,
     fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 20,
+    lineHeight: 22,
+    marginBottom: 24,
   },
 
   section: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 14,
   },
   sectionIcon: { fontSize: 22 },
-  sectionTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' },
+  sectionTitle: {
+    fontFamily: 'Quicksand_700Bold',
+    color: colors.textPrimary,
+    fontSize: 18,
+  },
 
   body: {
+    fontFamily: 'Nunito_400Regular',
     color: colors.textSecondary,
     fontSize: 14,
     lineHeight: 22,
     marginBottom: 12,
   },
   bold: {
+    fontFamily: 'Nunito_700Bold',
     color: colors.textPrimary,
-    fontWeight: '700',
   },
   bodyHighlight: {
+    fontFamily: 'Nunito_700Bold',
     color: colors.textPrimary,
     fontSize: 15,
-    fontWeight: '700',
     fontStyle: 'italic',
     lineHeight: 23,
     marginBottom: 12,
-    paddingLeft: 12,
-    borderLeftWidth: 3,
+    paddingLeft: 14,
+    borderLeftWidth: 2,
     borderLeftColor: colors.growth,
   },
   bodySmall: {
+    fontFamily: 'Nunito_400Regular',
     color: colors.textTertiary,
     fontSize: 12,
     lineHeight: 18,
@@ -172,17 +188,39 @@ const styles = StyleSheet.create({
   },
 
   claimList: { gap: 10 },
-  claimRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  claimX: { color: '#FF4444', fontSize: 14, fontWeight: '800', marginTop: 2 },
-  claimText: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, flex: 1 },
+  claimRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  claimX: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.coral,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  claimText: {
+    fontFamily: 'Nunito_400Regular',
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 21,
+    flex: 1,
+  },
 
   doList: { gap: 10 },
-  doRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  doCheck: { color: colors.growth, fontSize: 14, fontWeight: '800', marginTop: 2 },
-  doText: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, flex: 1 },
+  doRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  doCheck: {
+    fontFamily: 'Nunito_700Bold',
+    color: colors.growth,
+    fontSize: 14,
+    marginTop: 2,
+  },
+  doText: {
+    fontFamily: 'Nunito_400Regular',
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 21,
+    flex: 1,
+  },
 
   kovaFooter: {
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 16,
   },
 });
