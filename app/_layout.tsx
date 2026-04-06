@@ -19,17 +19,16 @@ import {
   Caveat_700Bold,
 } from '@expo-google-fonts/caveat';
 import * as SplashScreen from 'expo-splash-screen';
-import { useUserStore } from '../src/stores/userStore';
 import ErrorBoundary from '../src/components/ui/ErrorBoundary';
 import NoiseOverlay from '../src/components/ui/NoiseOverlay';
 import { preloadAllSounds } from '../src/utils/sound';
-import { colors } from '../src/constants/colors';
+import { C } from '../src/constants/colors';
+import { initializePurchases, addCustomerInfoListener } from '../src/utils/purchaseSdk';
+import { useProStore } from '../src/stores/proStore';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const onboardingComplete = useUserStore(s => s.onboardingComplete);
-
   const [fontsLoaded] = useFonts({
     Quicksand_500Medium,
     Quicksand_600SemiBold,
@@ -43,6 +42,12 @@ export default function RootLayout() {
 
   useEffect(() => {
     preloadAllSounds();
+    initializePurchases();
+
+    const unsubscribe = addCustomerInfoListener((info) => {
+      useProStore.getState().syncFromRevenueCat(info);
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -89,8 +94,24 @@ export default function RootLayout() {
             animation: 'slide_from_bottom',
           }}
         />
+        <Stack.Screen
+          name="focus-practice"
+          options={{
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="stats"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
       </Stack>
-      <NoiseOverlay />
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <NoiseOverlay />
+      </View>
     </GestureHandlerRootView>
     </ErrorBoundary>
   );
@@ -98,5 +119,5 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  splash: { flex: 1, backgroundColor: colors.bgVoid },
+  splash: { flex: 1, backgroundColor: C.bg1 },
 });

@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Dimensions, Pressable, StyleSheet } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming,
   withDelay, Easing, runOnJS,
 } from 'react-native-reanimated';
 import { tapHeavy } from '../../utils/haptics';
 import { playCoinEarned } from '../../utils/sound';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import { useProgressStore } from '../../stores/progressStore';
 
 const { width: W } = Dimensions.get('window');
@@ -27,6 +27,8 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
   const [caught, setCaught] = useState(false);
   const caughtRef = useRef(false);
   const spawnedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const innerTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const starX = useSharedValue(-40);
   const starY = useSharedValue(30);
@@ -38,6 +40,13 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
   const addCoins = useProgressStore(s => s.addCoins);
 
   useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      innerTimersRef.current.forEach(clearTimeout);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!enabled || spawnedRef.current) return;
     spawnedRef.current = true;
 
@@ -45,6 +54,7 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
     const delay = 5000 + Math.random() * 10000;
 
     const timer = setTimeout(() => {
+      if (!mountedRef.current) return;
       setVisible(true);
 
       // Animate streak across screen
@@ -53,12 +63,16 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
       starY.value = withTiming(60 + Math.random() * 30, { duration: 2000, easing: Easing.linear });
 
       // After 2 seconds, hide
-      setTimeout(() => {
-        if (!caughtRef.current) {
+      const hideTimer = setTimeout(() => {
+        if (!caughtRef.current && mountedRef.current) {
           starOpacity.value = withTiming(0, { duration: 300 });
-          setTimeout(() => setVisible(false), 300);
+          const fadeTimer = setTimeout(() => {
+            if (mountedRef.current) setVisible(false);
+          }, 300);
+          innerTimersRef.current.push(fadeTimer);
         }
       }, 2000);
+      innerTimersRef.current.push(hideTimer);
     }, delay);
 
     return () => clearTimeout(timer);
@@ -82,10 +96,14 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
     catchOpacity.value = withTiming(1, { duration: 200 });
 
     // Fade out
-    setTimeout(() => {
+    const t1 = setTimeout(() => {
       catchOpacity.value = withTiming(0, { duration: 500 });
-      setTimeout(() => setVisible(false), 500);
+      const t2 = setTimeout(() => {
+        if (mountedRef.current) setVisible(false);
+      }, 500);
+      innerTimersRef.current.push(t2);
     }, 1500);
+    innerTimersRef.current.push(t1);
 
     onCatch?.();
   }, [addXP, addCoins, onCatch]);
@@ -105,16 +123,14 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
   return (
     <>
       {!caught && (
-        <Pressable
-          onPress={handleCatch}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="box-none"
-        >
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <Animated.View style={[styles.star, starStyle]}>
-            <Animated.Text style={styles.starText}>⭐</Animated.Text>
-            <Animated.View style={styles.trail} />
+            <Pressable onPress={handleCatch} hitSlop={32} style={styles.starPressable}>
+              <Animated.Text style={styles.starText}>⭐</Animated.Text>
+              <Animated.View style={styles.trail} />
+            </Pressable>
           </Animated.View>
-        </Pressable>
+        </View>
       )}
 
       {caught && (
@@ -132,6 +148,8 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     zIndex: 200,
+  },
+  starPressable: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -141,7 +159,7 @@ const styles = StyleSheet.create({
   trail: {
     width: 30,
     height: 2,
-    backgroundColor: colors.streak,
+    backgroundColor: C.amber,
     borderRadius: 1,
     opacity: 0.6,
     marginLeft: -4,
@@ -155,15 +173,15 @@ const styles = StyleSheet.create({
     zIndex: 200,
   },
   catchText: {
-    color: colors.streak,
+    color: C.amber,
     fontSize: 16,
     fontWeight: '800',
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.streak,
+    borderColor: C.amber,
   },
 });

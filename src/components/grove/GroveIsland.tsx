@@ -7,8 +7,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Ellipse, Circle, Rect, Path, G, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { colors } from '../../constants/colors';
 import { GROVE_PALETTES, getTimeOfDaySky } from '../../constants/groveThemes';
+import { useShallow } from 'zustand/react/shallow';
 import { useGroveStore, ZONE_CONFIGS, ZoneConfig, VisitorId } from '../../stores/groveStore';
-import { useProgressStore, BrainScores } from '../../stores/progressStore';
+import { useProgressStore } from '../../stores/progressStore';
 import { stageFromXP } from '../kova/KovaStates';
 import GrowthZone from './GrowthZone';
 import Kova from '../kova/Kova';
@@ -48,7 +49,7 @@ function VisitorSprite({ id, x, y }: { id: VisitorId; x: number; y: number }) {
 function ParticleLayer({ palette }: { palette: typeof GROVE_PALETTES['floating-isle'] }) {
   // Static decorative particles (fireflies/ambient)
   const particles = useMemo(() =>
-    Array.from({ length: 15 }).map((_, i) => ({
+    Array.from({ length: 10 }).map((_, i) => ({
       x: 50 + Math.random() * (ISLAND_W - 100),
       y: 80 + Math.random() * (ISLAND_H - 200),
       r: 1 + Math.random() * 2,
@@ -75,8 +76,16 @@ function ParticleLayer({ palette }: { palette: typeof GROVE_PALETTES['floating-i
 }
 
 export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) {
-  const { activeTheme, zoneGrowths, placedDecorations, unlockedVisitors, giftFlowers } = useGroveStore();
-  const { xp, brainScores } = useProgressStore();
+  const { activeTheme, zoneGrowths, placedDecorations, unlockedVisitors, giftFlowers } = useGroveStore(
+    useShallow((s) => ({
+      activeTheme: s.activeTheme,
+      zoneGrowths: s.zoneGrowths,
+      placedDecorations: s.placedDecorations,
+      unlockedVisitors: s.unlockedVisitors,
+      giftFlowers: s.giftFlowers,
+    })),
+  );
+  const xp = useProgressStore((s) => s.xp);
   const stage = stageFromXP(xp);
   const palette = GROVE_PALETTES[activeTheme];
   const timeSky = getTimeOfDaySky();
@@ -135,7 +144,7 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
 
       {/* Layer 1: Stars/clouds (night = stars, day = clouds) */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: 10 }).map((_, i) => (
           <View
             key={i}
             style={[styles.star, {
