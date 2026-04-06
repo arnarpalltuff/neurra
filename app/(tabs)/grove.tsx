@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Modal, Pressable, ScrollView } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeOut } from 'react-native-reanimated';
-import { colors } from '../../src/constants/colors';
+import { View, Text, StyleSheet, SafeAreaView, Modal, Pressable } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { router } from 'expo-router';
+import { C } from '../../src/constants/colors';
+import { fonts } from '../../src/constants/typography';
 import { gameConfigs, BrainArea } from '../../src/constants/gameConfigs';
 import { useProgressStore } from '../../src/stores/progressStore';
 import { useGroveStore, ZoneConfig, ZONE_CONFIGS } from '../../src/stores/groveStore';
 import GroveIsland from '../../src/components/grove/GroveIsland';
+import GroveScene, { KovaGroveDialogueModal, pickGroveLine } from '../../src/components/grove/GroveScene';
 import GroveShop from '../../src/components/grove/GroveShop';
 import GroveEditMode from '../../src/components/grove/GroveEditMode';
-import FloatingParticles from '../../src/components/ui/FloatingParticles';
 import { startGroveAmbient, stopAmbient } from '../../src/utils/sound';
 
 function formatDate(iso: string | null): string {
@@ -78,7 +80,9 @@ function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
             <View style={styles.growthSection}>
               <View style={styles.growthBarRow}>
                 <Text style={styles.growthLabel}>{growthLabel(zg.currentGrowth)}</Text>
-                <Text style={styles.growthValue}>{zg.currentGrowth.toFixed(1)} / 12</Text>
+                <Text style={styles.growthValue}>
+                  Stage {Math.min(12, Math.max(0, Math.round(zg.currentGrowth)))} of 12
+                </Text>
               </View>
               <View style={styles.growthBar}>
                 <View style={[styles.growthFill, { width: `${(zg.currentGrowth / 12) * 100}%` }]} />
@@ -108,10 +112,17 @@ function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
             <Text style={styles.gamesTitle}>Games that grow this zone</Text>
             <View style={styles.gamesList}>
               {games.map((g) => (
-                <View key={g.name} style={styles.gameChip}>
+                <Pressable
+                  key={g.name}
+                  style={styles.gameChip}
+                  onPress={() => {
+                    onClose();
+                    router.push('/session');
+                  }}
+                >
                   <Text style={styles.gameChipIcon}>{g.icon}</Text>
                   <Text style={styles.gameChipName}>{g.name}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
 
@@ -143,6 +154,8 @@ export default function GroveScreen() {
   const [editMode, setEditMode] = useState(false);
   const [shopVisible, setShopVisible] = useState(false);
   const [pendingPlacement, setPendingPlacement] = useState<string | null>(null);
+  const [kovaLine, setKovaLine] = useState('');
+  const [kovaModal, setKovaModal] = useState(false);
 
   useEffect(() => {
     startGroveAmbient();
@@ -153,7 +166,6 @@ export default function GroveScreen() {
     recalcAllZones(brainScores);
     const speedGrowth = useGroveStore.getState().zoneGrowths.speed.currentGrowth;
     updateVisitors(streak, level, brainScores.focus, speedGrowth);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brainScores, streak, level]);
 
   const handleZoneTap = useCallback((zone: ZoneConfig) => {
@@ -162,7 +174,10 @@ export default function GroveScreen() {
     setSheetVisible(true);
   }, [editMode]);
 
-  const handleKovaTap = useCallback(() => {}, []);
+  const handleKovaTap = useCallback(() => {
+    setKovaLine(pickGroveLine());
+    setKovaModal(true);
+  }, []);
 
   const handleCloseSheet = useCallback(() => {
     setSheetVisible(false);
@@ -175,8 +190,17 @@ export default function GroveScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <FloatingParticles count={8} color={colors.growthDim} />
-      <GroveIsland onZoneTap={handleZoneTap} onKovaTap={handleKovaTap} />
+      {editMode ? (
+        <GroveIsland onZoneTap={handleZoneTap} onKovaTap={handleKovaTap} />
+      ) : (
+        <GroveScene zones={ZONE_CONFIGS} onZonePress={handleZoneTap} onKovaPress={handleKovaTap} />
+      )}
+
+      <KovaGroveDialogueModal
+        visible={kovaModal}
+        line={kovaLine}
+        onClose={() => setKovaModal(false)}
+      />
 
       {!editMode && (
         <Pressable style={styles.editBtn} onPress={() => setEditMode(true)}>
@@ -208,7 +232,7 @@ export default function GroveScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bgDeep },
+  safe: { flex: 1, backgroundColor: C.bg1 },
 
   editBtn: {
     position: 'absolute',
@@ -221,7 +245,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
-    borderColor: colors.borderLight,
+    borderColor: C.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -232,24 +256,24 @@ const styles = StyleSheet.create({
   // Bottom sheet
   sheetBackdrop: {
     flex: 1,
-    backgroundColor: colors.modalOverlay,
+    backgroundColor: C.overlay,
     justifyContent: 'flex-end',
   },
   sheetContent: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: C.bg3,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: 40,
     maxHeight: '70%',
     borderTopWidth: 0.5,
-    borderColor: colors.borderLight,
+    borderColor: C.border,
   },
   sheetHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.borderLight,
+    backgroundColor: C.border,
     alignSelf: 'center',
     marginBottom: 16,
   },
@@ -261,25 +285,25 @@ const styles = StyleSheet.create({
   },
   sheetIcon: { fontSize: 36 },
   sheetTitle: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 20,
   },
   sheetSubtitle: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 13,
     textTransform: 'capitalize',
   },
   wiltTag: {
-    backgroundColor: colors.streakTint,
+    backgroundColor: C.amberTint,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
   },
   wiltTagText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.streak,
+    fontFamily: fonts.bodyBold,
+    color: C.amber,
     fontSize: 11,
     letterSpacing: 0.3,
   },
@@ -293,26 +317,26 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   growthLabel: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.growth,
+    fontFamily: fonts.bodyBold,
+    color: C.green,
     fontSize: 14,
   },
   growthValue: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 13,
   },
   growthBar: {
     width: '100%',
     height: 8,
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: C.surface,
     borderRadius: 4,
     overflow: 'hidden',
     position: 'relative',
   },
   growthFill: {
     height: '100%',
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     borderRadius: 4,
   },
   peakMark: {
@@ -320,7 +344,7 @@ const styles = StyleSheet.create({
     top: 0,
     width: 2,
     height: '100%',
-    backgroundColor: colors.textTertiary,
+    backgroundColor: C.t3,
     opacity: 0.5,
   },
 
@@ -330,27 +354,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginBottom: 24,
     paddingVertical: 14,
-    backgroundColor: colors.bgDeep,
+    backgroundColor: C.bg1,
     borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
   },
   statItem: { alignItems: 'center', gap: 4 },
   statValue: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 16,
   },
   statLabel: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 11,
   },
 
   // Games
   gamesTitle: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -361,23 +385,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.bgDeep,
+    backgroundColor: C.bg1,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
   },
   gameChipIcon: { fontSize: 14 },
   gameChipName: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
     fontSize: 12,
   },
 
   wiltHint: {
-    fontFamily: 'Caveat_400Regular',
-    color: colors.streak,
+    fontFamily: fonts.kova,
+    color: C.amber,
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 16,
@@ -385,16 +409,16 @@ const styles = StyleSheet.create({
   },
 
   closeBtn: {
-    backgroundColor: colors.bgHover,
+    backgroundColor: C.bg4,
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
   },
   closeBtnText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodyBold,
+    color: C.t2,
     fontSize: 15,
   },
 });

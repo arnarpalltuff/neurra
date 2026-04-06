@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { tapLight } from '../../utils/haptics';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import { useTranslation } from '../../i18n';
 
 type Mood = 'great' | 'good' | 'okay' | 'low' | 'rough';
@@ -54,27 +55,27 @@ export default function MoodCheckIn({ onSelect, onDismiss }: MoodCheckInProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: C.bg3,
     borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     gap: 12,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
   },
-  title: { fontFamily: 'Quicksand_700Bold', color: colors.textPrimary, fontSize: 17 },
-  subtitle: { fontFamily: 'Nunito_400Regular', color: colors.textTertiary, fontSize: 12, textAlign: 'center' },
+  title: { fontFamily: fonts.heading, color: C.t1, fontSize: 17 },
+  subtitle: { fontFamily: fonts.body, color: C.t3, fontSize: 12, textAlign: 'center' },
   moodRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
   moodBtn: {
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: C.surface,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 10,
     flex: 1,
   },
   moodEmoji: { fontSize: 24 },
-  moodLabel: { fontFamily: 'Nunito_600SemiBold', color: colors.textSecondary, fontSize: 10 },
-  dismissText: { fontFamily: 'Nunito_600SemiBold', color: colors.textTertiary, fontSize: 13, paddingVertical: 4 },
+  moodLabel: { fontFamily: fonts.bodySemi, color: C.t2, fontSize: 10 },
+  dismissText: { fontFamily: fonts.bodySemi, color: C.t3, fontSize: 13, paddingVertical: 4 },
 });

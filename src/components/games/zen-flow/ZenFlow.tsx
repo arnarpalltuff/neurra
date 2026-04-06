@@ -5,7 +5,7 @@ import Animated, {
   FadeIn, FadeOut, Easing,
 } from 'react-native-reanimated';
 import { tapLight } from '../../../utils/haptics';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
@@ -197,28 +197,28 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary, padding: 20 },
+  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
   breathArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24 },
-  breathLabel: { color: colors.textPrimary, fontSize: 22, fontWeight: '700', letterSpacing: 1 },
+  breathLabel: { color: C.t1, fontSize: 22, fontWeight: '700', letterSpacing: 1 },
   breathCircle: {
     width: CIRCLE_SIZE, height: CIRCLE_SIZE, borderRadius: CIRCLE_SIZE / 2,
-    backgroundColor: colors.sky, borderWidth: 2, borderColor: colors.sky,
+    backgroundColor: C.blue, borderWidth: 2, borderColor: C.blue,
   },
-  breathCount: { color: colors.textTertiary, fontSize: 14, fontWeight: '600' },
+  breathCount: { color: C.t3, fontSize: 14, fontWeight: '600' },
   focusArea: { flex: 1 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  timerText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
-  scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
-  focusLabel: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  timerText: { color: C.t2, fontSize: 16, fontWeight: '700' },
+  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
+  focusLabel: { color: C.t2, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   focusField: {
-    flex: 1, backgroundColor: colors.bgSecondary, borderRadius: 24,
-    overflow: 'hidden', position: 'relative', borderWidth: 1, borderColor: colors.border,
+    flex: 1, backgroundColor: C.bg3, borderRadius: 24,
+    overflow: 'hidden', position: 'relative', borderWidth: 1, borderColor: '#1F2A42',
   },
   target: { position: 'absolute', width: 50, height: 50 },
   targetInner: {
     width: 50, height: 50, borderRadius: 25,
-    backgroundColor: colors.growth, shadowColor: colors.growth,
+    backgroundColor: C.green, shadowColor: C.green,
     shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 6,
   },
-  statsText: { color: colors.textTertiary, fontSize: 13, textAlign: 'center', marginTop: 12 },
+  statsText: { color: C.t3, fontSize: 13, textAlign: 'center', marginTop: 12 },
 });

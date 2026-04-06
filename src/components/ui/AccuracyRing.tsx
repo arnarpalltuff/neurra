@@ -5,7 +5,8 @@ import Animated, {
   withTiming, withDelay, withSpring, Easing, interpolateColor,
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -50,7 +51,7 @@ export default function AccuracyRing({
   }));
 
   const accPct = Math.round(accuracy * 100);
-  const ringColor = accPct >= 90 ? colors.growth : accPct >= 70 ? colors.sky : accPct >= 50 ? colors.warm : colors.coral;
+  const ringColor = accPct >= 90 ? C.green : accPct >= 70 ? C.blue : accPct >= 50 ? C.peach : C.coral;
 
   return (
     <Animated.View style={[styles.container, { width: size, height: size }, containerStyle]}>
@@ -60,7 +61,7 @@ export default function AccuracyRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.bgTertiary}
+          stroke={C.bg4}
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -98,13 +99,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   percentText: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: fonts.bodyBold,
     fontSize: 28,
     letterSpacing: -1,
   },
   label: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.5,

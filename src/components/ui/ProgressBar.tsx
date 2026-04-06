@@ -5,7 +5,7 @@ import Animated, {
   withSequence, Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 
 interface ProgressBarProps {
   value: number;
@@ -20,7 +20,7 @@ interface ProgressBarProps {
 export default function ProgressBar({
   value,
   max = 100,
-  color = colors.growth,
+  color = C.green,
   height = 6,
   animated = true,
   shimmer = false,
@@ -66,7 +66,7 @@ export default function ProgressBar({
           end={{ x: 1, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#FFFFFF' }, shimmerStyle]} />
+        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: C.t1 }, shimmerStyle]} />
       </Animated.View>
     </View>
   );
@@ -83,7 +83,7 @@ function lighten(hex: string, amount: number): string {
 const styles = StyleSheet.create({
   track: {
     width: '100%',
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: C.surface,
     overflow: 'hidden',
   },
   fill: {

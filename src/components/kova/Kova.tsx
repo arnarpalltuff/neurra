@@ -15,7 +15,7 @@ import Animated, {
 import { tapLight, tapMedium, tapHeavy } from '../../utils/haptics';
 import { playKovaHappy, playKovaExcited, playKovaGiggle, playKovaWow } from '../../utils/sound';
 import { Svg, Circle, Ellipse, Path, G } from 'react-native-svg';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import { KovaEmotion, KovaStage, emotionGlowColors, stageColors } from './KovaStates';
 import { getDialogue, DialogueContext } from '../../constants/dialoguePool';
 import { getTimeOfDay } from '../../utils/timeUtils';
@@ -59,8 +59,8 @@ export default function Kova({
   const bubbleOpacity = useSharedValue(0);
   const lookX = useSharedValue(0);
 
-  const glowColor = emotionGlowColors[emotion];
-  const bodyColor = stageColors[stage];
+  const glowColor = emotionGlowColors[emotion] ?? emotionGlowColors.idle;
+  const bodyColor = stageColors[stage] ?? stageColors[1];
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -615,14 +615,14 @@ const styles = StyleSheet.create({
   },
   bubble: {
     position: 'absolute',
-    backgroundColor: colors.bgCard,
+    backgroundColor: C.bg3,
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 12,
     maxWidth: 210,
     alignSelf: 'center',
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
   },
   bubbleText: {
     fontFamily: 'Caveat_400Regular',
-    color: colors.textHero,
+    color: C.t1,
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 22,
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     marginLeft: -6,
     width: 12,
     height: 6,
-    backgroundColor: colors.bgCard,
+    backgroundColor: C.bg3,
     borderBottomLeftRadius: 4,
     borderBottomRightRadius: 4,
   },

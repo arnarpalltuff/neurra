@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
 import Animated, {
   FadeIn, FadeOut,
 } from 'react-native-reanimated';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { updateDifficulty, getDifficulty, signalNoiseParams } from '../../../utils/difficultyEngine';
 import { pickRandom } from '../../../utils/arrayUtils';
 import ProgressBar from '../../ui/ProgressBar';
@@ -240,18 +240,18 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary, padding: 20 },
+  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  roundText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
-  streakText: { color: colors.streak, fontSize: 14, fontWeight: '700' },
-  scene: { width: SCENE_SIZE, height: SCENE_SIZE, backgroundColor: colors.bgSecondary, borderRadius: 24, overflow: 'hidden', position: 'relative', alignSelf: 'center', borderWidth: 1, borderColor: colors.border },
+  roundText: { color: C.t2, fontSize: 14, fontWeight: '600' },
+  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
+  streakText: { color: C.amber, fontSize: 14, fontWeight: '700' },
+  scene: { width: SCENE_SIZE, height: SCENE_SIZE, backgroundColor: C.bg3, borderRadius: 24, overflow: 'hidden', position: 'relative', alignSelf: 'center', borderWidth: 1, borderColor: '#1F2A42' },
   shape: { position: 'absolute' },
-  ripple: { position: 'absolute', width: 60, height: 60, borderRadius: 30, borderWidth: 3, borderColor: colors.growth },
+  ripple: { position: 'absolute', width: 60, height: 60, borderRadius: 30, borderWidth: 3, borderColor: C.green },
   missedIndicator: { position: 'absolute', width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  missedX: { color: colors.coral, fontSize: 20, opacity: 0.8 },
-  correctText: { color: colors.growth, fontSize: 16, fontWeight: '700', textAlign: 'center', marginTop: 12 },
-  missedText: { color: colors.coral, fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 12 },
-  wrongText: { color: colors.textTertiary, fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 12 },
-  hintText: { color: colors.textTertiary, fontSize: 13, textAlign: 'center', marginTop: 12 },
+  missedX: { color: C.coral, fontSize: 20, opacity: 0.8 },
+  correctText: { color: C.green, fontSize: 16, fontWeight: '700', textAlign: 'center', marginTop: 12 },
+  missedText: { color: C.coral, fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 12 },
+  wrongText: { color: C.t3, fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 12 },
+  hintText: { color: C.t3, fontSize: 13, textAlign: 'center', marginTop: 12 },
 });

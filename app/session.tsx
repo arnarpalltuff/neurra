@@ -168,6 +168,7 @@ export default function SessionScreen() {
     setChallengeScore({ score, total });
     // Award bonus XP
     useProgressStore.getState().addXP(CHALLENGE_XP_BONUS);
+    useProgressStore.getState().addCoins(50);
     setPhase('challengeResult');
   }, []);
 

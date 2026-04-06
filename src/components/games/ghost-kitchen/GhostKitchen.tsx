@@ -6,7 +6,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withSequence, FadeIn, FadeOut, SlideInDown,
 } from 'react-native-reanimated';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { ghostKitchenParams, updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
 import { shuffle } from '../../../utils/arrayUtils';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
@@ -56,6 +56,9 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const cancelledRef = useRef(false);
   const roundStartTime = useRef(Date.now());
+  const scoreRef = useRef(0);
+  const correctCountRef = useRef(0);
+  const totalAttemptsRef = useRef(0);
   const { feedback, fireCorrect, fireWrong } = useGameFeedback();
   const lastTapPos = useRef({ x: width / 2, y: 300 });
 
@@ -111,14 +114,16 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
       fireWrong(pos);
     }
     setLastCorrect(isCorrect);
-    setTotalAttempts(prev => prev + 1);
+    totalAttemptsRef.current += 1;
+    setTotalAttempts(totalAttemptsRef.current);
 
     const diff = updateDifficulty('ghost-kitchen', isCorrect);
 
     if (isCorrect) {
       const newSelected = [...selected, ingredientId];
       setSelected(newSelected);
-      setCorrectCount(prev => prev + 1);
+      correctCountRef.current += 1;
+      setCorrectCount(correctCountRef.current);
 
       const newConsec = consecutiveCorrect + 1;
       setConsecutiveCorrect(newConsec);
@@ -129,15 +134,16 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
       const elapsed = (Date.now() - roundStartTime.current) / 1000;
       const speedBonus = Math.max(0, 50 - Math.floor(elapsed * 5));
       const points = Math.round((100 + speedBonus) * mult);
-      setScore(prev => prev + points);
+      scoreRef.current += points;
+      setScore(scoreRef.current);
 
       if (newSelected.length === order.length) {
         // Round complete
         setTimeout(() => {
           if (cancelledRef.current) return;
           if (round >= totalRounds) {
-            const accuracy = (correctCount + 1) / (totalAttempts + 1);
-            onComplete(score + points, accuracy);
+            const accuracy = totalAttemptsRef.current > 0 ? correctCountRef.current / totalAttemptsRef.current : 0;
+            onComplete(scoreRef.current, accuracy);
           } else {
             setRound(prev => prev + 1);
             roundStartTime.current = Date.now();
@@ -230,7 +236,7 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
     padding: 20,
   },
   header: {
@@ -240,17 +246,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   roundText: {
-    color: colors.textSecondary,
+    color: C.t2,
     fontSize: 14,
     fontWeight: '600',
   },
   scoreText: {
-    color: colors.warm,
+    color: C.peach,
     fontSize: 18,
     fontWeight: '800',
   },
   comboText: {
-    color: colors.streak,
+    color: C.amber,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -261,7 +267,7 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   phaseLabel: {
-    color: colors.textSecondary,
+    color: C.t2,
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -276,7 +282,7 @@ const styles = StyleSheet.create({
   orderItem: {
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     borderRadius: 16,
     padding: 14,
     minWidth: 70,
@@ -285,24 +291,24 @@ const styles = StyleSheet.create({
     fontSize: 32,
   },
   ingredientLabel: {
-    color: colors.textPrimary,
+    color: C.t1,
     fontSize: 11,
     fontWeight: '600',
   },
   timerBar: {
     width: '80%',
     height: 4,
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: C.bg4,
     borderRadius: 2,
     overflow: 'hidden',
   },
   timerFill: {
     height: '100%',
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     borderRadius: 2,
   },
   timerText: {
-    color: colors.textTertiary,
+    color: C.t3,
     fontSize: 13,
   },
   recallArea: {
@@ -319,17 +325,17 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: C.bg4,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#1F2A42',
   },
   dotFilled: {
-    backgroundColor: colors.growth,
-    borderColor: colors.growth,
+    backgroundColor: C.green,
+    borderColor: C.green,
   },
   dotActive: {
-    backgroundColor: colors.transparent,
-    borderColor: colors.growth,
+    backgroundColor: 'transparent',
+    borderColor: C.green,
     borderWidth: 2,
   },
   trayGrid: {
@@ -342,19 +348,19 @@ const styles = StyleSheet.create({
   trayItem: {
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     borderRadius: 16,
     padding: 14,
     minWidth: 75,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#1F2A42',
   },
   trayItemDone: {
-    borderColor: colors.growth,
-    backgroundColor: colors.growthDim,
+    borderColor: C.green,
+    backgroundColor: 'rgba(110,207,154,0.19)',
   },
   wrongText: {
-    color: colors.coral,
+    color: C.coral,
     fontSize: 14,
     fontWeight: '600',
   },

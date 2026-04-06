@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeIn, useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 
 interface OnboardingProgressProps {
   currentStep: number; // 0-indexed
@@ -33,24 +34,24 @@ const styles = StyleSheet.create({
   container: { paddingHorizontal: 24, paddingTop: 12, gap: 8 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   stepCount: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 12,
   },
   stepLabel: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
     fontSize: 12,
   },
   track: {
     height: 3,
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: C.surface,
     borderRadius: 999,
     overflow: 'hidden',
   },
   fill: {
     height: 3,
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     borderRadius: 999,
   },
 });

@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  Dimensions, SafeAreaView, Pressable,
+  Dimensions, SafeAreaView, Pressable, Alert,
 } from 'react-native';
 import Animated, {
-  FadeInDown, FadeIn, useSharedValue, useAnimatedStyle,
+  FadeInDown, FadeIn, FadeOut, useSharedValue, useAnimatedStyle,
   withRepeat, withSequence, withTiming, withSpring, Easing,
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C, colors } from '../../src/constants/colors';
+import { C } from '../../src/constants/colors';
 import { fonts } from '../../src/constants/typography';
 import { glow } from '../../src/utils/glow';
 import Kova from '../../src/components/kova/Kova';
@@ -26,6 +26,20 @@ import StreakBreakOverlay from '../../src/components/ui/StreakBreakOverlay';
 import Celebration from '../../src/components/ui/Celebration';
 import { useStreakUrgency } from '../../src/hooks/useStreakUrgency';
 import { tapLight } from '../../src/utils/haptics';
+import { getGreeting } from '../../src/constants/kovaDialogue';
+import { useProStore } from '../../src/stores/proStore';
+import { useStoryStore } from '../../src/stores/storyStore';
+import { getArcLabel } from '../../src/constants/story';
+import { generateInsights } from '../../src/utils/insightsEngine';
+import TopInsightCard from '../../src/components/insights/TopInsightCard';
+import CoachInsightCard from '../../src/components/insights/CoachInsightCard';
+import { useDailyBriefing } from '../../src/hooks/useDailyBriefing';
+import PaywallNudge from '../../src/components/paywall/PaywallNudge';
+import PaywallFull from '../../src/components/paywall/PaywallFull';
+import {
+  useWeeklyReportStore,
+  getLatestReportWeekId,
+} from '../../src/stores/weeklyReportStore';
 
 const { width } = Dimensions.get('window');
 
@@ -36,35 +50,13 @@ const GREETINGS: Record<string, string> = {
   lateNight: 'Still up?',
 };
 
-const KOVA_GREETINGS = [
-  "Let's train that brain!",
-  "I've been waiting for you.",
-  "Ready when you are.",
-  "Your brain called — it wants a workout.",
-  "Another day, another neuron.",
-  "Let's make today count.",
-  "I believe in you.",
-  "Brains love consistency.",
-  "Small steps, big growth.",
-  "You showed up. That's half the battle.",
-  "Your future self will thank you.",
-  "Time to level up.",
-  "Let's see what you've got today.",
-  "Warming up the neural pathways...",
-  "The brain gym is open.",
-  "You're building something here.",
-  "One session at a time.",
-  "Your streak is glowing.",
-  "Ready to surprise yourself?",
-  "Let's get those neurons firing.",
-];
-
 export default function HomeScreen() {
   const name = useUserStore(s => s.name);
   const mood = useUserStore(s => s.mood);
   const moodHistory = useUserStore(s => s.moodHistory);
   const setMood = useUserStore(s => s.setMood);
   const streak = useProgressStore(s => s.streak);
+  const coins = useProgressStore(s => s.coins);
   const xp = useProgressStore(s => s.xp);
   const level = useProgressStore(s => s.level);
   const totalSessions = useProgressStore(s => s.totalSessions);
@@ -74,12 +66,42 @@ export default function HomeScreen() {
   const sessionDone = isSessionDoneToday();
   const [dailyGames] = useState(() => selectDailyGames());
 
+  const sessions = useProgressStore(s => s.sessions);
+  const brainScores = useProgressStore(s => s.brainScores);
+  const gameHistory = useProgressStore(s => s.gameHistory);
+  const personalBests = useProgressStore(s => s.personalBests);
+
   const xpProgress = useMemo(() => getXPProgress(xp, level), [xp, level]);
+
+  // Brain Pulse insights (for home card)
+  const { pulse, insights: allInsights } = useMemo(
+    () => generateInsights({
+      sessions, brainScores, gameHistory, personalBests,
+      streak, longestStreak, totalSessions, xp, level,
+      mood, moodHistory,
+    }),
+    [sessions, brainScores, gameHistory, personalBests, streak, longestStreak, totalSessions, xp, level, mood, moodHistory],
+  );
   const moodLoggedToday = useMemo(() => moodHistory.some(e => e.date === todayStr()), [moodHistory]);
   const [moodDismissed, setMoodDismissed] = useState(false);
   const [heartsTrigger, setHeartsTrigger] = useState(0);
   const showMoodCheckIn = !moodLoggedToday && !moodDismissed;
-  const kovaGreeting = useMemo(() => KOVA_GREETINGS[Math.floor(Math.random() * KOVA_GREETINGS.length)], []);
+  const { briefing: coachBriefing } = useDailyBriefing();
+  const fallbackGreeting = useMemo(() => getGreeting({ streak, totalSessions }), [streak, totalSessions]);
+  const kovaGreeting = coachBriefing?.greeting ?? fallbackGreeting;
+
+  // Paywall nudge
+  const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
+  const canShowNudge = useProStore(s => s.canShowNudge);
+  const recordNudge = useProStore(s => s.recordNudge);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const showNudge = !isPro && !nudgeDismissed && canShowNudge(totalSessions);
+
+  // Story mode
+  const storyEnabled = useStoryStore(s => s.storyEnabled);
+  const storyDay = useStoryStore(s => s.currentDay);
+  const arcLabel = storyEnabled ? getArcLabel(storyDay) : null;
 
   const {
     urgencyDim,
@@ -90,6 +112,39 @@ export default function HomeScreen() {
   } = useStreakUrgency();
 
   const timeOfDay = getTimeOfDay();
+
+  const pendingFreezeMsg = useProgressStore(s => s.pendingStreakFreezeMessage);
+  const clearPendingFreezeMsg = useProgressStore(s => s.clearPendingStreakFreezeMessage);
+  const reportMap = useWeeklyReportStore((s) => s.reports);
+  const homeBannerDismissed = useWeeklyReportStore((s) => s.homeBannerDismissedWeekId);
+
+  const prevCoinsRef = useRef<number | null>(null);
+  const [coinFloat, setCoinFloat] = useState<{ amount: number; key: number } | null>(null);
+
+  useEffect(() => {
+    if (pendingFreezeMsg) {
+      Alert.alert('Kova', pendingFreezeMsg, [
+        { text: 'Thanks, Kova', onPress: () => clearPendingFreezeMsg() },
+      ]);
+    }
+  }, [pendingFreezeMsg, clearPendingFreezeMsg]);
+
+  useEffect(() => {
+    const prev = prevCoinsRef.current;
+    prevCoinsRef.current = coins;
+    if (prev !== null && coins > prev) {
+      setCoinFloat({ amount: coins - prev, key: Date.now() });
+      const t = setTimeout(() => setCoinFloat(null), 1800);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [coins]);
+
+  const latestWeekId = getLatestReportWeekId();
+  const showWeeklyBanner =
+    !!latestWeekId &&
+    !!reportMap[latestWeekId] &&
+    homeBannerDismissed !== latestWeekId;
 
   // CTA pulse for session button
   const ctaPulse = useSharedValue(1);
@@ -110,8 +165,16 @@ export default function HomeScreen() {
     opacity: ctaPulse.value,
   }));
 
+  const navigatingRef = useRef(false);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => { if (navTimerRef.current) clearTimeout(navTimerRef.current); };
+  }, []);
   const handleStartSession = useCallback(() => {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
     router.push('/session');
+    navTimerRef.current = setTimeout(() => { navigatingRef.current = false; }, 1000);
   }, []);
 
   // Level-up celebration
@@ -138,6 +201,20 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <View style={styles.coinRow} pointerEvents="box-none">
+        <View style={styles.coinIcon} />
+        <Text style={styles.coinBalance}>{coins}</Text>
+        {coinFloat && (
+          <Animated.Text
+            key={coinFloat.key}
+            entering={FadeInDown.duration(280)}
+            exiting={FadeOut.duration(350)}
+            style={styles.coinFloat}
+          >
+            +{coinFloat.amount}
+          </Animated.Text>
+        )}
+      </View>
       {celebration && (
         <CelebrationOverlay
           kind={celebration.kind}
@@ -198,6 +275,30 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
+        {/* Story mode indicator */}
+        {storyEnabled && arcLabel && (
+          <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.storyBadge}>
+            <Text style={styles.storyBadgeText}>Day {storyDay} — {arcLabel}</Text>
+          </Animated.View>
+        )}
+
+        {showWeeklyBanner && latestWeekId && (
+          <Animated.View entering={FadeInDown.delay(220).duration(350)} style={styles.weekBanner}>
+            <Pressable
+              style={styles.weekBannerInner}
+              onPress={() =>
+                router.push({
+                  pathname: '/weekly-report',
+                  params: { weekId: latestWeekId },
+                } as unknown as Parameters<typeof router.push>[0])
+              }
+            >
+              <Text style={styles.weekBannerTitle}>Your week in review</Text>
+              <Text style={styles.weekBannerSub}>See how you trained · Tap to open</Text>
+            </Pressable>
+          </Animated.View>
+        )}
+
         {/* Mood check-in */}
         {showMoodCheckIn && (
           <MoodCheckIn
@@ -225,6 +326,9 @@ export default function HomeScreen() {
             <View style={styles.sessionCard}>
               <Text style={styles.sessionLabelMicro}>TODAY'S SESSION</Text>
               <Text style={styles.gameNamesText}>{gameNames}</Text>
+              {coachBriefing?.recommendation && (
+                <Text style={styles.coachRec}>{coachBriefing.recommendation}</Text>
+              )}
               <Text style={styles.sessionTime}>~5 min</Text>
 
               {/* CTA Button */}
@@ -246,6 +350,20 @@ export default function HomeScreen() {
             </View>
           )}
         </Animated.View>
+
+        {/* Paywall nudge (non-Pro, after session 7) */}
+        {showNudge && (
+          <PaywallNudge
+            onUpgrade={() => {
+              recordNudge();
+              setShowPaywall(true);
+            }}
+            onDismiss={() => {
+              recordNudge();
+              setNudgeDismissed(true);
+            }}
+          />
+        )}
 
         {/* ROW 4: Stats row */}
         <Animated.View entering={FadeInDown.delay(380).duration(400)} style={styles.statsRow}>
@@ -279,10 +397,26 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
 
+        {/* AI Coach insight (after 3+ sessions) */}
+        {totalSessions >= 3 && coachBriefing && (
+          <CoachInsightCard insight={coachBriefing.insight} delay={400} />
+        )}
+
+        {/* Brain Pulse insight (after 3+ sessions) */}
+        {totalSessions >= 3 && (
+          <TopInsightCard
+            pulse={pulse}
+            topInsight={allInsights[0] ?? null}
+            delay={450}
+          />
+        )}
+
         <View style={{ height: 32 }} />
       </ScrollView>
 
       <Celebration type="particles_hearts" trigger={heartsTrigger} origin={{ x: width / 2, y: 220 }} />
+
+      <PaywallFull visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </SafeAreaView>
   );
 }
@@ -292,9 +426,59 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.bg2,
   },
+  coinRow: {
+    position: 'absolute',
+    top: 8,
+    left: 16,
+    zIndex: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  coinIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: C.amber,
+  },
+  coinBalance: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 14,
+    color: C.amber,
+  },
+  coinFloat: {
+    position: 'absolute',
+    left: 26,
+    top: -22,
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: C.amber,
+  },
+  weekBanner: {
+    marginTop: 10,
+    marginHorizontal: 4,
+  },
+  weekBannerInner: {
+    backgroundColor: C.bg3,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 0.5,
+    borderColor: 'rgba(107,168,224,0.35)',
+  },
+  weekBannerTitle: {
+    fontFamily: fonts.bodyBold,
+    color: C.blue,
+    fontSize: 16,
+  },
+  weekBannerSub: {
+    fontFamily: fonts.body,
+    color: C.t3,
+    fontSize: 13,
+    marginTop: 4,
+  },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 36,
     paddingBottom: 110,
   },
 
@@ -364,7 +548,7 @@ const styles = StyleSheet.create({
 
   // Urgency
   urgencyBanner: {
-    backgroundColor: 'rgba(232,112,126,0.08)',
+    backgroundColor: C.coralTint,
     borderWidth: 0.5,
     borderColor: 'rgba(232,112,126,0.25)',
     borderRadius: 14,
@@ -409,6 +593,12 @@ const styles = StyleSheet.create({
     color: C.t2,
     fontSize: 14,
   },
+  coachRec: {
+    fontFamily: fonts.body,
+    color: C.purple,
+    fontSize: 13,
+    textAlign: 'center',
+  },
   sessionTime: {
     fontFamily: fonts.body,
     color: C.t3,
@@ -443,7 +633,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   bonusBtn: {
-    backgroundColor: 'rgba(240,181,66,0.08)',
+    backgroundColor: C.amberTint,
     borderRadius: 999,
     paddingHorizontal: 20,
     paddingVertical: 10,
@@ -481,5 +671,23 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: C.t3,
     fontSize: 12,
+  },
+
+  // Story
+  storyBadge: {
+    alignSelf: 'center',
+    backgroundColor: C.purpleTint,
+    borderWidth: 0.5,
+    borderColor: 'rgba(155,114,224,0.25)',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    marginTop: 8,
+  },
+  storyBadgeText: {
+    fontFamily: fonts.bodySemi,
+    color: C.purple,
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
 });

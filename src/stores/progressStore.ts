@@ -46,6 +46,9 @@ interface ProgressState {
   league: string;
   weeklyXP: number;
   weekStartDate: string;
+  /** Shown once after a streak freeze auto-saves the streak (Phase O5) */
+  pendingStreakFreezeMessage: string | null;
+  clearPendingStreakFreezeMessage: () => void;
 
   addXP: (amount: number) => void;
   addSession: (session: SessionRecord) => void;
@@ -98,6 +101,9 @@ export const useProgressStore = create<ProgressState>()(
       league: 'Ember',
       weeklyXP: 0,
       weekStartDate: todayStr(),
+      pendingStreakFreezeMessage: null,
+
+      clearPendingStreakFreezeMessage: () => set({ pendingStreakFreezeMessage: null }),
 
       addXP: (amount) =>
         set((state) => {
@@ -136,15 +142,24 @@ export const useProgressStore = create<ProgressState>()(
           const yesterdayStr = yesterday.toISOString().split('T')[0];
 
           let newStreak = state.streak;
+          let pendingMsg: string | null = null;
+          let newFreezes = state.streakFreezes;
 
           if (state.lastSessionDate === yesterdayStr) {
             newStreak = state.streak + 1;
           } else if (state.lastSessionDate === null) {
             newStreak = 1;
           } else {
-            // Check if streak freeze was used
-            if (state.streakFreezeUsedDate === yesterdayStr && state.streakFreezes > 0) {
+            const last = new Date(`${state.lastSessionDate}T12:00:00`);
+            const todayD = new Date(`${today}T12:00:00`);
+            const diffDays = Math.round(
+              (todayD.getTime() - last.getTime()) / (1000 * 60 * 60 * 24),
+            );
+
+            if (diffDays === 2 && state.streak > 0 && state.streakFreezes > 0) {
+              newFreezes = state.streakFreezes - 1;
               newStreak = state.streak + 1;
+              pendingMsg = "I've got you covered. Your streak freeze kept your streak alive.";
             } else {
               newStreak = 1;
             }
@@ -154,6 +169,8 @@ export const useProgressStore = create<ProgressState>()(
             streak: newStreak,
             longestStreak: Math.max(newStreak, state.longestStreak),
             lastSessionDate: today,
+            streakFreezes: newFreezes,
+            pendingStreakFreezeMessage: pendingMsg ?? state.pendingStreakFreezeMessage,
           };
         }),
 

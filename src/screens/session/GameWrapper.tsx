@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
 import Animated, {
   FadeIn, FadeOut, FadeInDown,
 } from 'react-native-reanimated';
@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { success as hapticSuccess } from '../../utils/haptics';
 import { playGameComplete, playPersonalBest } from '../../utils/sound';
 import Celebration from '../../components/ui/Celebration';
-import { C, colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { GameId, gameConfigs } from '../../constants/gameConfigs';
 import GhostKitchen from '../../components/games/ghost-kitchen/GhostKitchen';
@@ -30,9 +30,11 @@ import CountUpText from '../../components/ui/CountUpText';
 import SessionProgressBar from '../../components/ui/SessionProgressBar';
 import ShootingStar from '../../components/ui/ShootingStar';
 import { pickRandom } from '../../utils/arrayUtils';
+import { getFramingText } from '../../constants/framingText';
+import ErrorBoundary from '../../components/ui/ErrorBoundary';
 
 // Per-game background gradients
-const gameBg: Record<string, [string, string]> = {
+const gameBg: Partial<Record<GameId, [string, string]>> = {
   'ghost-kitchen': ['#1A1208', '#0C0804'],
   'pulse': ['#0A0618', '#04020C'],
   'word-weave': ['#08101A', '#04080E'],
@@ -72,10 +74,11 @@ export default function GameWrapper({ gameId, gameIndex, totalGames, onGameCompl
   const personalBests = useProgressStore(s => s.personalBests);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
 
-  if (!config) {
-    onGameComplete(0, 0);
-    return null;
-  }
+  useEffect(() => {
+    if (!config) onGameComplete(0, 0);
+  }, [config, onGameComplete]);
+
+  if (!config) return null;
 
   const bg = gameBg[gameId] ?? [C.bg2, C.bg1];
 
@@ -152,7 +155,18 @@ export default function GameWrapper({ gameId, gameIndex, totalGames, onGameCompl
 
           {/* Game — key forces full unmount/remount between games */}
           <View style={styles.gameArea}>
-            {renderGame(gameId, handleGameComplete, level)}
+            <ErrorBoundary
+              fallback={
+                <View style={styles.gameErrorFallback}>
+                  <Text style={styles.gameErrorText}>This game hit a snag.</Text>
+                  <Pressable style={styles.gameErrorBtn} onPress={() => onGameComplete(0, 0)}>
+                    <Text style={styles.gameErrorBtnText}>Skip Game</Text>
+                  </Pressable>
+                </View>
+              }
+            >
+              {renderGame(gameId, handleGameComplete, level)}
+            </ErrorBoundary>
           </View>
         </View>
       )}
@@ -201,7 +215,7 @@ export default function GameWrapper({ gameId, gameIndex, totalGames, onGameCompl
           </Animated.View>
 
           <Animated.Text entering={FadeInDown.delay(600).duration(400)} style={styles.realWorldText}>
-            {pickRandom(config.realWorldFraming ?? []) ?? 'Great work!'}
+            {getFramingText({ gameId, score: finalScore, accuracy: finalAccuracy })}
           </Animated.Text>
 
           <Animated.View entering={FadeInDown.delay(800).duration(400)} style={{ width: '100%' }}>
@@ -253,7 +267,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   introBadge: {
-    backgroundColor: 'rgba(110,207,154,0.08)',
+    backgroundColor: C.greenTint,
     paddingHorizontal: 14,
     paddingVertical: 4,
     borderRadius: 999,
@@ -299,7 +313,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   relaxedBadge: {
-    backgroundColor: 'rgba(107,168,224,0.08)',
+    backgroundColor: C.blueTint,
     paddingHorizontal: 14,
     paddingVertical: 5,
     borderRadius: 999,
@@ -338,7 +352,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   pbBannerWrap: {
-    backgroundColor: 'rgba(240,181,66,0.08)',
+    backgroundColor: C.amberTint,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 999,
@@ -396,5 +410,33 @@ const styles = StyleSheet.create({
   continueBtn: {
     width: '100%',
     marginTop: 8,
+  },
+
+  // Game error fallback
+  gameErrorFallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    gap: 16,
+  },
+  gameErrorText: {
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  gameErrorBtn: {
+    backgroundColor: C.bg3,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: C.border,
+  },
+  gameErrorBtnText: {
+    fontFamily: fonts.bodyBold,
+    color: C.coral,
+    fontSize: 14,
   },
 });

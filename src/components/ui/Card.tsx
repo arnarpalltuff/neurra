@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp, Pressable } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import { selection } from '../../utils/haptics';
 
 interface CardProps {
@@ -24,7 +24,7 @@ export default function Card({ children, style, elevated = false, onPress }: Car
   const inner = (
     <>
       <LinearGradient
-        colors={[colors.bgCardTop, colors.bgCard]}
+        colors={[C.bg4, C.bg3]}
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.content}>
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,

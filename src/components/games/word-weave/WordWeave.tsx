@@ -5,32 +5,16 @@ import Animated, {
   withSequence, FadeIn, FadeOut, Easing,
 } from 'react-native-reanimated';
 import { selection } from '../../../utils/haptics';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import { wordWeaveParams, updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import { shuffle } from '../../../utils/arrayUtils';
+import { WORD_LIST } from '../../../constants/wordList';
 
 const { width } = Dimensions.get('window');
 
-// Common English words (simplified dictionary for demo)
-const VALID_WORDS = new Set([
-  'cat', 'dog', 'sun', 'moon', 'star', 'tree', 'bird', 'fish', 'rain', 'fire',
-  'wind', 'rock', 'lake', 'hill', 'road', 'song', 'note', 'bell', 'rose', 'leaf',
-  'seed', 'root', 'stem', 'vine', 'fern', 'moss', 'dew', 'mist', 'fog', 'glow',
-  'beam', 'wave', 'tide', 'reef', 'sand', 'dust', 'snow', 'ice', 'frost', 'dawn',
-  'dusk', 'noon', 'time', 'hour', 'day', 'week', 'year', 'age', 'era', 'past',
-  'mind', 'soul', 'life', 'love', 'hope', 'fear', 'joy', 'pain', 'calm', 'wild',
-  'fast', 'slow', 'tall', 'small', 'dark', 'bright', 'soft', 'hard', 'warm', 'cool',
-  'open', 'free', 'true', 'real', 'deep', 'high', 'long', 'wide', 'thin', 'thick',
-  'art', 'map', 'key', 'door', 'path', 'way', 'goal', 'plan', 'idea', 'word',
-  'tale', 'myth', 'hero', 'sage', 'dream', 'wish', 'gift', 'fate', 'luck', 'risk',
-  'stir', 'rise', 'fall', 'flow', 'grow', 'glow', 'spin', 'turn', 'move', 'stay',
-  'find', 'seek', 'know', 'feel', 'hear', 'see', 'hold', 'keep', 'give', 'take',
-  'land', 'sea', 'sky', 'earth', 'world', 'town', 'city', 'home', 'room', 'wall',
-  'light', 'night', 'sound', 'voice', 'heart', 'spirit', 'stone', 'forest', 'river', 'ocean',
-  'solar', 'lunar', 'storm', 'bloom', 'crane', 'flame', 'grace', 'blaze', 'shine', 'shade',
-  'grain', 'plain', 'trail', 'brave', 'noble', 'proud', 'swift', 'quiet', 'gentle', 'fierce',
-]);
+const VALID_WORDS = WORD_LIST;
 
 const LETTER_POOL = 'ABCDEFGHIJKLMNOPRSTW';
 
@@ -46,7 +30,7 @@ function generateLetters(count: number): string[] {
   for (let i = vowelCount; i < count; i++) {
     letters.push(consonants[Math.floor(Math.random() * consonants.length)]);
   }
-  return letters.sort(() => Math.random() - 0.5);
+  return shuffle(letters);
 }
 
 interface LetterItem {
@@ -186,7 +170,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
 
       {/* Timer bar */}
       <View style={styles.timerBar}>
-        <Animated.View style={[styles.timerFill, { width: `${timeProgress * 100}%`, backgroundColor: isUrgent ? colors.coral : colors.growth }]} />
+        <Animated.View style={[styles.timerFill, { width: `${timeProgress * 100}%`, backgroundColor: isUrgent ? C.coral : C.green }]} />
       </View>
 
       {/* Word bar */}
@@ -274,7 +258,7 @@ function wordPoints(len: number): number {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
     padding: 20,
     alignItems: 'center',
   },
@@ -286,27 +270,27 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   wordCountText: {
-    color: colors.textSecondary,
+    color: C.t2,
     fontSize: 14,
     fontWeight: '600',
   },
   timerText: {
-    color: colors.textPrimary,
+    color: C.t1,
     fontSize: 20,
     fontWeight: '800',
   },
   timerUrgent: {
-    color: colors.coral,
+    color: C.coral,
   },
   scoreText: {
-    color: colors.warm,
+    color: C.peach,
     fontSize: 18,
     fontWeight: '800',
   },
   timerBar: {
     width: '100%',
     height: 4,
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: C.bg4,
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 16,
@@ -317,7 +301,7 @@ const styles = StyleSheet.create({
   },
   wordBar: {
     width: '100%',
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -326,14 +310,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#1F2A42',
   },
   wordBarPlaceholder: {
-    color: colors.textTertiary,
+    color: C.t3,
     fontSize: 14,
   },
   wordBarText: {
-    color: colors.textPrimary,
+    color: C.t1,
     fontSize: 22,
     fontWeight: '800',
     letterSpacing: 3,
@@ -347,10 +331,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   feedbackValid: {
-    color: colors.growth,
+    color: C.green,
   },
   feedbackInvalid: {
-    color: colors.coral,
+    color: C.coral,
   },
   orbitContainer: {
     flex: 1,
@@ -369,28 +353,28 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#1F2A42',
   },
   letterSelected: {
-    backgroundColor: colors.growthDim,
-    borderColor: colors.growth,
+    backgroundColor: 'rgba(110,207,154,0.19)',
+    borderColor: C.green,
     opacity: 0.4,
   },
   letterBonus: {
-    borderColor: colors.streak,
-    backgroundColor: colors.streakDim,
+    borderColor: C.amber,
+    backgroundColor: 'rgba(240,181,66,0.19)',
   },
   letterText: {
-    color: colors.textPrimary,
+    color: C.t1,
     fontSize: 16,
     fontWeight: '800',
   },
   letterTextSelected: {
-    color: colors.growth,
+    color: C.green,
   },
   actions: {
     flexDirection: 'row',
@@ -400,21 +384,21 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     flex: 1,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#1F2A42',
   },
   clearText: {
-    color: colors.textSecondary,
+    color: C.t2,
     fontSize: 15,
     fontWeight: '700',
   },
   submitBtn: {
     flex: 2,
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
@@ -423,7 +407,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   submitText: {
-    color: colors.textInverse,
+    color: C.bg2,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -435,7 +419,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   recentWord: {
-    color: colors.textTertiary,
+    color: C.t3,
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',

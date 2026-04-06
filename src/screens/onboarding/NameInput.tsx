@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import Kova from '../../components/kova/Kova';
 import Button from '../../components/ui/Button';
 
@@ -36,7 +37,7 @@ export default function NameInput({ onNext }: NameInputProps) {
           ref={inputRef}
           style={styles.input}
           placeholder="Your first name"
-          placeholderTextColor={colors.textTertiary}
+          placeholderTextColor={C.t3}
           value={name}
           onChangeText={setName}
           autoFocus
@@ -62,7 +63,7 @@ export default function NameInput({ onNext }: NameInputProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
     padding: 28,
     justifyContent: 'center',
     gap: 36,
@@ -74,28 +75,28 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   question: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textHero,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 28,
     textAlign: 'center',
     letterSpacing: -0.5,
   },
   sub: {
-    fontFamily: 'Caveat_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.kova,
+    color: C.t3,
     fontSize: 18,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: C.bg3,
     borderRadius: 999,
     paddingHorizontal: 24,
     paddingVertical: 16,
-    color: colors.textHero,
-    fontFamily: 'Quicksand_700Bold',
+    color: C.t1,
+    fontFamily: fonts.heading,
     fontSize: 20,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: 'rgba(255,255,255,0.1)',
     textAlign: 'center',
   },
   btn: { width: '100%' },

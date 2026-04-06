@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import { tapLight } from '../../utils/haptics';
 import { playTap } from '../../utils/sound';
 
@@ -57,7 +57,7 @@ export default function Button({
       accessibilityRole="button"
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? colors.textInverse : colors.textPrimary} />
+        <ActivityIndicator color={variant === 'primary' ? C.bg2 : C.t1} />
       ) : (
         <Text style={[styles.text, styles[`text_${variant}`], styles[`textSize_${size}`], textStyle]}>{label}</Text>
       )}
@@ -71,22 +71,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primary: {
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     borderRadius: 999,
-    shadowColor: colors.growth,
+    shadowColor: C.green,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 16,
     elevation: 6,
   },
   secondary: {
-    backgroundColor: colors.transparent,
+    backgroundColor: 'transparent',
     borderRadius: 999,
     borderWidth: 1.5,
     borderColor: 'rgba(125,211,168,0.4)',
   },
   ghost: {
-    backgroundColor: colors.transparent,
+    backgroundColor: 'transparent',
     borderRadius: 12,
   },
   disabled: {
@@ -95,10 +95,10 @@ const styles = StyleSheet.create({
   size_sm: { paddingHorizontal: 20, paddingVertical: 10, minHeight: 36 },
   size_md: { paddingHorizontal: 28, paddingVertical: 14, minHeight: 48 },
   size_lg: { paddingHorizontal: 36, paddingVertical: 18, minHeight: 56 },
-  text: { fontFamily: 'Nunito_700Bold', letterSpacing: 0.3 },
-  text_primary: { color: colors.textInverse },
-  text_secondary: { color: colors.growth },
-  text_ghost: { color: colors.textSecondary },
+  text: { fontFamily: 'Nunito_700Bold' as const, letterSpacing: 0.3 },
+  text_primary: { color: C.bg2 },
+  text_secondary: { color: C.green },
+  text_ghost: { color: C.t2 },
   textSize_sm: { fontSize: 13 },
   textSize_md: { fontSize: 15 },
   textSize_lg: { fontSize: 17 },

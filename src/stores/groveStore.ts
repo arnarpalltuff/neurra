@@ -136,15 +136,16 @@ export interface ZoneConfig {
   name: string;
   element: string;
   icon: string;
-  position: 'northeast' | 'northwest' | 'south' | 'east' | 'west';
+  /** Layout slot on the grove scene (Phase N) */
+  position: 'northwest' | 'northeast' | 'south' | 'southwest' | 'southeast';
 }
 
 export const ZONE_CONFIGS: ZoneConfig[] = [
-  { area: 'memory', name: 'The Ancestor Tree', element: 'Tree', icon: '🌳', position: 'northeast' },
-  { area: 'focus', name: 'The Crystal Spire', element: 'Crystal', icon: '💎', position: 'northwest' },
+  { area: 'memory', name: 'The Ancestor Tree', element: 'Tree', icon: '🌳', position: 'northwest' },
+  { area: 'focus', name: 'The Crystal Spire', element: 'Crystal', icon: '💎', position: 'northeast' },
   { area: 'speed', name: 'The Living Stream', element: 'Stream', icon: '💧', position: 'south' },
-  { area: 'flexibility', name: 'The Winding Garden', element: 'Garden', icon: '🌺', position: 'east' },
-  { area: 'creativity', name: 'The Mycelium Network', element: 'Mushrooms', icon: '🍄', position: 'west' },
+  { area: 'flexibility', name: 'The Winding Garden', element: 'Garden', icon: '🌺', position: 'southwest' },
+  { area: 'creativity', name: 'The Mycelium Network', element: 'Mushrooms', icon: '🍄', position: 'southeast' },
 ];
 
 // ── Growth Calculation ─────────────────────────────────
@@ -183,6 +184,8 @@ interface GroveState {
   zoneGrowths: Record<BrainArea, ZoneGrowth>;
   giftFlowers: GiftFlower[];
   unlockedVisitors: VisitorId[];
+  /** Zone that just recovered from wilting — triggers sparkle until cleared */
+  revivedSparkleArea: BrainArea | null;
 
   // Actions
   setTheme: (themeId: GroveThemeId) => void;
@@ -197,6 +200,7 @@ interface GroveState {
   recalcAllZones: (brainScores: Record<BrainArea, number>) => void;
   addGiftFlower: (fromName: string, x: number, y: number) => void;
   updateVisitors: (streak: number, level: number, focusScore: number, streamGrowth: number) => void;
+  clearRevivedSparkle: () => void;
 }
 
 const defaultZoneGrowth = (area: BrainArea): ZoneGrowth => ({
@@ -223,6 +227,9 @@ export const useGroveStore = create<GroveState>()(
       },
       giftFlowers: [],
       unlockedVisitors: ['fireflies'],
+      revivedSparkleArea: null,
+
+      clearRevivedSparkle: () => set({ revivedSparkleArea: null }),
 
       setTheme: (themeId) =>
         set((s) => {
@@ -305,16 +312,20 @@ export const useGroveStore = create<GroveState>()(
         }),
 
       markAreaTrained: (area) =>
-        set((s) => ({
-          zoneGrowths: {
-            ...s.zoneGrowths,
-            [area]: {
-              ...s.zoneGrowths[area],
-              lastTrainedDate: new Date().toISOString().split('T')[0],
-              isWilting: false,
+        set((s) => {
+          const wasWilting = s.zoneGrowths[area]?.isWilting ?? false;
+          return {
+            revivedSparkleArea: wasWilting ? area : s.revivedSparkleArea,
+            zoneGrowths: {
+              ...s.zoneGrowths,
+              [area]: {
+                ...s.zoneGrowths[area],
+                lastTrainedDate: new Date().toISOString().split('T')[0],
+                isWilting: false,
+              },
             },
-          },
-        })),
+          };
+        }),
 
       recalcAllZones: (brainScores) =>
         set((s) => {

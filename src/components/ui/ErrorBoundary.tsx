@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 
 interface Props {
   children: React.ReactNode;
@@ -56,29 +56,29 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
     padding: 24,
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: colors.textPrimary,
+    color: C.t1,
     marginBottom: 8,
   },
   message: {
     fontSize: 15,
-    color: colors.textSecondary,
+    color: C.t2,
     textAlign: 'center',
     marginBottom: 24,
   },
   button: {
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     paddingHorizontal: 32,
     paddingVertical: 14,
     borderRadius: 12,
   },
   buttonText: {
-    color: colors.textInverse,
+    color: C.bg2,
     fontSize: 16,
     fontWeight: '700',
   },

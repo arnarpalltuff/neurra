@@ -106,6 +106,17 @@ export const C = {
   blue: colors.sky,
   peach: colors.warm,
 
+  // Tints (large background fills)
+  greenTint: colors.growthTint,
+  amberTint: colors.streakTint,
+  coralTint: colors.coralTint,
+  purpleTint: colors.lavenderTint,
+  blueTint: colors.skyTint,
+  peachTint: colors.warmTint,
+
+  // Surface
+  surface: colors.surfaceDim,
+
   // Utility
   border: colors.borderSubtle,
   shadow: 'rgba(0,0,0,0.4)',

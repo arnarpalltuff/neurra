@@ -5,7 +5,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Ellipse, Circle, Rect, Path, G, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import { GROVE_PALETTES, getTimeOfDaySky } from '../../constants/groveThemes';
 import { useShallow } from 'zustand/react/shallow';
 import { useGroveStore, ZONE_CONFIGS, ZoneConfig, VisitorId } from '../../stores/groveStore';
@@ -27,11 +27,11 @@ interface GroveIslandProps {
 
 // Zone positions on the island (relative to ISLAND_W/H)
 const ZONE_POSITIONS: Record<BrainArea, { x: number; y: number }> = {
-  memory: { x: 0.65, y: 0.25 },      // NE
-  focus: { x: 0.25, y: 0.25 },       // NW
-  speed: { x: 0.45, y: 0.72 },       // S
-  flexibility: { x: 0.72, y: 0.50 }, // E
-  creativity: { x: 0.18, y: 0.50 },  // W
+  memory: { x: 0.22, y: 0.22 },       // NW — tree
+  focus: { x: 0.78, y: 0.22 },        // NE — crystal
+  speed: { x: 0.5, y: 0.78 },         // S — stream
+  flexibility: { x: 0.2, y: 0.62 },   // SW — garden
+  creativity: { x: 0.8, y: 0.62 },    // SE — mushrooms
 };
 
 function VisitorSprite({ id, x, y }: { id: VisitorId; x: number; y: number }) {
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -301,10 +301,10 @@ const styles = StyleSheet.create({
   },
   giftEmoji: { fontSize: 18 },
   giftLabel: {
-    color: colors.textTertiary,
+    color: C.t3,
     fontSize: 8,
     fontWeight: '600',
-    backgroundColor: colors.bgElevated + 'CC',
+    backgroundColor: C.bg4 + 'CC',
     paddingHorizontal: 4,
     paddingVertical: 1,
     borderRadius: 4,

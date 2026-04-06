@@ -6,7 +6,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { tapHeavy, success as hapticSuccess } from '../../utils/haptics';
 import { playMysteryOrb, playRareReveal, playCoinEarned } from '../../utils/sound';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 
 // ── Rarity system ──────────────────────────────────────
 type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary';
@@ -33,16 +33,16 @@ function rollReward(): OrbReward {
 }
 
 const RARITY_COLORS: Record<Rarity, string> = {
-  common: colors.streak,
-  uncommon: colors.sky,
-  rare: colors.lavender,
+  common: C.amber,
+  uncommon: C.blue,
+  rare: C.purple,
   legendary: '#FFD700',
 };
 
 const RARITY_GLOW: Record<Rarity, string> = {
-  common: colors.streak,
-  uncommon: colors.sky,
-  rare: colors.lavender,
+  common: C.amber,
+  uncommon: C.blue,
+  rare: C.purple,
   legendary: '#FF6B35',
 };
 
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   rewardCard: {
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     borderRadius: 16,
     padding: 12,
     borderWidth: 2,

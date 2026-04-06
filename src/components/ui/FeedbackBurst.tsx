@@ -4,9 +4,10 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
   withDelay, withSequence, Easing, runOnJS,
 } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import MysteryOrb from './MysteryOrb';
 import { useProgressStore } from '../../stores/progressStore';
+import { useCoinStore } from '../../stores/coinStore';
 
 // ── Types ────────────────────────────────────────────────
 export type FeedbackType = 'correct' | 'wrong';
@@ -135,7 +136,7 @@ function ComboBadge({ combo, trigger }: { combo: number; trigger: number }) {
 
   if (combo < 2) return null;
 
-  const badgeColor = combo >= 10 ? colors.streak : combo >= 5 ? colors.warm : colors.growth;
+  const badgeColor = combo >= 10 ? C.amber : combo >= 5 ? C.peach : C.green;
   const label = combo >= 10 ? `x${combo} BLAZING!` : `x${combo}`;
 
   return (
@@ -170,7 +171,7 @@ function EdgeGlow({ combo, trigger }: { combo: number; trigger: number }) {
     }
   }, [trigger, combo]);
 
-  const glowColor = combo >= 5 ? colors.streak : colors.growth;
+  const glowColor = combo >= 5 ? C.amber : C.green;
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -198,7 +199,7 @@ function CorrectGlow({ combo, trigger }: { combo: number; trigger: number }) {
     opacity.value = withDelay(100, withTiming(0, { duration: 300 }));
   }, [trigger]);
 
-  const glowColor = combo >= 10 ? colors.streak : combo >= 5 ? colors.warm : colors.growth;
+  const glowColor = combo >= 10 ? C.amber : combo >= 5 ? C.peach : C.green;
 
   const style = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -256,20 +257,20 @@ export default function FeedbackBurst({
   mysteryOrbVisible, mysteryOrbPosition, onDismissOrb,
 }: FeedbackBurstProps) {
   const addXP = useProgressStore(s => s.addXP);
-  const addCoins = useProgressStore(s => s.addCoins);
+  const earnCoins = useCoinStore(s => s.earnCoins);
 
   const handleOrbReward = useCallback((reward: { xp: number; coins: number }) => {
     if (reward.xp > 0) addXP(reward.xp);
-    if (reward.coins > 0) addCoins(reward.coins);
-  }, [addXP, addCoins]);
+    if (reward.coins > 0) earnCoins(reward.coins, 'Mystery orb');
+  }, [addXP, earnCoins]);
   const particles = useMemo(() => {
     if (type === 'wrong') return [];
     const count = combo >= 10 ? 10 : combo >= 5 ? 8 : combo >= 3 ? 6 : combo >= 2 ? 5 : 4;
     const particleColors = combo >= 5
-      ? [colors.growth, colors.streak, '#FFD700']
+      ? [C.green, C.amber, '#FFD700']
       : combo >= 3
-        ? [colors.growth, colors.streak]
-        : [colors.growth];
+        ? [C.green, C.amber]
+        : [C.green];
 
     return Array.from({ length: count }, (_, i) => ({
       angle: (360 / count) * i + (Math.random() - 0.5) * 30,
@@ -333,7 +334,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   xpText: {
-    color: colors.streak,
+    color: C.amber,
     fontWeight: '900',
     textShadowColor: '#00000060',
     textShadowOffset: { width: 0, height: 1 },
@@ -367,7 +368,7 @@ const styles = StyleSheet.create({
   },
   wrongOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.coral,
+    backgroundColor: C.coral,
     zIndex: 998,
   },
 });

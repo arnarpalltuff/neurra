@@ -7,7 +7,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { success as hapticSuccess, tapHeavy } from '../../utils/haptics';
 import { playSuccess, playStreakMilestone, playCoinEarned, playPerfectScore, playCoinCascade } from '../../utils/sound';
-import { C, colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { glow } from '../../utils/glow';
 import { GameId, gameConfigs } from '../../constants/gameConfigs';
@@ -22,6 +22,12 @@ import { CoinRewardBreakdown } from '../../utils/coinRewards';
 import CelebrationOverlay from '../../components/ui/CelebrationOverlay';
 import Celebration from '../../components/ui/Celebration';
 import RatePromptCard from '../../components/ui/RatePromptCard';
+import { getPostSessionMessage } from '../../constants/kovaDialogue';
+import { getFramingText } from '../../constants/framingText';
+import PaywallFull from '../../components/paywall/PaywallFull';
+import { useProStore } from '../../stores/proStore';
+import CoachInsightCard from '../../components/insights/CoachInsightCard';
+import { useDailyBriefing } from '../../hooks/useDailyBriefing';
 
 interface PostSessionProps {
   results: Array<{ gameId: GameId; score: number; accuracy: number }>;
@@ -48,8 +54,15 @@ export default function PostSession({
   const totalSessions = useProgressStore(s => s.totalSessions);
   const mood = useUserStore(s => s.mood);
 
+  const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
+  const canShowFullPaywall = useProStore(s => s.canShowFullPaywall);
+  const recordFullPaywall = useProStore(s => s.recordFullPaywall);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const { briefing: coachBriefing } = useDailyBriefing();
+
   const [streakCelebrationVisible, setStreakCelebrationVisible] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const timersRef = React.useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const avgAccuracy = results.length > 0 ? results.reduce((a, r) => a + r.accuracy, 0) / results.length : 0;
   const isPerfect = avgAccuracy >= 0.9;
@@ -70,28 +83,30 @@ export default function PostSession({
     if (streakMilestone) {
       playStreakMilestone();
       tapHeavy();
-      setTimeout(() => setStreakCelebrationVisible(true), 600);
+      const t1 = setTimeout(() => setStreakCelebrationVisible(true), 600);
+      timersRef.current.push(t1);
     }
 
     if (isPerfect) {
-      setTimeout(() => {
+      const t2 = setTimeout(() => {
         playPerfectScore();
         setConfettiTrigger(t => t + 1);
       }, 400);
+      timersRef.current.push(t2);
     }
 
     if (coinRewards && coinRewards.total > 0) {
-      setTimeout(() => coinRewards.total >= 20 ? playCoinCascade() : playCoinEarned(), 800);
+      const t3 = setTimeout(() => coinRewards.total >= 20 ? playCoinCascade() : playCoinEarned(), 800);
+      timersRef.current.push(t3);
     }
-  }, [xpEarned]);
 
-  const kovaMessage = (mood === 'low' || mood === 'rough')
-    ? "You showed up even on a hard day. That takes real strength."
-    : isPerfect
-    ? "That was incredible. I'm glowing!"
-    : avgAccuracy >= 0.7
-    ? "We did it! Great session."
-    : "That was tough. You showed up — that's what matters.";
+    return () => {
+      timersRef.current.forEach(clearTimeout);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const kovaMessage = getPostSessionMessage(avgAccuracy, mood);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -139,7 +154,7 @@ export default function PostSession({
             if (!config) return null;
             const accPct = Math.round(r.accuracy * 100);
             const barColor = accPct >= 85 ? C.green : accPct >= 60 ? C.blue : C.coral;
-            const framingText = pickRandom(config.realWorldFraming ?? []) ?? 'Great work!';
+            const framingText = getFramingText({ gameId: r.gameId, score: r.score, accuracy: r.accuracy });
 
             return (
               <Animated.View
@@ -170,6 +185,11 @@ export default function PostSession({
           </Animated.View>
         )}
 
+        {/* Coach encouragement */}
+        {coachBriefing?.encouragement && totalSessions >= 3 && (
+          <CoachInsightCard insight={coachBriefing.encouragement} delay={700} />
+        )}
+
         {/* 5. Done button */}
         <Animated.View entering={FadeInDown.delay(750).duration(400)} style={styles.actions}>
           {bonusAvailable && onBonusRound && (
@@ -177,7 +197,17 @@ export default function PostSession({
               <Text style={styles.bonusBtnText}>Bonus Round (2x XP)</Text>
             </Pressable>
           )}
-          <Pressable style={styles.doneBtn} onPress={onDone}>
+          <Pressable
+            style={styles.doneBtn}
+            onPress={() => {
+              if (!isPro && canShowFullPaywall(totalSessions)) {
+                recordFullPaywall();
+                setShowPaywall(true);
+              } else {
+                onDone();
+              }
+            }}
+          >
             <Text style={styles.doneBtnText}>Done for today ✓</Text>
           </Pressable>
         </Animated.View>
@@ -191,6 +221,14 @@ export default function PostSession({
       </ScrollView>
 
       <Celebration type={isPerfect ? 'confetti_epic' : 'confetti_standard'} trigger={confettiTrigger} />
+
+      <PaywallFull
+        visible={showPaywall}
+        onClose={() => {
+          setShowPaywall(false);
+          onDone();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -268,7 +306,7 @@ const styles = StyleSheet.create({
   },
   accuracyBar: {
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: C.surface,
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -323,7 +361,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   bonusBtn: {
-    backgroundColor: 'rgba(240,181,66,0.08)',
+    backgroundColor: C.amberTint,
     borderRadius: 999,
     paddingVertical: 16,
     alignItems: 'center',

@@ -11,7 +11,8 @@ import Animated, {
   FadeOut,
   Easing,
 } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import { warning as hapticWarning } from '../../utils/haptics';
 import StreakFlame from './StreakFlame';
 import Kova from '../kova/Kova';
@@ -157,15 +158,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textHero,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 22,
     textAlign: 'center',
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    color: C.t2,
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 22,
@@ -180,33 +181,33 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   statValue: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 18,
   },
   statLabel: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 11,
   },
   newStreakBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: colors.streakTint,
+    backgroundColor: C.amberTint,
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 999,
     borderWidth: 0.5,
-    borderColor: colors.streakBorder,
-    shadowColor: colors.streakGlow,
+    borderColor: 'rgba(240,181,66,0.3)',
+    shadowColor: 'rgba(240,181,66,0.25)',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 12,
   },
   newStreakText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.streak,
+    fontFamily: fonts.bodyBold,
+    color: C.amber,
     fontSize: 16,
   },
 });

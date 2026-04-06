@@ -72,10 +72,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="insights"
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon emoji="💡" label="Insights" focused={focused} />,
+          tabBarAccessibilityLabel: "Insights",
+        }}
+      />
+      <Tabs.Screen
         name="leagues"
         options={{
           tabBarIcon: ({ focused }) => <TabIcon emoji="🏆" label="Leagues" focused={focused} />,
           tabBarAccessibilityLabel: "Leagues",
+          href: null, // Hide from tab bar, still accessible via navigation
         }}
       />
       <Tabs.Screen

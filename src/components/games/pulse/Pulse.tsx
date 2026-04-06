@@ -4,7 +4,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat,
   withSequence, Easing, FadeIn, FadeOut,
 } from 'react-native-reanimated';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { pulseParams, updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
@@ -218,9 +218,9 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
   }));
 
   const getShapeColor = (color: ShapeColor) => {
-    if (color === 'green') return colors.growth;
-    if (color === 'red') return colors.coral;
-    return colors.streak;
+    if (color === 'green') return C.green;
+    if (color === 'red') return C.coral;
+    return C.amber;
   };
 
   const progress = countRef.current / total;
@@ -240,7 +240,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
           ) : (
             <Text style={styles.ruleText}>
               Tap{' '}
-              <Text style={{ color: ruleRef.current === 'tap_green' ? colors.growth : colors.coral, fontWeight: '800' }}>
+              <Text style={{ color: ruleRef.current === 'tap_green' ? C.green : C.coral, fontWeight: '800' }}>
                 {ruleRef.current === 'tap_green' ? 'GREEN' : 'RED'}
               </Text>
               {' '}shapes
@@ -302,7 +302,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 32,
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   },
   flashOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.coral,
+    backgroundColor: C.coral,
   },
   ruleContainer: {
     alignItems: 'center',
@@ -318,12 +318,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ruleText: {
-    color: colors.textSecondary,
+    color: C.t2,
     fontSize: 16,
     fontWeight: '600',
   },
   ruleChange: {
-    color: colors.streak,
+    color: C.amber,
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: 2,
@@ -334,25 +334,25 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   scoreText: {
-    color: colors.warm,
+    color: C.peach,
     fontSize: 28,
     fontWeight: '800',
   },
   streakText: {
-    color: colors.streak,
+    color: C.amber,
     fontSize: 14,
     fontWeight: '700',
   },
   progressBar: {
     width: '100%',
     height: 4,
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: C.bg4,
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     borderRadius: 2,
   },
   center: {
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 80,
     borderWidth: 2,
-    borderColor: colors.growth,
+    borderColor: C.green,
     position: 'absolute',
   },
   shapeContainer: {
@@ -391,16 +391,16 @@ const styles = StyleSheet.create({
   correctFeedback: {
     position: 'absolute',
     fontSize: 36,
-    color: colors.growth,
+    color: C.green,
     fontWeight: '900',
   },
   missedText: {
-    color: colors.coral,
+    color: C.coral,
     fontSize: 14,
     fontWeight: '600',
   },
   tapHint: {
-    color: colors.textTertiary,
+    color: C.t3,
     fontSize: 13,
     fontWeight: '500',
   },

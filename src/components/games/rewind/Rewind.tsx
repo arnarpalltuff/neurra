@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, rewindParams as rewindParamsEngine } from '../../../utils/difficultyEngine';
@@ -235,7 +235,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
                 {sceneItems
                   .filter(item => item.position === pos)
                   .map((item, i) => (
-                    <View key={i} style={[styles.sceneItem, { borderColor: COLOR_MAP[item.detail] || colors.border }]}>
+                    <View key={i} style={[styles.sceneItem, { borderColor: COLOR_MAP[item.detail] || '#1F2A42' }]}>
                       <Text style={styles.sceneEmoji}>{item.emoji}</Text>
                       <View style={[styles.colorDot, { backgroundColor: COLOR_MAP[item.detail] }]} />
                     </View>
@@ -270,7 +270,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
                 >
                   <Text style={[
                     styles.optionText,
-                    isSelected && isCorrectOpt && { color: colors.growth },
+                    isSelected && isCorrectOpt && { color: C.green },
                   ]}>{opt}</Text>
                 </TouchableOpacity>
               );
@@ -285,27 +285,27 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary, padding: 20 },
+  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  roundText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
+  roundText: { color: C.t2, fontSize: 14, fontWeight: '600' },
+  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
   sceneArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20 },
-  phaseLabel: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  phaseLabel: { color: C.t2, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   sceneRow: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', gap: 8 },
   sceneCol: { alignItems: 'center', flex: 1, gap: 8 },
-  sceneItem: { alignItems: 'center', backgroundColor: colors.bgElevated, borderRadius: 16, padding: 12, borderWidth: 2, gap: 4 },
+  sceneItem: { alignItems: 'center', backgroundColor: C.bg4, borderRadius: 16, padding: 12, borderWidth: 2, gap: 4 },
   sceneEmoji: { fontSize: 36 },
   colorDot: { width: 12, height: 12, borderRadius: 6 },
-  posLabel: { color: colors.textTertiary, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
-  timerText: { color: colors.textTertiary, fontSize: 16, fontWeight: '600' },
+  posLabel: { color: C.t3, fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
+  timerText: { color: C.t3, fontSize: 16, fontWeight: '600' },
   questionArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  questionNum: { color: colors.textTertiary, fontSize: 12, fontWeight: '600' },
-  questionText: { color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center', paddingHorizontal: 10 },
+  questionNum: { color: C.t3, fontSize: 12, fontWeight: '600' },
+  questionText: { color: C.t1, fontSize: 18, fontWeight: '700', textAlign: 'center', paddingHorizontal: 10 },
   optionsCol: { width: '100%', gap: 10 },
-  optionBtn: { backgroundColor: colors.bgElevated, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: colors.border },
-  optionCorrect: { borderColor: colors.growth, backgroundColor: colors.growthDim },
-  optionWrong: { borderColor: colors.coral, opacity: 0.6 },
-  optionText: { color: colors.textPrimary, fontSize: 16, fontWeight: '600', textAlign: 'center' },
-  correctText: { color: colors.growth, fontSize: 16, fontWeight: '700' },
-  wrongText: { color: colors.coral, fontSize: 14, fontWeight: '600' },
+  optionBtn: { backgroundColor: C.bg4, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#1F2A42' },
+  optionCorrect: { borderColor: C.green, backgroundColor: 'rgba(110,207,154,0.19)' },
+  optionWrong: { borderColor: C.coral, opacity: 0.6 },
+  optionText: { color: C.t1, fontSize: 16, fontWeight: '600', textAlign: 'center' },
+  correctText: { color: C.green, fontSize: 16, fontWeight: '700' },
+  wrongText: { color: C.coral, fontSize: 14, fontWeight: '600' },
 });

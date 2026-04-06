@@ -4,13 +4,13 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { tapLight, tapMedium, success as hapticSuccess } from '../../utils/haptics';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import {
   useGroveStore,
   DECORATION_DEFS,
   PlacedDecoration,
 } from '../../stores/groveStore';
-import { useProgressStore } from '../../stores/progressStore';
+import { useCoinStore } from '../../stores/coinStore';
 
 const { width: W } = Dimensions.get('window');
 const ISLAND_W = W * 2.2;
@@ -38,7 +38,7 @@ export default function GroveEditMode({
   const moveDecoration = useGroveStore(s => s.moveDecoration);
   const storeDecoration = useGroveStore(s => s.storeDecoration);
   const sellDecoration = useGroveStore(s => s.sellDecoration);
-  const addCoins = useProgressStore(s => s.addCoins);
+  const earnCoins = useCoinStore(s => s.earnCoins);
 
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -94,14 +94,14 @@ export default function GroveEditMode({
           style: 'destructive',
           onPress: () => {
             sellDecoration(selectedIdx);
-            if (refund > 0) addCoins(refund);
+            if (refund > 0) earnCoins(refund, 'Sold decoration');
             setSelectedIdx(null);
             hapticSuccess();
           },
         },
       ],
     );
-  }, [selectedIdx, placedDecorations, sellDecoration, addCoins]);
+  }, [selectedIdx, placedDecorations, sellDecoration, earnCoins]);
 
   if (!visible) return null;
 
@@ -178,27 +178,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 8,
-    backgroundColor: colors.bgPrimary + 'DD',
+    backgroundColor: C.bg2 + 'DD',
   },
   shopBtn: {
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: C.bg3,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
   },
-  shopBtnText: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
-  editTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: '800' },
+  shopBtnText: { color: C.t1, fontSize: 14, fontWeight: '700' },
+  editTitle: { color: C.t1, fontSize: 16, fontWeight: '800' },
   doneBtn: {
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 10,
   },
-  doneBtnText: { color: colors.bgPrimary, fontSize: 14, fontWeight: '700' },
+  doneBtnText: { color: C.bg2, fontSize: 14, fontWeight: '700' },
 
   placementHint: {
     alignSelf: 'center',
-    backgroundColor: colors.bgSecondary + 'EE',
+    backgroundColor: C.bg3 + 'EE',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
@@ -207,12 +207,12 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8,
   },
-  hintText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600', flex: 1 },
-  cancelText: { color: colors.warm, fontSize: 13, fontWeight: '700' },
+  hintText: { color: C.t2, fontSize: 13, fontWeight: '600', flex: 1 },
+  cancelText: { color: C.peach, fontSize: 13, fontWeight: '700' },
 
   actionBar: {
     alignSelf: 'center',
-    backgroundColor: colors.bgSecondary + 'EE',
+    backgroundColor: C.bg3 + 'EE',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 14,
@@ -220,25 +220,25 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  actionName: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
+  actionName: { color: C.t1, fontSize: 14, fontWeight: '700' },
   actionButtons: { flexDirection: 'row', gap: 8 },
   actionBtn: {
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: C.bg4,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  actionBtnText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  actionBtnText: { color: C.t2, fontSize: 13, fontWeight: '600' },
   sellBtn: { backgroundColor: '#FF4444' + '33' },
   sellBtnText: { color: '#FF4444', fontSize: 13, fontWeight: '700' },
 
   infoBar: {
     alignSelf: 'center',
-    backgroundColor: colors.bgPrimary + 'CC',
+    backgroundColor: C.bg2 + 'CC',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 10,
     marginBottom: 40,
   },
-  infoText: { color: colors.textTertiary, fontSize: 12, fontWeight: '600' },
+  infoText: { color: C.t3, fontSize: 12, fontWeight: '600' },
 });

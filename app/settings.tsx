@@ -5,12 +5,16 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { C, colors } from '../src/constants/colors';
+import { C } from '../src/constants/colors';
 import { fonts } from '../src/constants/typography';
 import { selection } from '../src/utils/haptics';
 import { playToggle } from '../src/utils/sound';
 import { useUserStore } from '../src/stores/userStore';
 import { useSettingsStore } from '../src/stores/settingsStore';
+import { useProStore, PLAN_DEFS } from '../src/stores/proStore';
+import { useStoryStore } from '../src/stores/storyStore';
+import { restorePurchases, openManageSubscriptions } from '../src/utils/purchaseSdk';
+import PaywallFull from '../src/components/paywall/PaywallFull';
 
 // ── Reusable Components ──────────────────────────────
 
@@ -34,7 +38,7 @@ function ToggleRow({ label, value, onChange, disabled }: {
         onValueChange={handleChange}
         disabled={disabled}
         trackColor={{ false: C.bg5, true: C.green }}
-        thumbColor="#FFF"
+        thumbColor={C.t1}
       />
     </View>
   );
@@ -114,6 +118,38 @@ export default function SettingsScreen() {
   const setTheme = useSettingsStore(s => s.setTheme);
   const setLeaguesEnabled = useSettingsStore(s => s.setLeaguesEnabled);
 
+  // Story
+  const storyEnabled = useStoryStore(s => s.storyEnabled);
+  const setStoryEnabled = useStoryStore(s => s.setStoryEnabled);
+
+  // Subscription
+  const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
+  const debugSimulatePro = useProStore(s => s.debugSimulatePro);
+  const setDebugSimulatePro = useProStore(s => s.setDebugSimulatePro);
+  const plan = useProStore(s => s.plan);
+  const syncFromRevenueCat = useProStore(s => s.syncFromRevenueCat);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  const planLabel = plan
+    ? PLAN_DEFS.find(p => p.plan === plan)?.name ?? plan
+    : null;
+
+  const handleRestore = useCallback(async () => {
+    try {
+      const info = await restorePurchases();
+      syncFromRevenueCat(info);
+      const restored = useProStore.getState().isPro;
+      Alert.alert(
+        restored ? 'Restored' : 'No Subscription Found',
+        restored
+          ? 'Your Pro subscription has been restored.'
+          : 'We could not find an active subscription for this account.',
+      );
+    } catch (e: any) {
+      Alert.alert('Restore Failed', e?.message ?? 'Please try again.');
+    }
+  }, [syncFromRevenueCat]);
+
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(name);
 
@@ -163,6 +199,13 @@ export default function SettingsScreen() {
           <ToggleRow label="Haptics" value={hapticsEnabled} onChange={setHapticsEnabled} />
         </View>
 
+        {/* STORY */}
+        <SectionHeader title="STORY" />
+        <View style={styles.card}>
+          <ToggleRow label="Story mode" value={storyEnabled} onChange={setStoryEnabled} />
+          <Text style={styles.settingHint}>Experience Kova's journey through The Shimmer</Text>
+        </View>
+
         {/* SESSION */}
         <SectionHeader title="SESSION" />
         <View style={styles.card}>
@@ -199,6 +242,22 @@ export default function SettingsScreen() {
           <ToggleRow label="Leagues" value={leaguesEnabled} onChange={setLeaguesEnabled} />
         </View>
 
+        {/* SUBSCRIPTION */}
+        <SectionHeader title="SUBSCRIPTION" />
+        <View style={styles.card}>
+          {isPro ? (
+            <>
+              <SettingRow label="Plan" value={`Pro ${planLabel}`} />
+              <Divider />
+              <SettingRow label="Manage subscription" onPress={openManageSubscriptions} />
+            </>
+          ) : (
+            <SettingRow label="Upgrade to Pro" onPress={() => setShowPaywall(true)} />
+          )}
+          <Divider />
+          <SettingRow label="Restore purchases" onPress={handleRestore} />
+        </View>
+
         {/* ACCOUNT */}
         <SectionHeader title="ACCOUNT" />
         <View style={styles.card}>
@@ -223,6 +282,20 @@ export default function SettingsScreen() {
           <DangerRow label="Delete account" onPress={handleDeleteAccount} />
         </View>
 
+        {/* LEGAL */}
+        <SectionHeader title="LEGAL" />
+        <View style={styles.card}>
+          <SettingRow
+            label="Privacy policy"
+            onPress={() => router.push('/privacy' as unknown as Parameters<typeof router.push>[0])}
+          />
+          <Divider />
+          <SettingRow
+            label="Terms of service"
+            onPress={() => router.push('/terms' as unknown as Parameters<typeof router.push>[0])}
+          />
+        </View>
+
         {/* ABOUT */}
         <SectionHeader title="ABOUT" />
         <View style={styles.card}>
@@ -231,8 +304,23 @@ export default function SettingsScreen() {
           <SettingRow label="The science" onPress={() => router.push('/science')} />
         </View>
 
+        {__DEV__ && (
+          <>
+            <SectionHeader title="DEVELOPER" />
+            <View style={styles.card}>
+              <ToggleRow
+                label="Simulate Pro"
+                value={debugSimulatePro}
+                onChange={setDebugSimulatePro}
+              />
+            </View>
+          </>
+        )}
+
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <PaywallFull visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </SafeAreaView>
   );
 }
@@ -310,6 +398,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
+  settingHint: {
+    fontFamily: fonts.body,
+    color: C.t3,
+    fontSize: 12,
+    paddingBottom: 12,
+    paddingTop: 2,
+  },
+
   divider: { height: 0.5, backgroundColor: C.border, marginLeft: 0 },
 
   // Segment controls
@@ -326,7 +422,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: C.surface,
     alignItems: 'center',
   },
   segmentActive: { backgroundColor: C.green },
@@ -349,7 +445,7 @@ const styles = StyleSheet.create({
   },
   nameInput: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: C.surface,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,

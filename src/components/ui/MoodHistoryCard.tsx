@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import Card from './Card';
 
 interface MoodEntry {
@@ -14,11 +15,11 @@ interface MoodHistoryCardProps {
 }
 
 const MOOD_CONFIG: Record<string, { emoji: string; color: string; value: number }> = {
-  great: { emoji: '😊', color: colors.growth, value: 5 },
-  good: { emoji: '🙂', color: colors.sky, value: 4 },
-  okay: { emoji: '😐', color: colors.warm, value: 3 },
-  low: { emoji: '😔', color: colors.lavender, value: 2 },
-  rough: { emoji: '😣', color: colors.coral, value: 1 },
+  great: { emoji: '😊', color: C.green, value: 5 },
+  good: { emoji: '🙂', color: C.blue, value: 4 },
+  okay: { emoji: '😐', color: C.peach, value: 3 },
+  low: { emoji: '😔', color: C.purple, value: 2 },
+  rough: { emoji: '😣', color: C.coral, value: 1 },
 };
 
 const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -79,8 +80,8 @@ export default function MoodHistoryCard({ moodHistory, currentMood }: MoodHistor
 const styles = StyleSheet.create({
   card: { gap: 12 },
   title: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -91,22 +92,22 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
   },
-  dayDotEmpty: { backgroundColor: colors.surfaceDim },
+  dayDotEmpty: { backgroundColor: C.surface },
   dayEmoji: { fontSize: 18 },
   dayLabel: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 10,
   },
   insight: {
-    fontFamily: 'Caveat_400Regular',
-    color: colors.textSecondary,
+    fontFamily: fonts.kova,
+    color: C.t2,
     fontSize: 16,
     textAlign: 'center',
   },
   todayMood: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 12,
     textAlign: 'center',
   },

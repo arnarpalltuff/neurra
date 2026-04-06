@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { colors } from '../src/constants/colors';
+import { C } from '../src/constants/colors';
+import { fonts } from '../src/constants/typography';
 import Kova from '../src/components/kova/Kova';
 
 function Section({ icon, title, delay, children }: {
@@ -114,7 +115,7 @@ export default function ScienceScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bgPrimary },
+  safe: { flex: 1, backgroundColor: C.bg2 },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 },
   header: {
     flexDirection: 'row',
@@ -123,19 +124,19 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   backText: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.sky,
+    fontFamily: fonts.bodySemi,
+    color: C.blue,
     fontSize: 15,
   },
   title: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 22,
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    color: C.t2,
     fontSize: 14,
     lineHeight: 22,
     marginBottom: 24,
@@ -152,36 +153,36 @@ const styles = StyleSheet.create({
   },
   sectionIcon: { fontSize: 22 },
   sectionTitle: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 18,
   },
 
   body: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    color: C.t2,
     fontSize: 14,
     lineHeight: 22,
     marginBottom: 12,
   },
   bold: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
   },
   bodyHighlight: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 15,
     fontStyle: 'italic',
     lineHeight: 23,
     marginBottom: 12,
     paddingLeft: 14,
     borderLeftWidth: 2,
-    borderLeftColor: colors.growth,
+    borderLeftColor: C.green,
   },
   bodySmall: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 4,
@@ -190,14 +191,14 @@ const styles = StyleSheet.create({
   claimList: { gap: 10 },
   claimRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   claimX: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.coral,
+    fontFamily: fonts.bodyBold,
+    color: C.coral,
     fontSize: 14,
     marginTop: 2,
   },
   claimText: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    color: C.t2,
     fontSize: 14,
     lineHeight: 21,
     flex: 1,
@@ -206,14 +207,14 @@ const styles = StyleSheet.create({
   doList: { gap: 10 },
   doRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   doCheck: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.growth,
+    fontFamily: fonts.bodyBold,
+    color: C.green,
     fontSize: 14,
     marginTop: 2,
   },
   doText: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    color: C.t2,
     fontSize: 14,
     lineHeight: 21,
     flex: 1,

@@ -7,7 +7,7 @@ import Animated, {
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import { Svg, Circle, Ellipse, Rect, Path, G, Text as SvgText } from 'react-native-svg';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { updateDifficulty, getDifficulty, facePlaceParams } from '../../../utils/difficultyEngine';
 import { shuffle, pickRandom } from '../../../utils/arrayUtils';
 
@@ -58,7 +58,7 @@ function IllustratedFace({ face, size = 80, showName = false, correct, wrong }: 
   const cx = s / 2;
   const cy = s / 2;
   const headR = s * 0.35;
-  const borderColor = correct ? colors.growth : wrong ? colors.coral : colors.border;
+  const borderColor = correct ? C.green : wrong ? C.coral : '#1F2A42';
 
   return (
     <View style={[styles.faceContainer, { width: s, height: s + (showName ? 24 : 0), borderColor }]}>
@@ -327,7 +327,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
                 value={typedName}
                 onChangeText={setTypedName}
                 placeholder="Type the name"
-                placeholderTextColor={colors.textTertiary}
+                placeholderTextColor={C.t3}
                 autoFocus
                 autoCapitalize="words"
                 returnKeyType="done"
@@ -342,31 +342,31 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary, padding: 20 },
+  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  phaseText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
+  phaseText: { color: C.t2, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
   progressRow: { flexDirection: 'row', gap: 6, marginBottom: 20, justifyContent: 'center' },
-  pip: { width: 20, height: 5, borderRadius: 2.5, backgroundColor: colors.bgTertiary },
-  pipActive: { backgroundColor: colors.lavender, opacity: 0.7 },
-  pipDone: { backgroundColor: colors.lavender },
+  pip: { width: 20, height: 5, borderRadius: 2.5, backgroundColor: C.bg4 },
+  pipActive: { backgroundColor: C.purple, opacity: 0.7 },
+  pipDone: { backgroundColor: C.purple },
   studyArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  studyLabel: { color: colors.textTertiary, fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  nameDisplay: { color: colors.textPrimary, fontSize: 28, fontWeight: '800' },
-  skipBtn: { backgroundColor: colors.bgElevated, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderColor: colors.border },
-  skipText: { color: colors.textSecondary, fontSize: 14, fontWeight: '700' },
+  studyLabel: { color: C.t3, fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  nameDisplay: { color: C.t1, fontSize: 28, fontWeight: '800' },
+  skipBtn: { backgroundColor: C.bg4, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderColor: '#1F2A42' },
+  skipText: { color: C.t2, fontSize: 14, fontWeight: '700' },
   recallArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  recallLabel: { color: colors.textTertiary, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  recallLabel: { color: C.t3, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
   feedbackRow: { height: 30, justifyContent: 'center' },
   feedbackText: { fontSize: 16, fontWeight: '800' },
-  feedbackCorrect: { color: colors.growth },
-  feedbackWrong: { color: colors.coral },
+  feedbackCorrect: { color: C.green },
+  feedbackWrong: { color: C.coral },
   choiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', maxWidth: width - 40, marginTop: 8 },
-  choiceBtn: { backgroundColor: colors.bgElevated, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12, borderWidth: 1, borderColor: colors.border, minWidth: (width - 80) / 2 - 5, alignItems: 'center' },
-  choiceText: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  choiceBtn: { backgroundColor: C.bg4, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12, borderWidth: 1, borderColor: '#1F2A42', minWidth: (width - 80) / 2 - 5, alignItems: 'center' },
+  choiceText: { color: C.t1, fontSize: 16, fontWeight: '700' },
   typeArea: { gap: 10, width: '100%', alignItems: 'center' },
-  hintText: { color: colors.textTertiary, fontSize: 13, fontWeight: '600' },
-  typeInput: { backgroundColor: colors.bgElevated, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 14, color: colors.textPrimary, fontSize: 20, fontWeight: '700', borderWidth: 2, borderColor: colors.border, textAlign: 'center', width: '80%' },
-  faceContainer: { alignItems: 'center', borderRadius: 20, borderWidth: 2, borderColor: colors.border, overflow: 'hidden', backgroundColor: colors.bgSecondary, padding: 6 },
-  faceName: { color: colors.textPrimary, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  hintText: { color: C.t3, fontSize: 13, fontWeight: '600' },
+  typeInput: { backgroundColor: C.bg4, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 14, color: C.t1, fontSize: 20, fontWeight: '700', borderWidth: 2, borderColor: '#1F2A42', textAlign: 'center', width: '80%' },
+  faceContainer: { alignItems: 'center', borderRadius: 20, borderWidth: 2, borderColor: '#1F2A42', overflow: 'hidden', backgroundColor: C.bg3, padding: 6 },
+  faceName: { color: C.t1, fontSize: 12, fontWeight: '700', marginTop: 2 },
 });

@@ -11,7 +11,7 @@ import Animated, {
   FadeOut,
   Easing,
 } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 import { tapHeavy } from '../../utils/haptics';
 import { playLevelUp, playStreakMilestone, playConfetti } from '../../utils/sound';
 import Celebration, { CelebrationType } from './Celebration';
@@ -173,11 +173,12 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: 'Nunito_600SemiBold',
-    color: colors.textPrimary,
+    color: C.t1,
     fontSize: 18,
   },
   tapHint: {
-    color: colors.textTertiary,
+    fontFamily: 'Nunito_400Regular',
+    color: C.t3,
     fontSize: 13,
     marginTop: 24,
   },

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { success as hapticSuccess } from '../../utils/haptics';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import { shouldShowRatePrompt, recordRatePromptShown, recordRated } from '../../utils/ratePrompt';
 
 interface RatePromptCardProps {
@@ -71,32 +72,32 @@ export default function RatePromptCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.bgSecondary,
+    backgroundColor: C.bg3,
     borderRadius: 18,
     padding: 16,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
     gap: 12,
   },
   emoji: { fontSize: 24 },
   textArea: { gap: 2 },
-  title: { fontFamily: 'Nunito_700Bold', color: colors.textPrimary, fontSize: 15 },
-  subtitle: { fontFamily: 'Nunito_400Regular', color: colors.textTertiary, fontSize: 13 },
+  title: { fontFamily: fonts.bodyBold, color: C.t1, fontSize: 15 },
+  subtitle: { fontFamily: fonts.body, color: C.t3, fontSize: 13 },
   buttons: { flexDirection: 'row', gap: 10 },
   rateBtn: {
     flex: 1,
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     paddingVertical: 10,
     borderRadius: 999,
     alignItems: 'center',
   },
-  rateBtnText: { fontFamily: 'Nunito_700Bold', color: colors.textInverse, fontSize: 14 },
+  rateBtnText: { fontFamily: fonts.bodyBold, color: C.bg2, fontSize: 14 },
   notNowBtn: {
     flex: 1,
-    backgroundColor: colors.surfaceDim,
+    backgroundColor: C.surface,
     paddingVertical: 10,
     borderRadius: 999,
     alignItems: 'center',
   },
-  notNowText: { fontFamily: 'Nunito_600SemiBold', color: colors.textSecondary, fontSize: 14 },
+  notNowText: { fontFamily: fonts.bodySemi, color: C.t2, fontSize: 14 },
 });

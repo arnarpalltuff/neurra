@@ -8,6 +8,7 @@ import { tapHeavy } from '../../utils/haptics';
 import { playCoinEarned } from '../../utils/sound';
 import { C } from '../../constants/colors';
 import { useProgressStore } from '../../stores/progressStore';
+import { useCoinStore } from '../../stores/coinStore';
 
 const { width: W } = Dimensions.get('window');
 
@@ -37,7 +38,7 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
   const catchOpacity = useSharedValue(0);
 
   const addXP = useProgressStore(s => s.addXP);
-  const addCoins = useProgressStore(s => s.addCoins);
+  const earnCoins = useCoinStore(s => s.earnCoins);
 
   useEffect(() => {
     return () => {
@@ -88,7 +89,7 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
 
     // Award
     addXP(25);
-    addCoins(10);
+    earnCoins(10, 'Shooting star');
 
     // Catch animation
     starOpacity.value = withTiming(0, { duration: 200 });
@@ -106,7 +107,7 @@ export default function ShootingStar({ enabled, onCatch }: ShootingStarProps) {
     innerTimersRef.current.push(t1);
 
     onCatch?.();
-  }, [addXP, addCoins, onCatch]);
+  }, [addXP, earnCoins, onCatch]);
 
   const starStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: starX.value }, { translateY: starY.value }],

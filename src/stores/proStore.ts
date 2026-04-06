@@ -3,6 +3,8 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useShallow } from 'zustand/react/shallow';
 import { todayStr } from '../utils/timeUtils';
+import type { CustomerInfo } from 'react-native-purchases';
+import { isProFromCustomerInfo, getProDetails } from '../utils/purchaseSdk';
 
 // ── Types ──────────────────────────────────────────────
 
@@ -96,11 +98,21 @@ interface ProStoreState extends ProStatus {
   // Founding member
   foundingMemberCount: number; // simulated local count
 
+  // Purchase flow
+  purchaseLoading: boolean;
+  purchaseError: string | null;
+  /** Dev-only: treat user as Pro for gated features (Phase R) */
+  debugSimulatePro: boolean;
+  setDebugSimulatePro: (v: boolean) => void;
+
   // Actions
   subscribe: (plan: ProPlan) => void;
+  syncFromRevenueCat: (info: CustomerInfo) => void;
   cancelSubscription: () => void;
   restorePurchase: (plan: ProPlan, expDate: string | null) => void;
   setFoundingMember: () => void;
+  setPurchaseLoading: (v: boolean) => void;
+  setPurchaseError: (v: string | null) => void;
   grantMonthlyCoins: () => boolean; // returns true if coins should be granted
   lastMonthlyCoinDate: string | null;
 
@@ -125,6 +137,11 @@ export const useProStore = create<ProStoreState>()(
       isFoundingMember: false,
       foundingMemberCount: 0,
       lastMonthlyCoinDate: null,
+      purchaseLoading: false,
+      purchaseError: null,
+      debugSimulatePro: false,
+
+      setDebugSimulatePro: (debugSimulatePro) => set({ debugSimulatePro }),
 
       paywall: {
         lastFullPaywallDate: null,
@@ -158,6 +175,34 @@ export const useProStore = create<ProStoreState>()(
         });
       },
 
+      syncFromRevenueCat: (info: CustomerInfo) => {
+        const isPro = isProFromCustomerInfo(info);
+        const details = getProDetails(info);
+
+        if (!isPro || !details) {
+          set({ isPro: false, plan: null, expirationDate: null, trialActive: false, trialEndDate: null });
+          return;
+        }
+
+        // Map RevenueCat product identifier back to our plan type
+        const productId = details.productIdentifier;
+        let plan: ProPlan = 'monthly';
+        if (productId.includes('yearly')) plan = 'yearly';
+        else if (productId.includes('family')) plan = 'family';
+        else if (productId.includes('lifetime')) plan = 'lifetime';
+
+        set({
+          isPro: true,
+          plan,
+          expirationDate: details.expirationDate ?? null,
+          trialActive: false,
+          trialEndDate: null,
+        });
+      },
+
+      setPurchaseLoading: (purchaseLoading) => set({ purchaseLoading }),
+      setPurchaseError: (purchaseError) => set({ purchaseError }),
+
       cancelSubscription: () =>
         set({
           // Keep isPro until expiration — caller checks expirationDate
@@ -183,7 +228,7 @@ export const useProStore = create<ProStoreState>()(
 
       grantMonthlyCoins: () => {
         const s = get();
-        if (!s.isPro) return false;
+        if (!s.isPro && !s.debugSimulatePro) return false;
         if (s.plan === 'lifetime' || s.plan === 'monthly' || s.plan === 'yearly' || s.plan === 'family') {
           const today = todayStr();
           if (s.lastMonthlyCoinDate === today) return false;
@@ -202,7 +247,7 @@ export const useProStore = create<ProStoreState>()(
       // Paywall display rules
       canShowFullPaywall: (totalSessions) => {
         const s = get();
-        if (s.isPro) return false;
+        if (s.isPro || s.debugSimulatePro) return false;
         if (totalSessions < 7) return false; // Never before Day 7 (approx)
         const today = todayStr();
         if (s.paywall.lastFullPaywallDate) {
@@ -220,7 +265,7 @@ export const useProStore = create<ProStoreState>()(
 
       canShowNudge: (totalSessions) => {
         const s = get();
-        if (s.isPro) return false;
+        if (s.isPro || s.debugSimulatePro) return false;
         if (totalSessions < 7) return false;
         const today = todayStr();
         const pw = s.paywall;
@@ -245,7 +290,7 @@ export const useProStore = create<ProStoreState>()(
 
       canShowWeeklyPaywall: () => {
         const s = get();
-        if (s.isPro) return false;
+        if (s.isPro || s.debugSimulatePro) return false;
         const today = todayStr();
         if (s.paywall.lastWeeklyReportPaywallDate === today) return false;
         return true;
@@ -267,7 +312,7 @@ export const useProStore = create<ProStoreState>()(
 
 export function useProStatus(): ProStatus {
   return useProStore(useShallow((s) => ({
-    isPro: s.isPro,
+    isPro: s.isPro || s.debugSimulatePro,
     plan: s.plan,
     expirationDate: s.expirationDate,
     trialActive: s.trialActive,

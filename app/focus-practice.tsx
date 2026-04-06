@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { colors } from '../src/constants/colors';
+import { C } from '../src/constants/colors';
 import GameWrapper from '../src/screens/session/GameWrapper';
 import PostSession from '../src/screens/session/PostSession';
 import { GameId, gameConfigs } from '../src/constants/gameConfigs';
@@ -130,6 +130,6 @@ export default function FocusPracticeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
   },
 });

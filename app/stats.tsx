@@ -1,21 +1,32 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, SafeAreaView, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { colors } from '../src/constants/colors';
+import { C } from '../src/constants/colors';
+import { fonts } from '../src/constants/typography';
 import Card from '../src/components/ui/Card';
 import { useProgressStore } from '../src/stores/progressStore';
+import { useProStore } from '../src/stores/proStore';
 import { getPerformanceOverview } from '../src/utils/performanceAnalytics';
 import { gameConfigs, AREA_LABELS, AREA_COLORS } from '../src/constants/gameConfigs';
+import PaywallWeekly from '../src/components/paywall/PaywallWeekly';
+import PaywallFull from '../src/components/paywall/PaywallFull';
 
 const TREND_ICONS = { improving: '↗', declining: '↘', flat: '→' };
-const TREND_COLORS = { improving: colors.growth, declining: colors.coral, flat: colors.textTertiary };
+const TREND_COLORS = { improving: C.green, declining: C.coral, flat: C.t3 };
 
 export default function StatsScreen() {
   const sessions = useProgressStore(s => s.sessions);
   const gameHistory = useProgressStore(s => s.gameHistory);
   const brainScores = useProgressStore(s => s.brainScores);
   const xp = useProgressStore(s => s.xp);
+
+  const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
+  const canShowWeeklyPaywall = useProStore(s => s.canShowWeeklyPaywall);
+  const recordWeeklyPaywall = useProStore(s => s.recordWeeklyPaywall);
+  const [weeklyDismissed, setWeeklyDismissed] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const showWeekly = !isPro && !weeklyDismissed && canShowWeeklyPaywall();
 
   const overview = useMemo(
     () => getPerformanceOverview(sessions, gameHistory, brainScores, xp),
@@ -41,11 +52,11 @@ export default function StatsScreen() {
             <Text style={styles.overviewLabel}>Sessions</Text>
           </Card>
           <Card style={styles.overviewCard}>
-            <Text style={[styles.overviewValue, { color: colors.warm }]}>{overview.totalXP.toLocaleString()}</Text>
+            <Text style={[styles.overviewValue, { color: C.peach }]}>{overview.totalXP.toLocaleString()}</Text>
             <Text style={styles.overviewLabel}>Total XP</Text>
           </Card>
           <Card style={styles.overviewCard}>
-            <Text style={[styles.overviewValue, { color: colors.sky }]}>{Math.round(overview.avgAccuracy * 100)}%</Text>
+            <Text style={[styles.overviewValue, { color: C.blue }]}>{Math.round(overview.avgAccuracy * 100)}%</Text>
             <Text style={styles.overviewLabel}>Avg Accuracy</Text>
           </Card>
         </Animated.View>
@@ -72,7 +83,7 @@ export default function StatsScreen() {
                 const height = Math.max(4, (week.totalXP / maxXP) * 100);
                 return (
                   <View key={i} style={styles.barCol}>
-                    <View style={[styles.bar, { height, backgroundColor: week.totalXP > 0 ? colors.growth : colors.surfaceDim }]} />
+                    <View style={[styles.bar, { height, backgroundColor: week.totalXP > 0 ? C.green : C.surface }]} />
                     <Text style={styles.barLabel}>{week.weekLabel.split(' ')[1]}</Text>
                   </View>
                 );
@@ -128,7 +139,7 @@ export default function StatsScreen() {
                 <Text style={[styles.trendScore, { color: AREA_COLORS[bt.area] }]}>{bt.current}</Text>
                 <Text style={[
                   styles.trendChange,
-                  { color: bt.change > 0 ? colors.growth : bt.change < 0 ? colors.coral : colors.textTertiary },
+                  { color: bt.change > 0 ? C.green : bt.change < 0 ? C.coral : C.t3 },
                 ]}>
                   {bt.change > 0 ? '+' : ''}{bt.change} this week
                 </Text>
@@ -137,13 +148,27 @@ export default function StatsScreen() {
           </Card>
         </Animated.View>
 
+        {/* Weekly paywall nudge */}
+        {showWeekly && (
+          <PaywallWeekly
+            onUpgrade={() => {
+              recordWeeklyPaywall();
+              setShowPaywall(true);
+            }}
+            onDismiss={() => {
+              recordWeeklyPaywall();
+              setWeeklyDismissed(true);
+            }}
+          />
+        )}
+
         {/* Game progressions */}
         <Animated.View entering={FadeInDown.delay(350)}>
           <Text style={styles.sectionTitle}>Game Stats</Text>
           {overview.gameProgressions.map((gp) => (
             <Card key={gp.gameId} style={styles.gameCard}>
               <View style={styles.gameHeader}>
-                <View style={[styles.gameIconWrap, { backgroundColor: `${gameConfigs[gp.gameId]?.color ?? colors.growth}15` }]}>
+                <View style={[styles.gameIconWrap, { backgroundColor: `${gameConfigs[gp.gameId]?.color ?? C.green}15` }]}>
                   <Text style={styles.gameIcon}>{gp.icon}</Text>
                 </View>
                 <View style={styles.gameInfo}>
@@ -189,12 +214,14 @@ export default function StatsScreen() {
           ))}
         </Animated.View>
       </ScrollView>
+
+      <PaywallFull visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bgPrimary },
+  safe: { flex: 1, backgroundColor: C.bg2 },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, gap: 12 },
   header: {
     flexDirection: 'row',
@@ -203,13 +230,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   backText: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.sky,
+    fontFamily: fonts.bodySemi,
+    color: C.blue,
     fontSize: 15,
   },
   title: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 20,
     letterSpacing: -0.3,
   },
@@ -218,14 +245,14 @@ const styles = StyleSheet.create({
   overviewRow: { flexDirection: 'row', gap: 8 },
   overviewCard: { flex: 1, alignItems: 'center', paddingVertical: 16, gap: 4 },
   overviewValue: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 20,
     letterSpacing: -0.3,
   },
   overviewLabel: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -234,28 +261,28 @@ const styles = StyleSheet.create({
   // Best day
   bestDayCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bestDayLabel: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   bestDayValue: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.streak,
+    fontFamily: fonts.bodyBold,
+    color: C.amber,
     fontSize: 18,
     letterSpacing: -0.3,
   },
   bestDayDate: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 12,
   },
 
   // Section
   sectionTitle: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -269,14 +296,14 @@ const styles = StyleSheet.create({
   barCol: { flex: 1, alignItems: 'center', gap: 4 },
   bar: { width: '80%', borderRadius: 999, minHeight: 4 },
   barLabel: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 9,
   },
   chartLegend: { alignItems: 'center' },
   chartLegendText: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 11,
   },
 
@@ -284,14 +311,14 @@ const styles = StyleSheet.create({
   calendarCard: { gap: 12 },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
   calendarDot: { width: 14, height: 14, borderRadius: 4 },
-  calendarDotActive: { backgroundColor: colors.growth },
-  calendarDotInactive: { backgroundColor: colors.surfaceDim },
+  calendarDotActive: { backgroundColor: C.green },
+  calendarDotInactive: { backgroundColor: C.surface },
   calendarLegend: { flexDirection: 'row', gap: 16 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 3 },
   legendText: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 11,
   },
 
@@ -301,18 +328,18 @@ const styles = StyleSheet.create({
   trendLabel: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   trendDot: { width: 8, height: 8, borderRadius: 4 },
   trendArea: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textPrimary,
+    fontFamily: fonts.bodySemi,
+    color: C.t1,
     fontSize: 14,
   },
   trendScore: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: fonts.bodyBold,
     fontSize: 16,
     width: 36,
     textAlign: 'right',
   },
   trendChange: {
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: fonts.bodySemi,
     fontSize: 11,
     width: 80,
     textAlign: 'right',
@@ -331,13 +358,13 @@ const styles = StyleSheet.create({
   gameIcon: { fontSize: 22 },
   gameInfo: { flex: 1, gap: 2 },
   gameName: {
-    fontFamily: 'Quicksand_600SemiBold',
-    color: colors.textPrimary,
+    fontFamily: fonts.headingMed,
+    color: C.t1,
     fontSize: 15,
   },
   gamePlays: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 11,
   },
   trendBadge: {
@@ -346,7 +373,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   gameTrend: {
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: fonts.bodyBold,
     fontSize: 11,
     textTransform: 'capitalize',
     letterSpacing: 0.3,
@@ -360,13 +387,13 @@ const styles = StyleSheet.create({
   },
   gameScoreStat: { flex: 1, alignItems: 'center', gap: 3 },
   gameScoreValue: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 16,
   },
   gameScoreLabel: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.3,

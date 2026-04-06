@@ -38,7 +38,7 @@ export default function NoiseOverlay() {
   return <NativeGrain />;
 }
 
-const GRAIN_DOTS = 200;
+const GRAIN_DOTS = 80;
 
 function NativeGrain() {
   const dots = useMemo(() => {

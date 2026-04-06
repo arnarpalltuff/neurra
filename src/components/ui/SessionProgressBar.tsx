@@ -4,7 +4,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
   withSequence, Easing,
 } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 
 interface SessionProgressBarProps {
   /** 0-based index of the current game */
@@ -41,7 +41,7 @@ function Segment({
     }
   }, [state, progress]);
 
-  const fillColor = state === 'done' ? colors.streak : colors.growth;
+  const fillColor = state === 'done' ? C.amber : C.green;
 
   const fillStyle = useAnimatedStyle(() => ({
     width: `${fillWidth.value}%` as `${number}%`,
@@ -55,7 +55,7 @@ function Segment({
   return (
     <View style={styles.segment}>
       <Animated.View style={[styles.segmentFill, fillStyle]} />
-      <Animated.View style={[styles.segmentGlow, glowStyle, { backgroundColor: colors.streak }]} />
+      <Animated.View style={[styles.segmentGlow, glowStyle, { backgroundColor: C.amber }]} />
     </View>
   );
 }
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     overflow: 'hidden',
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: C.bg4,
   },
   segment: {
     flex: 1,
@@ -117,6 +117,6 @@ const styles = StyleSheet.create({
   divider: {
     width: 2,
     height: 4,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
   },
 });

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
 import { tapMedium } from '../../../utils/haptics';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, mirrorsParams as mirrorsParamsEngine } from '../../../utils/difficultyEngine';
@@ -263,21 +263,21 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary, padding: 20 },
+  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  trialText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
-  ruleBar: { backgroundColor: colors.bgElevated, borderRadius: 12, padding: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: colors.border },
-  ruleBarChanged: { borderColor: colors.streak, backgroundColor: '#FBBF2415' },
-  ruleText: { color: colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  ruleTextChanged: { color: colors.streak },
+  trialText: { color: C.t2, fontSize: 14, fontWeight: '600' },
+  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
+  ruleBar: { backgroundColor: C.bg4, borderRadius: 12, padding: 12, alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#1F2A42' },
+  ruleBarChanged: { borderColor: C.amber, backgroundColor: '#FBBF2415' },
+  ruleText: { color: C.t1, fontSize: 16, fontWeight: '700' },
+  ruleTextChanged: { color: C.amber },
   stimulusArea: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   stimulusRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   shapeBase: { },
   optionsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10, marginBottom: 20 },
-  optionBtn: { backgroundColor: colors.bgElevated, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 24, borderWidth: 1, borderColor: colors.border, minWidth: (W - 70) / 2 },
-  optionCorrect: { borderColor: colors.growth, backgroundColor: colors.growthDim },
-  optionText: { color: colors.textPrimary, fontSize: 15, fontWeight: '600', textAlign: 'center', textTransform: 'capitalize' },
-  correctFeedback: { color: colors.growth, fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 10 },
-  wrongFeedback: { color: colors.coral, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 10 },
+  optionBtn: { backgroundColor: C.bg4, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 24, borderWidth: 1, borderColor: '#1F2A42', minWidth: (W - 70) / 2 },
+  optionCorrect: { borderColor: C.green, backgroundColor: 'rgba(110,207,154,0.19)' },
+  optionText: { color: C.t1, fontSize: 15, fontWeight: '600', textAlign: 'center', textTransform: 'capitalize' },
+  correctFeedback: { color: C.green, fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 10 },
+  wrongFeedback: { color: C.coral, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 10 },
 });

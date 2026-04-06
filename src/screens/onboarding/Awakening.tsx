@@ -5,7 +5,8 @@ import Animated, {
   withTiming, Easing,
 } from 'react-native-reanimated';
 import { tapMedium } from '../../utils/haptics';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 
 const { width, height } = Dimensions.get('window');
 
@@ -111,7 +112,7 @@ export default function Awakening({ onNext }: AwakeningProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgVoid,
+    backgroundColor: C.bg1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 40,
@@ -129,21 +130,21 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 1,
-    borderColor: colors.growth,
+    borderColor: C.green,
   },
   glowOuter: {
     position: 'absolute',
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
   },
   glowCore: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.textHero,
-    shadowColor: colors.growth,
+    backgroundColor: C.t1,
+    shadowColor: C.green,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 16,
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 1.5,
     height: 32,
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     top: 14,
     borderRadius: 1,
     opacity: 0.6,
@@ -166,8 +167,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   mainText: {
-    fontFamily: 'Quicksand_600SemiBold',
-    color: colors.textHero,
+    fontFamily: fonts.headingMed,
+    color: C.t1,
     fontSize: 22,
     letterSpacing: 0.5,
   },
@@ -175,8 +176,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tapText: {
-    fontFamily: 'Caveat_400Regular',
-    color: colors.textSecondary,
+    fontFamily: fonts.kova,
+    color: C.t2,
     fontSize: 20,
     letterSpacing: 0.3,
   },

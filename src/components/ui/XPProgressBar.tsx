@@ -5,7 +5,8 @@ import Animated, {
   withSequence, withDelay, withSpring, Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import { xpForLevel } from '../../stores/progressStore';
 
 interface XPProgressBarProps {
@@ -63,7 +64,7 @@ export default function XPProgressBar({ currentXP, xpForCurrentLevel, xpIntoLeve
       <View style={styles.track}>
         <Animated.View style={[styles.fillContainer, fillStyle]}>
           <LinearGradient
-            colors={[colors.warm, colors.streak]}
+            colors={[C.peach, C.amber]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={StyleSheet.absoluteFillObject}
@@ -86,19 +87,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   levelText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 15,
   },
   xpText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.warm,
+    fontFamily: fonts.bodyBold,
+    color: C.peach,
     fontSize: 13,
   },
   track: {
     width: '100%',
     height: 8,
-    backgroundColor: colors.bgTertiary,
+    backgroundColor: C.bg4,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -113,7 +114,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: 60,
     height: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: C.t1,
     borderRadius: 4,
   },
 });

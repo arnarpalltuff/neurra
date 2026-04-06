@@ -9,7 +9,7 @@ import Animated, {
   Easing,
   interpolateColor,
 } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 
 interface StreakFlameProps {
   streak: number;

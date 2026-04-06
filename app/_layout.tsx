@@ -25,6 +25,7 @@ import { preloadAllSounds } from '../src/utils/sound';
 import { C } from '../src/constants/colors';
 import { initializePurchases, addCustomerInfoListener } from '../src/utils/purchaseSdk';
 import { useProStore } from '../src/stores/proStore';
+import { useWeeklyReportStore } from '../src/stores/weeklyReportStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -43,6 +44,7 @@ export default function RootLayout() {
   useEffect(() => {
     preloadAllSounds();
     initializePurchases();
+    useWeeklyReportStore.getState().generateIfNeeded();
 
     const unsubscribe = addCustomerInfoListener((info) => {
       useProStore.getState().syncFromRevenueCat(info);
@@ -103,6 +105,27 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="stats"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="weekly-report"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="privacy"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
+          name="terms"
           options={{
             presentation: 'modal',
             animation: 'slide_from_bottom',

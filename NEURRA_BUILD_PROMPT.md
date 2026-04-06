@@ -147,3 +147,41 @@ Welcome → mini Pulse (~10 shapes) → “Nice reflexes!” + RT → name input
 ---
 
 When all phases pass: **ship.**
+
+---
+
+## PHASE N — Kova’s Grove
+
+Scrollable scene, time-of-day `LinearGradient` sky, Kova center, five growth zones (memory tree, focus crystal, speed stream, flexibility garden, creativity mushrooms) as **placeholder shapes** scaling with stage 0–12 from brain scores; wilting after 14+ days; sparkle on re-train after wilt. Bottom sheet per zone; games tappable → start session; Kova dialogue pool; stream ripple + tree flutter. `groveStore.zoneGrowths` + `revivedSparkleArea`.
+
+## PHASE O — Kova coins
+
+`src/stores/coinStore.ts`: persisted **transaction log**; `earnCoins` / `spendCoins` funnel balance via `progressStore`. Session + star + orb + refunds use ledger. Streak freeze: auto-consume when exactly **one** missed day and `streakFreezes > 0`; `pendingStreakFreezeMessage` + Alert on home.
+
+## PHASE P — Weekly report
+
+`weeklyReportStore`: generate prior week on app open if missing. Home banner “Your week in review”; `app/weekly-report.tsx` card stack; Insights → Past reports.
+
+## PHASE Q — Notifications
+
+`constants/notifications.ts` + `notificationSchedule.ts` (daily 9:00). Onboarding step **Reminders** after name (`NotificationAsk`). Expand: Q2–Q5 selection + streak-risk second notification.
+
+## PHASE R — Pro framework
+
+`debugSimulatePro` in `proStore` (Settings → Developer in `__DEV__`). `useProStatus()` treats simulated as Pro. Paywall UI exists; wire RevenueCat when shipping.
+
+## PHASE S — Share cards
+
+Install `react-native-view-shot`, `ShareCard` 1080×1920, session summary + milestone share, grove camera — **not yet implemented**; add when building share flow.
+
+## PHASE T — App Store prep
+
+Privacy (`/privacy`) + Terms (`/terms`) modals from Settings. `app.json` splash/tablet tweaks. Icon/splash assets: replace files under `assets/` as needed. Rate prompt: extend `ratePrompt` when criteria met.
+
+## PHASE U — Final QA
+
+Run full checklist from product spec (onboarding → sessions → grove → insights → settings → persistence → Pro → share).
+
+---
+
+Phases **N–T** are partially implemented in-repo; **S** and deep **Q** logic remain follow-ups.

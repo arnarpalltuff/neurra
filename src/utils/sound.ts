@@ -22,7 +22,8 @@ const VOL_KOVA = 0.7;
 
 // ── Concurrency limiter ─────────────────────────────────────
 const MAX_CONCURRENT = 3;
-let activeSounds = 0;
+const activePlays = new Set<number>();
+let playIdCounter = 0;
 
 // ── Settings checks ─────────────────────────────────────────
 function isSoundEnabled(): boolean {
@@ -109,13 +110,14 @@ export async function preloadAllSounds(): Promise<void> {
  */
 function play(name: string, volumeTier: number): void {
   if (!isSoundEnabled()) return;
-  if (activeSounds >= MAX_CONCURRENT) return;
+  if (activePlays.size >= MAX_CONCURRENT) return;
 
   const sound = soundPool.get(name);
   if (!sound) return; // Sound not loaded (or in dev mode)
 
   const finalVolume = volumeTier * getUserVolume();
-  activeSounds++;
+  const playId = ++playIdCounter;
+  activePlays.add(playId);
 
   sound
     .setPositionAsync(0)
@@ -123,8 +125,8 @@ function play(name: string, volumeTier: number): void {
     .then(() => sound.playAsync())
     .catch(() => {})
     .finally(() => {
-      // Decrement after estimated duration (sounds are short)
-      setTimeout(() => { activeSounds = Math.max(0, activeSounds - 1); }, 1500);
+      // Release slot after estimated duration (sounds are short)
+      setTimeout(() => { activePlays.delete(playId); }, 1500);
     });
 }
 

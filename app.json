@@ -10,16 +10,16 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B0E17"
+      "backgroundColor": "#0C1018"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.neurra.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B0E17"
+        "backgroundColor": "#0C1018"
       },
       "package": "com.neurra.app",
       "edgeToEdgeEnabled": true,

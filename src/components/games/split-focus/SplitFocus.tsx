@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, splitFocusParams, isRelaxedMode } from '../../../utils/difficultyEngine';
@@ -199,16 +199,11 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
       setNumbers(prev => prev.map(n => n.value === value ? { ...n, tapped: true } : n));
 
       const nextVal = nextExpected + 1;
-      if (nextVal > numbers.filter(n => !n.tapped).length + nextExpected) {
+      // All numbers tapped when we've reached the total count
+      if (nextVal > numbers.length) {
         setNumberDone(true);
       } else {
         setNextExpected(nextVal);
-      }
-
-      // Check if all numbers tapped
-      const remainingAfterTap = numbers.filter(n => !n.tapped && n.value !== value).length;
-      if (remainingAfterTap === 0) {
-        setNumberDone(true);
       }
     } else {
       updateDifficulty('split-focus', false);
@@ -298,29 +293,29 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary, padding: 16 },
+  container: { flex: 1, backgroundColor: C.bg2, padding: 16 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  roundText: { color: colors.textTertiary, fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  scoreText: { color: colors.warm, fontSize: 16, fontWeight: '800' },
+  roundText: { color: C.t3, fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  scoreText: { color: C.peach, fontSize: 16, fontWeight: '800' },
 
   // Top task
   topTask: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  taskLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  taskLabel: { color: C.t2, fontSize: 13, fontWeight: '600' },
   targetSwatch: {
     width: 80, height: 80, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: colors.border,
+    borderWidth: 2, borderColor: '#1F2A42',
   },
   checkMark: { color: '#FFF', fontSize: 32, fontWeight: '900' },
   colorOptions: { flexDirection: 'row', gap: 16 },
   colorBtn: {
     width: 56, height: 56, borderRadius: 16,
-    borderWidth: 2, borderColor: colors.border,
+    borderWidth: 2, borderColor: '#1F2A42',
   },
   colorBtnDisabled: { opacity: 0.4 },
 
@@ -329,9 +324,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 8,
   },
-  taskDividerLine: { flex: 1, height: 1, backgroundColor: colors.divider },
+  taskDividerLine: { flex: 1, height: 1, backgroundColor: C.border },
   taskDividerText: {
-    color: colors.coral, fontSize: 11, fontWeight: '800', letterSpacing: 2,
+    color: C.coral, fontSize: 11, fontWeight: '800', letterSpacing: 2,
   },
 
   // Bottom task
@@ -340,23 +335,23 @@ const styles = StyleSheet.create({
   numberCell: {
     position: 'absolute',
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: colors.sky + '60',
+    borderWidth: 2, borderColor: C.blue + '60',
   },
   numberCellTapped: {
-    backgroundColor: colors.growth + '30',
-    borderColor: colors.growth,
+    backgroundColor: C.green + '30',
+    borderColor: C.green,
   },
-  numberText: { color: colors.textPrimary, fontSize: 18, fontWeight: '800' },
-  numberTextTapped: { color: colors.growth, fontSize: 16 },
+  numberText: { color: C.t1, fontSize: 18, fontWeight: '800' },
+  numberTextTapped: { color: C.green, fontSize: 16 },
 
   // Round complete
   roundComplete: {
     position: 'absolute', bottom: 40, alignSelf: 'center',
-    backgroundColor: colors.bgElevated,
+    backgroundColor: C.bg4,
     paddingHorizontal: 20, paddingVertical: 10,
     borderRadius: 20,
   },
-  roundCompleteText: { color: colors.growth, fontSize: 14, fontWeight: '700' },
+  roundCompleteText: { color: C.green, fontSize: 14, fontWeight: '700' },
 });

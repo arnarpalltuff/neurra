@@ -2,12 +2,15 @@ import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, Pressable, FlatList, ScrollView, Alert,
 } from 'react-native';
+import PressableScale from '../src/components/ui/PressableScale';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tapLight, success as hapticSuccess } from '../src/utils/haptics';
 import { router } from 'expo-router';
-import { colors } from '../src/constants/colors';
+import { C } from '../src/constants/colors';
+import { fonts } from '../src/constants/typography';
 import { useProgressStore } from '../src/stores/progressStore';
+import { useCoinStore } from '../src/stores/coinStore';
 import {
   useCosmeticsStore,
   OUTFIT_DEFS, OutfitDef,
@@ -23,7 +26,8 @@ import {
   STREAK_FREEZE_COST,
   STREAK_REPAIR_COST,
 } from '../src/utils/coinRewards';
-import CoinRewardCard from '../src/components/ads/CoinRewardCard';
+import { useProStore } from '../src/stores/proStore';
+import PaywallFull from '../src/components/paywall/PaywallFull';
 
 type ShopTab = 'outfits' | 'accessories' | 'themes' | 'decorations' | 'utilities';
 
@@ -43,8 +47,10 @@ const UTILITY_ITEMS: UtilityItem[] = [
 
 export default function ShopScreen() {
   const [tab, setTab] = useState<ShopTab>('outfits');
+  const [showPaywall, setShowPaywall] = useState(false);
+  const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
   const coins = useProgressStore(s => s.coins);
-  const spendCoins = useProgressStore(s => s.spendCoins);
+  const spendCoins = useCoinStore(s => s.spendCoins);
   const addStreakFreeze = useProgressStore(s => s.addStreakFreeze);
   const streakFreezes = useProgressStore(s => s.streakFreezes);
   const ownedOutfits = useCosmeticsStore(s => s.ownedOutfits);
@@ -61,13 +67,16 @@ export default function ShopScreen() {
   const unlockTheme = useGroveStore(s => s.unlockTheme);
 
   const handleBuyOutfit = useCallback((def: OutfitDef) => {
-    if (def.cost === -1) return;
+    if (def.cost === -1) {
+      if (!isPro) setShowPaywall(true);
+      return;
+    }
     if (ownedOutfits.includes(def.id)) {
       equipOutfit(equippedOutfit === def.id ? null : def.id);
       tapLight();
       return;
     }
-    if (!spendCoins(def.cost)) {
+    if (!spendCoins(def.cost, `Outfit: ${def.name}`)) {
       Alert.alert('Not enough coins', `You need ${def.cost} coins for this outfit.`);
       return;
     }
@@ -77,13 +86,16 @@ export default function ShopScreen() {
   }, [ownedOutfits, equippedOutfit, spendCoins, buyOutfit, equipOutfit]);
 
   const handleBuyAccessory = useCallback((def: AccessoryDef) => {
-    if (def.cost === -1) return;
+    if (def.cost === -1) {
+      if (!isPro) setShowPaywall(true);
+      return;
+    }
     if (ownedAccessories.includes(def.id)) {
       equipAccessory(equippedAccessory === def.id ? null : def.id);
       tapLight();
       return;
     }
-    if (!spendCoins(def.cost)) {
+    if (!spendCoins(def.cost, `Accessory: ${def.name}`)) {
       Alert.alert('Not enough coins', `You need ${def.cost} coins for this accessory.`);
       return;
     }
@@ -93,13 +105,16 @@ export default function ShopScreen() {
   }, [ownedAccessories, equippedAccessory, spendCoins, buyAccessory, equipAccessory]);
 
   const handleBuyTheme = useCallback((themeId: GroveThemeId, cost: number) => {
-    if (cost === -1) return;
+    if (cost === -1) {
+      if (!isPro) setShowPaywall(true);
+      return;
+    }
     if (unlockedThemes.includes(themeId)) {
       setTheme(themeId);
       tapLight();
       return;
     }
-    if (!spendCoins(cost)) {
+    if (!spendCoins(cost, `Theme: ${themeId}`)) {
       Alert.alert('Not enough coins', `You need ${cost} coins for this theme.`);
       return;
     }
@@ -114,14 +129,14 @@ export default function ShopScreen() {
         Alert.alert('Maximum reached', 'You already have 3 streak freezes stored.');
         return;
       }
-      if (!spendCoins(item.cost)) {
+      if (!spendCoins(item.cost, 'Streak freeze')) {
         Alert.alert('Not enough coins', `You need ${item.cost} coins.`);
         return;
       }
       addStreakFreeze();
       hapticSuccess();
     } else if (item.id === 'streak-repair') {
-      if (!spendCoins(item.cost)) {
+      if (!spendCoins(item.cost, 'Streak repair')) {
         Alert.alert('Not enough coins', `You need ${item.cost} coins.`);
         return;
       }
@@ -178,8 +193,8 @@ export default function ShopScreen() {
             const equipped = equippedOutfit === item.id;
             const isPro = item.cost === -1;
             return (
-              <Pressable style={[styles.card, equipped && styles.cardEquipped]} onPress={() => handleBuyOutfit(item)}>
-                <LinearGradient colors={[colors.bgCardTop, colors.bgCard]} style={StyleSheet.absoluteFill} />
+              <PressableScale style={[styles.card, equipped && styles.cardEquipped]} onPress={() => handleBuyOutfit(item)}>
+                <LinearGradient colors={[C.bg4, C.bg3]} style={StyleSheet.absoluteFill} />
                 <Text style={styles.cardEmoji}>{item.emoji}</Text>
                 <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
@@ -192,7 +207,7 @@ export default function ShopScreen() {
                 ) : (
                   <Text style={styles.costText}>{item.cost} 🪙</Text>
                 )}
-              </Pressable>
+              </PressableScale>
             );
           }}
         />
@@ -210,8 +225,8 @@ export default function ShopScreen() {
             const equipped = equippedAccessory === item.id;
             const isPro = item.cost === -1;
             return (
-              <Pressable style={[styles.cardSmall, equipped && styles.cardEquipped]} onPress={() => handleBuyAccessory(item)}>
-                <LinearGradient colors={[colors.bgCardTop, colors.bgCard]} style={StyleSheet.absoluteFill} />
+              <PressableScale style={[styles.cardSmall, equipped && styles.cardEquipped]} onPress={() => handleBuyAccessory(item)}>
+                <LinearGradient colors={[C.bg4, C.bg3]} style={StyleSheet.absoluteFill} />
                 <Text style={styles.cardEmoji}>{item.emoji}</Text>
                 <Text style={styles.cardNameSmall} numberOfLines={1}>{item.name}</Text>
                 {equipped ? (
@@ -223,7 +238,7 @@ export default function ShopScreen() {
                 ) : (
                   <Text style={styles.costTextSmall}>{item.cost} 🪙</Text>
                 )}
-              </Pressable>
+              </PressableScale>
             );
           }}
         />
@@ -238,7 +253,7 @@ export default function ShopScreen() {
             const isOwned = unlockedThemes.includes(theme.id);
             const isPro = theme.cost === -1;
             return (
-              <Pressable
+              <PressableScale
                 key={theme.id}
                 style={[styles.themeCard, isActive && styles.themeCardActive]}
                 onPress={() => handleBuyTheme(theme.id, theme.cost)}
@@ -259,7 +274,7 @@ export default function ShopScreen() {
                 ) : (
                   <Text style={styles.costText}>{theme.cost} 🪙</Text>
                 )}
-              </Pressable>
+              </PressableScale>
             );
           })}
         </ScrollView>
@@ -279,11 +294,9 @@ export default function ShopScreen() {
       {/* Utilities */}
       {tab === 'utilities' && (
         <ScrollView contentContainerStyle={styles.utilList}>
-          <CoinRewardCard />
-
           {UTILITY_ITEMS.map((item) => (
-            <Pressable key={item.id} style={styles.utilCard} onPress={() => handleBuyUtility(item)}>
-              <LinearGradient colors={[colors.bgCardTop, colors.bgCard]} style={StyleSheet.absoluteFill} />
+            <PressableScale key={item.id} style={styles.utilCard} onPress={() => handleBuyUtility(item)}>
+              <LinearGradient colors={[C.bg4, C.bg3]} style={StyleSheet.absoluteFill} />
               <Text style={styles.utilEmoji}>{item.emoji}</Text>
               <View style={styles.utilInfo}>
                 <Text style={styles.utilName}>{item.name}</Text>
@@ -293,16 +306,18 @@ export default function ShopScreen() {
                 )}
               </View>
               <Text style={styles.utilCost}>{item.cost} 🪙</Text>
-            </Pressable>
+            </PressableScale>
           ))}
         </ScrollView>
       )}
+
+      <PaywallFull visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bgPrimary },
+  safe: { flex: 1, backgroundColor: C.bg2 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -311,23 +326,23 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 14,
     borderBottomWidth: 0.5,
-    borderBottomColor: colors.borderSubtle,
+    borderBottomColor: C.border,
   },
   backText: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.sky,
+    fontFamily: fonts.bodySemi,
+    color: C.blue,
     fontSize: 15,
   },
   title: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 20,
   },
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.warmTint,
+    backgroundColor: C.peachTint,
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 999,
@@ -336,8 +351,8 @@ const styles = StyleSheet.create({
   },
   coinIcon: { fontSize: 13 },
   coinCount: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.warm,
+    fontFamily: fonts.bodyBold,
+    color: C.peach,
     fontSize: 15,
   },
 
@@ -348,20 +363,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: colors.bgHover,
+    backgroundColor: C.bg5,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
   },
   tabActive: {
-    backgroundColor: colors.growth,
-    borderColor: colors.growth,
+    backgroundColor: C.green,
+    borderColor: C.green,
   },
   tabText: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 13,
   },
-  tabTextActive: { color: colors.bgPrimary },
+  tabTextActive: { color: C.bg2 },
 
   // Grid
   grid: { paddingHorizontal: 14, paddingTop: 10, gap: 10, paddingBottom: 40 },
@@ -375,59 +390,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
     marginHorizontal: 4,
     overflow: 'hidden',
   },
-  cardEquipped: { borderColor: colors.growth, borderWidth: 1.5 },
+  cardEquipped: { borderColor: C.green, borderWidth: 1.5 },
   cardEmoji: { fontSize: 32 },
   cardName: {
-    fontFamily: 'Quicksand_600SemiBold',
-    color: colors.textPrimary,
+    fontFamily: fonts.headingMed,
+    color: C.t1,
     fontSize: 13,
     textAlign: 'center',
   },
   cardDesc: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 16,
   },
   equippedBadge: {
-    backgroundColor: colors.growthTint,
+    backgroundColor: C.greenTint,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 999,
     marginTop: 4,
   },
   equippedBadgeText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.growth,
+    fontFamily: fonts.bodyBold,
+    color: C.green,
     fontSize: 11,
   },
   ownedTag: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.sky,
+    fontFamily: fonts.bodySemi,
+    color: C.blue,
     fontSize: 11,
     marginTop: 4,
   },
   costText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.warm,
+    fontFamily: fonts.bodyBold,
+    color: C.peach,
     fontSize: 13,
     marginTop: 4,
   },
   proBadge: {
-    backgroundColor: colors.lavender,
+    backgroundColor: C.purple,
     paddingHorizontal: 12,
     paddingVertical: 3,
     borderRadius: 999,
     marginTop: 4,
   },
   proText: {
-    fontFamily: 'Nunito_700Bold',
-    color: '#FFF',
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 10,
     letterSpacing: 0.5,
   },
@@ -441,46 +456,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
     marginHorizontal: 3,
     overflow: 'hidden',
   },
   cardNameSmall: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
     fontSize: 11,
     textAlign: 'center',
   },
   equippedBadgeSmall: {
-    backgroundColor: colors.growthTint,
+    backgroundColor: C.greenTint,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
   },
   equippedBadgeTextSmall: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.growth,
+    fontFamily: fonts.bodyBold,
+    color: C.green,
     fontSize: 9,
   },
   ownedTagSmall: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.sky,
+    fontFamily: fonts.bodySemi,
+    color: C.blue,
     fontSize: 10,
   },
   costTextSmall: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.warm,
+    fontFamily: fonts.bodyBold,
+    color: C.peach,
     fontSize: 11,
   },
   proBadgeSmall: {
-    backgroundColor: colors.lavender,
+    backgroundColor: C.purple,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
   },
   proTextSmall: {
-    fontFamily: 'Nunito_700Bold',
-    color: '#FFF',
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 9,
   },
 
@@ -498,11 +513,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 12,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
-    backgroundColor: colors.bgCard,
+    borderColor: C.border,
+    backgroundColor: C.bg3,
     overflow: 'hidden',
   },
-  themeCardActive: { borderColor: colors.growth, borderWidth: 1.5 },
+  themeCardActive: { borderColor: C.green, borderWidth: 1.5 },
   themePreview: {
     height: 56,
     borderRadius: 12,
@@ -537,13 +552,13 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   themeName: {
-    fontFamily: 'Quicksand_600SemiBold',
-    color: colors.textPrimary,
+    fontFamily: fonts.headingMed,
+    color: C.t1,
     fontSize: 13,
   },
   themeDesc: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 11,
     marginTop: 2,
     marginBottom: 8,
@@ -553,23 +568,23 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
   centeredEmoji: { fontSize: 48 },
   centeredText: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
     fontSize: 15,
   },
   gotoBtn: {
-    backgroundColor: colors.growth,
+    backgroundColor: C.green,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 999,
-    shadowColor: colors.growth,
+    shadowColor: C.green,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
   },
   gotoBtnText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.bgPrimary,
+    fontFamily: fonts.bodyBold,
+    color: C.bg2,
     fontSize: 14,
   },
 
@@ -582,31 +597,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
     overflow: 'hidden',
   },
   utilEmoji: { fontSize: 28 },
   utilInfo: { flex: 1, gap: 3 },
   utilName: {
-    fontFamily: 'Quicksand_600SemiBold',
-    color: colors.textPrimary,
+    fontFamily: fonts.headingMed,
+    color: C.t1,
     fontSize: 14,
   },
   utilDesc: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 12,
     lineHeight: 17,
   },
   utilExtra: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.sky,
+    fontFamily: fonts.bodySemi,
+    color: C.blue,
     fontSize: 11,
     marginTop: 2,
   },
   utilCost: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.warm,
+    fontFamily: fonts.bodyBold,
+    color: C.peach,
     fontSize: 15,
   },
 });

@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import Kova from '../../components/kova/Kova';
 import Button from '../../components/ui/Button';
 
@@ -62,7 +63,7 @@ export default function Intro({ onNext }: IntroProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 70,
@@ -78,39 +79,39 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   bubble: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: C.bg3,
     borderRadius: 20,
     paddingHorizontal: 22,
     paddingVertical: 16,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
   },
   bubbleText: {
-    fontFamily: 'Caveat_400Regular',
-    color: colors.textHero,
+    fontFamily: fonts.kova,
+    color: C.t1,
     fontSize: 20,
     textAlign: 'center',
     lineHeight: 28,
   },
   description: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textSecondary,
+    fontFamily: fonts.body,
+    color: C.t2,
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 24,
   },
   stepsPreview: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: C.bg3,
     borderRadius: 18,
     padding: 18,
     gap: 12,
     width: '100%',
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
   },
   stepsTitle: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -119,8 +120,8 @@ const styles = StyleSheet.create({
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stepIcon: { fontSize: 18 },
   stepText: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textSecondary,
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
     fontSize: 14,
   },
   btnArea: {

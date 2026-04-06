@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { success as hapticSuccess } from '../../../utils/haptics';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, mindDriftParams } from '../../../utils/difficultyEngine';
@@ -269,17 +269,17 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary, padding: 20 },
+  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  roundText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
-  phaseText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  roundText: { color: C.t2, fontSize: 14, fontWeight: '600' },
+  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
+  phaseText: { color: C.t2, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   gridContainer: { alignSelf: 'center', position: 'relative' },
-  hex: { position: 'absolute', backgroundColor: colors.bgTertiary, borderWidth: 1, borderColor: colors.border },
-  hexLit: { backgroundColor: colors.growth, borderColor: colors.growth, shadowColor: colors.growth, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 12, elevation: 6 },
-  hexPath: { backgroundColor: colors.growthDim, borderColor: colors.growth },
-  hexTapped: { backgroundColor: colors.growth, borderColor: colors.growth, opacity: 0.9 },
-  hexMissed: { backgroundColor: colors.coral, borderColor: colors.coral, opacity: 0.6 },
-  correctText: { color: colors.growth, fontSize: 18, fontWeight: '800', textAlign: 'center', marginTop: 16 },
-  wrongText: { color: colors.coral, fontSize: 16, fontWeight: '700', textAlign: 'center', marginTop: 16 },
+  hex: { position: 'absolute', backgroundColor: C.bg4, borderWidth: 1, borderColor: '#1F2A42' },
+  hexLit: { backgroundColor: C.green, borderColor: C.green, shadowColor: C.green, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 12, elevation: 6 },
+  hexPath: { backgroundColor: 'rgba(110,207,154,0.19)', borderColor: C.green },
+  hexTapped: { backgroundColor: C.green, borderColor: C.green, opacity: 0.9 },
+  hexMissed: { backgroundColor: C.coral, borderColor: C.coral, opacity: 0.6 },
+  correctText: { color: C.green, fontSize: 18, fontWeight: '800', textAlign: 'center', marginTop: 16 },
+  wrongText: { color: C.coral, fontSize: 16, fontWeight: '700', textAlign: 'center', marginTop: 16 },
 });

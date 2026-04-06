@@ -8,7 +8,7 @@ import Animated, {
   withSequence,
   Easing,
 } from 'react-native-reanimated';
-import { colors } from '../../constants/colors';
+import { C } from '../../constants/colors';
 
 const { width: W, height: H } = Dimensions.get('window');
 const MAX_PARTICLES = 30;
@@ -47,12 +47,12 @@ interface TypeConfig {
   sizeRange: [number, number];
 }
 
-const APP_PALETTE = [colors.growth, colors.streak, colors.coral, colors.lavender, colors.sky, colors.warm];
-const GOLD_PALETTE = [colors.nova, colors.streak, '#F59E0B', '#D97706', '#FDE68A'];
+const APP_PALETTE = [C.green, C.amber, C.coral, C.purple, C.blue, C.peach];
+const GOLD_PALETTE = ['#FFD700', C.amber, '#F59E0B', '#D97706', '#FDE68A'];
 const RAINBOW = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00', '#0000FF', '#4B0082', '#8B00FF'];
-const WHITE_SPARKLE = ['#FFFFFF', colors.textPrimary, '#F0F0F0', '#D4D4D4'];
-const FIRE_PALETTE = ['#FF4500', colors.ember, '#FF8C00', colors.streak, colors.nova];
-const MAGIC_PALETTE = [colors.lavender, colors.sky, colors.growth, colors.streak, colors.coral, colors.nova];
+const WHITE_SPARKLE = ['#FFFFFF', C.t1, '#F0F0F0', '#D4D4D4'];
+const FIRE_PALETTE = ['#FF4500', '#FF6B35', '#FF8C00', C.amber, '#FFD700'];
+const MAGIC_PALETTE = [C.purple, C.blue, C.green, C.amber, C.coral, '#FFD700'];
 
 const TYPE_CONFIGS: Record<CelebrationType, TypeConfig> = {
   confetti_standard: { count: 30, duration: 3000, palette: APP_PALETTE, gravity: 1, shape: 'rect', fromTop: true, sparkleGlow: false, sizeRange: [6, 12] },
@@ -62,7 +62,7 @@ const TYPE_CONFIGS: Record<CelebrationType, TypeConfig> = {
   confetti_rainbow: { count: 35, duration: 3500, palette: RAINBOW, gravity: 0.9, shape: 'rect', fromTop: true, sparkleGlow: false, sizeRange: [6, 12] },
   particles_sparkle: { count: 20, duration: 2000, palette: WHITE_SPARKLE, gravity: 0.2, shape: 'circle', fromTop: false, sparkleGlow: true, sizeRange: [3, 6] },
   particles_stars: { count: 15, duration: 2500, palette: GOLD_PALETTE, gravity: -0.3, shape: 'star', fromTop: false, sparkleGlow: true, sizeRange: [8, 14] },
-  particles_hearts: { count: 12, duration: 3000, palette: [colors.coral, '#FF69B4', '#FF1493'], gravity: -0.5, shape: 'heart', fromTop: false, sparkleGlow: false, sizeRange: [8, 14] },
+  particles_hearts: { count: 12, duration: 3000, palette: [C.coral, '#FF69B4', '#FF1493'], gravity: -0.5, shape: 'heart', fromTop: false, sparkleGlow: false, sizeRange: [8, 14] },
   particles_coins: { count: 15, duration: 2500, palette: GOLD_PALETTE, gravity: 1.2, shape: 'coin', fromTop: true, sparkleGlow: true, sizeRange: [10, 16] },
   particles_fire: { count: 20, duration: 2500, palette: FIRE_PALETTE, gravity: -0.8, shape: 'circle', fromTop: false, sparkleGlow: true, sizeRange: [4, 8] },
   particles_magic: { count: 25, duration: 3000, palette: MAGIC_PALETTE, gravity: 0, shape: 'circle', fromTop: false, sparkleGlow: true, sizeRange: [4, 10] },

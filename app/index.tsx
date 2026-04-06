@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
 import { useUserStore } from '../src/stores/userStore';
-import { colors } from '../src/constants/colors';
+import { C } from '../src/constants/colors';
 
 export default function Index() {
   const [hydrated, setHydrated] = useState(false);
@@ -19,7 +19,7 @@ export default function Index() {
   if (!hydrated) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color={colors.growth} size="large" />
+        <ActivityIndicator color={C.green} size="large" />
       </View>
     );
   }
@@ -30,7 +30,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
+    backgroundColor: C.bg2,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut, useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, Easing } from 'react-native-reanimated';
 import { success as hapticSuccess } from '../../../utils/haptics';
-import { colors } from '../../../constants/colors';
+import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import { updateDifficulty, getDifficulty, chainReactionParams } from '../../../utils/difficultyEngine';
@@ -102,12 +102,20 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
     setChainStartTime(Date.now());
   }, [params]);
 
+  // Physics loop: update positions in a ref, sync to state at ~20fps
+  const orbsRef = useRef<Orb[]>([]);
+  orbsRef.current = orbs;
+  const lastSyncRef = useRef(0);
+
   useEffect(() => {
     let running = true;
     const tick = () => {
       if (!running) return;
-      setOrbs(prev => prev.map(orb => {
+      const current = orbsRef.current;
+      let changed = false;
+      const updated = current.map(orb => {
         if (!orb.alive) return orb;
+        changed = true;
         let nx = orb.x + orb.vx;
         let ny = orb.y + orb.vy;
         let nvx = orb.vx;
@@ -115,7 +123,16 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
         if (nx < 20 || nx > PLAY_W - 20) nvx = -nvx;
         if (ny < 20 || ny > PLAY_H - 20) nvy = -nvy;
         return { ...orb, x: nx, y: ny, vx: nvx, vy: nvy };
-      }));
+      });
+      orbsRef.current = updated;
+
+      // Sync to React state at ~20fps instead of 60fps
+      const now = performance.now();
+      if (changed && now - lastSyncRef.current >= 50) {
+        lastSyncRef.current = now;
+        setOrbs(updated);
+      }
+
       animRef.current = requestAnimationFrame(tick);
     };
     animRef.current = requestAnimationFrame(tick);
@@ -133,15 +150,19 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
       scoreRef.current += pts;
       setScore(s => s + pts);
 
-      setOrbs(prev => prev.map(o => o.id === orb.id ? { ...o, alive: false } : o));
+      const killed = orbsRef.current.map(o => o.id === orb.id ? { ...o, alive: false } : o);
+      orbsRef.current = killed;
+      setOrbs(killed);
       safeTimeout(() => {
-        setOrbs(prev => prev.map(o => o.id === orb.id ? {
+        const respawned = orbsRef.current.map(o => o.id === orb.id ? {
           ...o,
           alive: true,
           color: pickRandom(params.colorPool),
           x: 30 + Math.random() * (PLAY_W - 60),
           y: 30 + Math.random() * (PLAY_H - 60),
-        } : o));
+        } : o);
+        orbsRef.current = respawned;
+        setOrbs(respawned);
       }, 800);
 
       if (nextIdx >= sequence.length) {
@@ -242,15 +263,15 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bgPrimary, padding: 20 },
+  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  chainText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  scoreText: { color: colors.warm, fontSize: 18, fontWeight: '800' },
-  comboText: { color: colors.streak, fontSize: 16, fontWeight: '800' },
+  chainText: { color: C.t2, fontSize: 14, fontWeight: '600' },
+  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
+  comboText: { color: C.amber, fontSize: 16, fontWeight: '800' },
   seqRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 12 },
   seqDot: { width: 28, height: 28, borderRadius: 14 },
-  playField: { width: PLAY_W, height: PLAY_H, backgroundColor: colors.bgSecondary, borderRadius: 24, position: 'relative', alignSelf: 'center', overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+  playField: { width: PLAY_W, height: PLAY_H, backgroundColor: C.bg3, borderRadius: 24, position: 'relative', alignSelf: 'center', overflow: 'hidden', borderWidth: 1, borderColor: '#1F2A42' },
   orb: { position: 'absolute', width: 44, height: 44, borderRadius: 22, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 10, elevation: 6 },
   chainFeedback: { position: 'absolute', bottom: 100, left: 0, right: 0, alignItems: 'center' },
-  chainFeedbackText: { color: colors.streak, fontSize: 22, fontWeight: '900', letterSpacing: 1 },
+  chainFeedbackText: { color: C.amber, fontSize: 22, fontWeight: '900', letterSpacing: 1 },
 });

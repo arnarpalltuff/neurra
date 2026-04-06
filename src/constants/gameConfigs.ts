@@ -1,4 +1,4 @@
-import { colors } from './colors';
+import { C } from './colors';
 
 export type GameId =
   | 'ghost-kitchen'
@@ -189,6 +189,15 @@ export const AREA_LABELS: Record<BrainArea, string> = {
 };
 
 export const AREA_COLORS: Record<BrainArea, string> = {
-  memory: colors.growth, focus: colors.sky, speed: colors.streak,
-  flexibility: colors.lavender, creativity: colors.coral,
+  memory: C.green, focus: C.blue, speed: C.amber,
+  flexibility: C.purple, creativity: C.coral,
+};
+
+/** Screen-facing accent palette (uses warmer peach for creativity) */
+export const AREA_ACCENT: Record<BrainArea, string> = {
+  memory: C.green,
+  focus: C.blue,
+  speed: C.amber,
+  flexibility: C.purple,
+  creativity: C.peach,
 };

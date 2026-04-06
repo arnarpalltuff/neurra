@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import PressableScale from '../../src/components/ui/PressableScale';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../../src/constants/colors';
-import { gameConfigs, availableGames, BrainArea, GameId, AREA_LABELS } from '../../src/constants/gameConfigs';
+import { C } from '../../src/constants/colors';
+import { fonts } from '../../src/constants/typography';
+import { gameConfigs, availableGames, BrainArea, GameId, AREA_LABELS, AREA_ACCENT } from '../../src/constants/gameConfigs';
 import { useProgressStore } from '../../src/stores/progressStore';
-import Card from '../../src/components/ui/Card';
-import { getGameOfTheDay, getPlayStats } from '../../src/utils/gameFreshness';
+import { getPlayStats, getGameOfTheDay } from '../../src/utils/gameFreshness';
 
 type FilterArea = 'all' | BrainArea;
 
@@ -24,7 +24,7 @@ export default function GamesScreen() {
 
   const playStats = useMemo(() => getPlayStats(gameHistory), [gameHistory]);
   const gameOfTheDay = useMemo(() => getGameOfTheDay(gameHistory, playStats), [gameHistory, playStats]);
-  const gotdConfig = gameConfigs[gameOfTheDay];
+  const gotdConfig = gameConfigs[gameOfTheDay] ?? gameConfigs['pulse'];
 
   const filteredGames = useMemo(() => {
     const games = Object.values(gameConfigs);
@@ -42,31 +42,32 @@ export default function GamesScreen() {
         <Text style={styles.title}>Games</Text>
         <Text style={styles.subtitle}>{availableGames.length} games to train every part of your brain</Text>
 
-        {/* Game of the Day — hero card */}
-        <Animated.View entering={FadeIn.delay(100)}>
-          <TouchableOpacity activeOpacity={0.85} onPress={() => handlePlayGame(gameOfTheDay)}>
-            <Card elevated style={styles.gotdCard}>
-              <View style={styles.gotdBadge}>
-                <Text style={styles.gotdBadgeText}>GAME OF THE DAY</Text>
+        {/* Game of the Day */}
+        <Animated.View entering={FadeIn.delay(100).duration(400)}>
+          <PressableScale
+            style={styles.gotdCard}
+            onPress={() => handlePlayGame(gameOfTheDay)}
+          >
+            <View style={styles.gotdBadge}>
+              <Text style={styles.gotdBadgeText}>GAME OF THE DAY</Text>
+            </View>
+            <View style={styles.gotdContent}>
+              <View style={[styles.gotdIcon, { backgroundColor: `${gotdConfig.color}15` }]}>
+                <Text style={styles.gotdIconText}>{gotdConfig.icon}</Text>
               </View>
-              <View style={styles.gotdContent}>
-                <View style={[styles.gotdIcon, { backgroundColor: `${gotdConfig.color}15` }]}>
-                  <Text style={styles.gotdIconText}>{gotdConfig.icon}</Text>
-                </View>
-                <View style={styles.gotdInfo}>
-                  <Text style={styles.gotdName}>{gotdConfig.name}</Text>
-                  <Text style={styles.gotdDesc}>{gotdConfig.description}</Text>
-                </View>
-                <View style={styles.gotdPlayBtn}>
-                  <Text style={styles.gotdPlayText}>Play</Text>
-                </View>
+              <View style={styles.gotdInfo}>
+                <Text style={styles.gotdName}>{gotdConfig.name}</Text>
+                <Text style={styles.gotdDesc}>{gotdConfig.description}</Text>
               </View>
-            </Card>
-          </TouchableOpacity>
+              <View style={styles.gotdPlayBtn}>
+                <Text style={styles.gotdPlayText}>Play</Text>
+              </View>
+            </View>
+          </PressableScale>
         </Animated.View>
 
-        {/* Filter chips — pill shape */}
-        <Animated.View entering={FadeInDown.delay(150).springify()}>
+        {/* Filter chips */}
+        <Animated.View entering={FadeInDown.delay(150).duration(400)}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
             {FILTERS.map((f) => (
               <Pressable
@@ -86,19 +87,18 @@ export default function GamesScreen() {
           const best = personalBests[game.id] ?? 0;
           const stats = playStats[game.id];
           const isNew = !stats || stats.totalPlays === 0;
+          const accent = AREA_ACCENT[game.brainArea];
 
           return (
-            <Animated.View entering={FadeInDown.delay(200 + i * 50).springify()} key={game.id}>
-              <TouchableOpacity
-                style={[styles.gameCard, !game.available && styles.gameCardLocked]}
+            <Animated.View entering={FadeInDown.delay(200 + i * 50).duration(400)} key={game.id}>
+              <PressableScale
+                style={[
+                  styles.gameCard,
+                  !game.available && styles.gameCardLocked,
+                ]}
                 disabled={!game.available}
                 onPress={() => handlePlayGame(game.id)}
-                activeOpacity={0.8}
               >
-                <LinearGradient
-                  colors={[colors.bgCardTop, colors.bgCard]}
-                  style={StyleSheet.absoluteFill}
-                />
                 <View style={[styles.iconContainer, { backgroundColor: `${game.color}15` }]}>
                   <Text style={styles.icon}>{game.icon}</Text>
                 </View>
@@ -126,12 +126,12 @@ export default function GamesScreen() {
                   {!game.available ? (
                     <Text style={styles.comingSoon}>Soon</Text>
                   ) : (
-                    <View style={[styles.areaBadge, { backgroundColor: `${game.color}12` }]}>
-                      <Text style={[styles.areaText, { color: game.color }]}>{game.brainArea}</Text>
+                    <View style={[styles.areaBadge, { backgroundColor: `${accent}12` }]}>
+                      <Text style={[styles.areaText, { color: accent }]}>{AREA_LABELS[game.brainArea]}</Text>
                     </View>
                   )}
                 </View>
-              </TouchableOpacity>
+              </PressableScale>
             </Animated.View>
           );
         })}
@@ -141,41 +141,46 @@ export default function GamesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.bgPrimary },
+  safe: { flex: 1, backgroundColor: C.bg2 },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, gap: 10 },
   title: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 28,
     letterSpacing: -0.5,
     marginBottom: 2,
   },
   subtitle: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 14,
     marginBottom: 8,
   },
 
   // Game of the Day
   gotdCard: {
+    backgroundColor: C.bg3,
+    borderRadius: 18,
+    padding: 16,
     gap: 12,
     marginBottom: 8,
-    shadowColor: colors.streak,
+    borderWidth: 0.5,
+    borderColor: C.border,
+    shadowColor: C.amber,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
   },
   gotdBadge: {
-    backgroundColor: colors.streakTint,
+    backgroundColor: C.amberTint,
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 999,
   },
   gotdBadgeText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.streak,
+    fontFamily: fonts.bodyBold,
+    color: C.amber,
     fontSize: 10,
     letterSpacing: 1.2,
   },
@@ -190,65 +195,60 @@ const styles = StyleSheet.create({
   gotdIconText: { fontSize: 30 },
   gotdInfo: { flex: 1, gap: 3 },
   gotdName: {
-    fontFamily: 'Quicksand_700Bold',
-    color: colors.textPrimary,
+    fontFamily: fonts.heading,
+    color: C.t1,
     fontSize: 19,
   },
   gotdDesc: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 12,
   },
   gotdPlayBtn: {
-    backgroundColor: colors.streakTint,
+    backgroundColor: C.amberTint,
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 0.5,
-    borderColor: colors.streakBorder,
+    borderColor: 'rgba(240,181,66,0.3)',
   },
   gotdPlayText: {
-    fontFamily: 'Nunito_700Bold',
-    color: colors.streak,
+    fontFamily: fonts.bodyBold,
+    color: C.amber,
     fontSize: 13,
   },
 
   // Filters
   filterRow: { gap: 8, paddingVertical: 4 },
   filterChip: {
-    backgroundColor: colors.bgHover,
+    backgroundColor: C.bg4,
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
+    borderColor: C.border,
   },
   filterChipActive: {
-    backgroundColor: colors.growth,
-    borderColor: colors.growth,
+    backgroundColor: C.green,
+    borderColor: C.green,
   },
   filterText: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 13,
   },
-  filterTextActive: { color: colors.textInverse },
+  filterTextActive: { color: C.bg1 },
 
   // Game cards
   gameCard: {
     borderRadius: 18,
+    backgroundColor: C.bg3,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
     borderWidth: 0.5,
-    borderColor: colors.borderSubtle,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 2,
+    borderColor: C.border,
   },
   gameCardLocked: { opacity: 0.4 },
   iconContainer: {
@@ -262,38 +262,38 @@ const styles = StyleSheet.create({
   gameInfo: { flex: 1, gap: 3 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   gameName: {
-    fontFamily: 'Quicksand_600SemiBold',
-    color: colors.textPrimary,
+    fontFamily: fonts.headingMed,
+    color: C.t1,
     fontSize: 16,
   },
-  gameNameLocked: { color: colors.textSecondary },
+  gameNameLocked: { color: C.t3 },
   newBadge: {
-    backgroundColor: colors.coral,
+    backgroundColor: C.coral,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   newBadgeText: {
-    fontFamily: 'Nunito_700Bold',
-    color: '#FFF',
+    fontFamily: fonts.bodyBold,
+    color: C.t1,
     fontSize: 9,
     letterSpacing: 0.5,
   },
   gameDesc: {
-    fontFamily: 'Nunito_400Regular',
-    color: colors.textTertiary,
+    fontFamily: fonts.body,
+    color: C.t3,
     fontSize: 12,
   },
   gameStats: { flexDirection: 'row', gap: 10, marginTop: 2 },
   gameStat: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 11,
   },
   gameRight: { alignItems: 'flex-end' },
   comingSoon: {
-    fontFamily: 'Nunito_600SemiBold',
-    color: colors.textTertiary,
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
     fontSize: 11,
   },
   areaBadge: {
@@ -302,9 +302,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   areaText: {
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: fonts.bodySemi,
     fontSize: 11,
-    textTransform: 'capitalize',
     letterSpacing: 0.3,
   },
 });

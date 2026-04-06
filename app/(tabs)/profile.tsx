@@ -1,24 +1,17 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import PressableScale from '../../src/components/ui/PressableScale';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { router } from 'expo-router';
-import { C, colors } from '../../src/constants/colors';
+import { C } from '../../src/constants/colors';
 import { fonts } from '../../src/constants/typography';
 import { glow } from '../../src/utils/glow';
 import Kova from '../../src/components/kova/Kova';
 import { useUserStore } from '../../src/stores/userStore';
 import { useProgressStore } from '../../src/stores/progressStore';
 import { stageFromXP, stageNames } from '../../src/components/kova/KovaStates';
-import { BrainArea, AREA_LABELS } from '../../src/constants/gameConfigs';
+import { BrainArea, AREA_LABELS, AREA_ACCENT } from '../../src/constants/gameConfigs';
 import MoodHistoryCard from '../../src/components/ui/MoodHistoryCard';
-
-const AREA_ACCENT: Record<BrainArea, string> = {
-  memory: C.green,
-  focus: C.blue,
-  speed: C.amber,
-  flexibility: C.purple,
-  creativity: C.peach,
-};
 
 export default function ProfileScreen() {
   const name = useUserStore(s => s.name);
@@ -59,32 +52,38 @@ export default function ProfileScreen() {
           ))}
         </Animated.View>
 
-        {/* Brain Map — 3F */}
+        {/* Brain Map */}
         <Animated.View entering={FadeInDown.delay(300).duration(400)}>
           <Text style={styles.sectionTitle}>Your Brain</Text>
-          <View style={styles.brainMapCard}>
-            {(Object.entries(brainScores) as Array<[BrainArea, number]>).map(([area, score], i) => {
-              const color = AREA_ACCENT[area];
-              return (
-                <Animated.View
-                  key={area}
-                  entering={FadeInDown.delay(350 + i * 100).duration(400)}
-                  style={styles.brainRow}
-                >
-                  <View style={styles.brainLabelRow}>
-                    <View style={styles.brainDotLabel}>
-                      <View style={[styles.brainDot, { backgroundColor: color }]} />
-                      <Text style={styles.brainLabel}>{AREA_LABELS[area]}</Text>
+          {totalSessions === 0 ? (
+            <View style={styles.brainMapCard}>
+              <Text style={styles.emptyStateText}>Play a few sessions to see your brain map light up.</Text>
+            </View>
+          ) : (
+            <View style={styles.brainMapCard}>
+              {(Object.entries(brainScores) as Array<[BrainArea, number]>).map(([area, score], i) => {
+                const color = AREA_ACCENT[area];
+                return (
+                  <Animated.View
+                    key={area}
+                    entering={FadeInDown.delay(350 + i * 100).duration(400)}
+                    style={styles.brainRow}
+                  >
+                    <View style={styles.brainLabelRow}>
+                      <View style={styles.brainDotLabel}>
+                        <View style={[styles.brainDot, { backgroundColor: color }]} />
+                        <Text style={styles.brainLabel}>{AREA_LABELS[area]}</Text>
+                      </View>
+                      <Text style={[styles.brainScore, { color }]}>{Math.round(score)}</Text>
                     </View>
-                    <Text style={[styles.brainScore, { color }]}>{Math.round(score)}</Text>
-                  </View>
-                  <View style={styles.brainBar}>
-                    <View style={[styles.brainBarFill, { width: `${Math.min(score, 100)}%`, backgroundColor: color }]} />
-                  </View>
-                </Animated.View>
-              );
-            })}
-          </View>
+                    <View style={styles.brainBar}>
+                      <View style={[styles.brainBarFill, { width: `${Math.min(score, 100)}%`, backgroundColor: color }]} />
+                    </View>
+                  </Animated.View>
+                );
+              })}
+            </View>
+          )}
         </Animated.View>
 
         {/* Mood history */}
@@ -96,18 +95,22 @@ export default function ProfileScreen() {
 
         {/* Quick links */}
         <Animated.View entering={FadeInDown.delay(550).duration(400)} style={styles.links}>
-          <Pressable style={styles.linkRow} onPress={() => router.push('/settings')}>
+          <PressableScale style={styles.linkRow} onPress={() => router.push('/(tabs)/insights' as any)}>
+            <Text style={styles.linkText}>Brain Pulse & Insights</Text>
+            <Text style={styles.linkArrow}>›</Text>
+          </PressableScale>
+          <PressableScale style={styles.linkRow} onPress={() => router.push('/settings')}>
             <Text style={styles.linkText}>Settings</Text>
             <Text style={styles.linkArrow}>›</Text>
-          </Pressable>
-          <Pressable style={styles.linkRow} onPress={() => router.push('/shop')}>
+          </PressableScale>
+          <PressableScale style={styles.linkRow} onPress={() => router.push('/shop')}>
             <Text style={styles.linkText}>🏪 Kova Shop</Text>
             <Text style={styles.linkArrow}>›</Text>
-          </Pressable>
-          <Pressable style={styles.linkRow} onPress={() => router.push('/science')}>
+          </PressableScale>
+          <PressableScale style={styles.linkRow} onPress={() => router.push('/science')}>
             <Text style={styles.linkText}>The Science</Text>
             <Text style={styles.linkArrow}>›</Text>
-          </Pressable>
+          </PressableScale>
         </Animated.View>
 
         <View style={styles.footer}>
@@ -185,6 +188,14 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 18,
   },
+  emptyStateText: {
+    fontFamily: fonts.kova,
+    color: C.t3,
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingVertical: 20,
+  },
   brainRow: { gap: 6 },
   brainLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   brainDotLabel: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -200,7 +211,7 @@ const styles = StyleSheet.create({
   },
   brainBar: {
     height: 6,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: C.surface,
     borderRadius: 3,
     overflow: 'hidden',
   },
