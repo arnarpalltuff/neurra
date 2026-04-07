@@ -19,6 +19,7 @@ import { C } from '../../constants/colors';
 import { KovaEmotion, KovaStage, emotionGlowColors, stageColors } from './KovaStates';
 import { getDialogue, DialogueContext } from '../../constants/dialoguePool';
 import { getTimeOfDay } from '../../utils/timeUtils';
+import { fonts } from '../../constants/typography';
 
 interface KovaProps {
   stage?: KovaStage;
@@ -103,8 +104,8 @@ export default function Kova({
   useEffect(() => {
     breathScale.value = withRepeat(
       withSequence(
-        withTiming(1.02, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1.0, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.03, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.0, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       true,
@@ -629,7 +630,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
   },
   bubbleText: {
-    fontFamily: 'Caveat_400Regular',
+    fontFamily: fonts.kova,
     color: C.t1,
     fontSize: 16,
     textAlign: 'center',

@@ -6,6 +6,7 @@ import GameWrapper from '../src/screens/session/GameWrapper';
 import PostSession from '../src/screens/session/PostSession';
 import { GameId, gameConfigs } from '../src/constants/gameConfigs';
 import { useProgressStore } from '../src/stores/progressStore';
+import { useCoinStore } from '../src/stores/coinStore';
 import { calcSessionCoinRewards, CoinRewardBreakdown } from '../src/utils/coinRewards';
 import { SessionGameResult, calcSessionXP } from '../src/utils/sessionUtils';
 
@@ -24,7 +25,7 @@ export default function FocusPracticeScreen() {
   const updateStreak = useProgressStore(s => s.updateStreak);
   const updateBrainScores = useProgressStore(s => s.updateBrainScores);
   const level = useProgressStore(s => s.level);
-  const addCoins = useProgressStore(s => s.addCoins);
+  const earnCoins = useCoinStore(s => s.earnCoins);
   const personalBests = useProgressStore(s => s.personalBests);
   const gameHistory = useProgressStore(s => s.gameHistory);
   const isSessionDoneToday = useProgressStore(s => s.isSessionDoneToday);
@@ -84,13 +85,13 @@ export default function FocusPracticeScreen() {
         newLevel,
       });
 
-      if (rewards.total > 0) addCoins(rewards.total);
+      if (rewards.total > 0) earnCoins(rewards.total, 'Focus practice rewards');
       setCoinRewards(rewards);
       setSessionComplete(true);
     } else {
       setCurrentIndex(i => i + 1);
     }
-  }, [gameIds, currentIndex, results, addXP, updateStreak, updateBrainScores, addSession, level, personalBests, gameHistory, addCoins, isSessionDoneToday]);
+  }, [gameIds, currentIndex, results, addXP, updateStreak, updateBrainScores, addSession, level, personalBests, gameHistory, earnCoins, isSessionDoneToday]);
 
   const handleDone = useCallback(() => {
     router.replace('/(tabs)');

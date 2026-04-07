@@ -8,6 +8,7 @@ import StoryScreen from '../src/components/story/StoryScreen';
 import { GameId, gameConfigs } from '../src/constants/gameConfigs';
 import { selectDailyGames } from '../src/utils/gameSelection';
 import { useProgressStore } from '../src/stores/progressStore';
+import { useCoinStore } from '../src/stores/coinStore';
 import { useGroveStore } from '../src/stores/groveStore';
 import { useStoryStore } from '../src/stores/storyStore';
 import { calcSessionCoinRewards, CoinRewardBreakdown } from '../src/utils/coinRewards';
@@ -59,7 +60,7 @@ export default function SessionScreen() {
   const updateStreak = useProgressStore(s => s.updateStreak);
   const updateBrainScores = useProgressStore(s => s.updateBrainScores);
   const level = useProgressStore(s => s.level);
-  const addCoins = useProgressStore(s => s.addCoins);
+  const earnCoins = useCoinStore(s => s.earnCoins);
   const personalBests = useProgressStore(s => s.personalBests);
   const gameHistory = useProgressStore(s => s.gameHistory);
   const isSessionDoneToday = useProgressStore(s => s.isSessionDoneToday);
@@ -126,7 +127,7 @@ export default function SessionScreen() {
         newLevel,
       });
 
-      if (rewards.total > 0) addCoins(rewards.total);
+      if (rewards.total > 0) earnCoins(rewards.total, 'Session rewards');
       setCoinRewards(rewards);
 
       // Handle story unlocks
@@ -149,7 +150,7 @@ export default function SessionScreen() {
         setCurrentIndex((i) => i + 1);
       }, 500);
     }
-  }, [gameIds, currentIndex, results, addXP, updateStreak, updateBrainScores, addSession, level, personalBests, gameHistory, addCoins, markAreaTrained, isSessionDoneToday, storyBeat, addBeacon, addCompanion]);
+  }, [gameIds, currentIndex, results, addXP, updateStreak, updateBrainScores, addSession, level, personalBests, gameHistory, earnCoins, markAreaTrained, isSessionDoneToday, storyBeat, addBeacon, addCompanion]);
 
   const handleDone = useCallback(() => {
     if (storyBeat) advanceDay();
@@ -168,7 +169,7 @@ export default function SessionScreen() {
     setChallengeScore({ score, total });
     // Award bonus XP
     useProgressStore.getState().addXP(CHALLENGE_XP_BONUS);
-    useProgressStore.getState().addCoins(50);
+    useCoinStore.getState().earnCoins(50, 'Real-life challenge');
     setPhase('challengeResult');
   }, []);
 

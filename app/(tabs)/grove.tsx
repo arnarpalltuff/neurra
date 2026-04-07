@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, Modal, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
@@ -12,6 +12,7 @@ import GroveScene, { KovaGroveDialogueModal, pickGroveLine } from '../../src/com
 import GroveShop from '../../src/components/grove/GroveShop';
 import GroveEditMode from '../../src/components/grove/GroveEditMode';
 import { startGroveAmbient, stopAmbient } from '../../src/utils/sound';
+import { captureAndShare } from '../../src/utils/shareCapture';
 
 function formatDate(iso: string | null): string {
   if (!iso) return 'Never';
@@ -156,6 +157,7 @@ export default function GroveScreen() {
   const [pendingPlacement, setPendingPlacement] = useState<string | null>(null);
   const [kovaLine, setKovaLine] = useState('');
   const [kovaModal, setKovaModal] = useState(false);
+  const groveRef = useRef<View>(null);
 
   useEffect(() => {
     startGroveAmbient();
@@ -190,11 +192,13 @@ export default function GroveScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      {editMode ? (
-        <GroveIsland onZoneTap={handleZoneTap} onKovaTap={handleKovaTap} />
-      ) : (
-        <GroveScene zones={ZONE_CONFIGS} onZonePress={handleZoneTap} onKovaPress={handleKovaTap} />
-      )}
+      <View ref={groveRef} style={styles.sceneWrapper} collapsable={false}>
+        {editMode ? (
+          <GroveIsland onZoneTap={handleZoneTap} onKovaTap={handleKovaTap} />
+        ) : (
+          <GroveScene zones={ZONE_CONFIGS} onZonePress={handleZoneTap} onKovaPress={handleKovaTap} />
+        )}
+      </View>
 
       <KovaGroveDialogueModal
         visible={kovaModal}
@@ -203,9 +207,14 @@ export default function GroveScreen() {
       />
 
       {!editMode && (
-        <Pressable style={styles.editBtn} onPress={() => setEditMode(true)}>
-          <Text style={styles.editBtnText}>✏️</Text>
-        </Pressable>
+        <View style={styles.topButtons}>
+          <Pressable style={styles.iconBtn} onPress={() => captureAndShare(groveRef)}>
+            <Text style={styles.iconBtnText}>📷</Text>
+          </Pressable>
+          <Pressable style={styles.iconBtn} onPress={() => setEditMode(true)}>
+            <Text style={styles.iconBtnText}>✏️</Text>
+          </Pressable>
+        </View>
       )}
 
       <GroveEditMode
@@ -233,11 +242,15 @@ export default function GroveScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg1 },
+  sceneWrapper: { flex: 1 },
 
-  editBtn: {
+  topButtons: {
     position: 'absolute',
     top: 60,
     right: 16,
+    gap: 8,
+  },
+  iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -251,7 +264,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  editBtnText: { fontSize: 18 },
+  iconBtnText: { fontSize: 18 },
 
   // Bottom sheet
   sheetBackdrop: {

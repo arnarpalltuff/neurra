@@ -1,9 +1,6 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, SafeAreaView } from 'react-native';
-import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withTiming,
-  withSequence, FadeInDown, FadeIn,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { success as hapticSuccess, tapHeavy } from '../../utils/haptics';
 import { playSuccess, playStreakMilestone, playCoinEarned, playPerfectScore, playCoinCascade } from '../../utils/sound';
@@ -13,11 +10,9 @@ import { glow } from '../../utils/glow';
 import { GameId, gameConfigs } from '../../constants/gameConfigs';
 import Kova from '../../components/kova/Kova';
 import { KovaEmotion } from '../../components/kova/KovaStates';
-import Button from '../../components/ui/Button';
 import CountUpText from '../../components/ui/CountUpText';
 import { useProgressStore } from '../../stores/progressStore';
 import { useUserStore } from '../../stores/userStore';
-import { pickRandom } from '../../utils/arrayUtils';
 import { CoinRewardBreakdown } from '../../utils/coinRewards';
 import CelebrationOverlay from '../../components/ui/CelebrationOverlay';
 import Celebration from '../../components/ui/Celebration';
@@ -28,6 +23,8 @@ import PaywallFull from '../../components/paywall/PaywallFull';
 import { useProStore } from '../../stores/proStore';
 import CoachInsightCard from '../../components/insights/CoachInsightCard';
 import { useDailyBriefing } from '../../hooks/useDailyBriefing';
+import ShareCard, { SessionShareData } from '../../components/ui/ShareCard';
+import { captureAndShare } from '../../utils/shareCapture';
 
 interface PostSessionProps {
   results: Array<{ gameId: GameId; score: number; accuracy: number }>;
@@ -52,6 +49,7 @@ export default function PostSession({
 }: PostSessionProps) {
   const personalBests = useProgressStore(s => s.personalBests);
   const totalSessions = useProgressStore(s => s.totalSessions);
+  const brainScores = useProgressStore(s => s.brainScores);
   const mood = useUserStore(s => s.mood);
 
   const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
@@ -62,7 +60,9 @@ export default function PostSession({
 
   const [streakCelebrationVisible, setStreakCelebrationVisible] = useState(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [isSharing, setIsSharing] = useState(false);
   const timersRef = React.useRef<ReturnType<typeof setTimeout>[]>([]);
+  const shareRef = useRef<View>(null);
 
   const avgAccuracy = results.length > 0 ? results.reduce((a, r) => a + r.accuracy, 0) / results.length : 0;
   const isPerfect = avgAccuracy >= 0.9;
@@ -107,6 +107,27 @@ export default function PostSession({
   }, []);
 
   const kovaMessage = getPostSessionMessage(avgAccuracy, mood);
+
+  const bestResult = results.length > 0
+    ? results.reduce((best, r) => r.score > best.score ? r : best, results[0])
+    : null;
+
+  const shareData: SessionShareData = {
+    type: 'session',
+    streak: newStreak,
+    xpEarned,
+    bestGameName: bestResult ? (gameConfigs[bestResult.gameId]?.name ?? '') : '',
+    bestGameScore: bestResult?.score ?? 0,
+    framingText: bestResult ? getFramingText({ gameId: bestResult.gameId, score: bestResult.score, accuracy: bestResult.accuracy }) : '',
+    brainScores,
+    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+  };
+
+  const handleShare = async () => {
+    setIsSharing(true);
+    await captureAndShare(shareRef);
+    setIsSharing(false);
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -197,19 +218,24 @@ export default function PostSession({
               <Text style={styles.bonusBtnText}>Bonus Round (2x XP)</Text>
             </Pressable>
           )}
-          <Pressable
-            style={styles.doneBtn}
-            onPress={() => {
-              if (!isPro && canShowFullPaywall(totalSessions)) {
-                recordFullPaywall();
-                setShowPaywall(true);
-              } else {
-                onDone();
-              }
-            }}
-          >
-            <Text style={styles.doneBtnText}>Done for today ✓</Text>
-          </Pressable>
+          <View style={styles.primaryRow}>
+            <Pressable
+              style={styles.doneBtn}
+              onPress={() => {
+                if (!isPro && canShowFullPaywall(totalSessions)) {
+                  recordFullPaywall();
+                  setShowPaywall(true);
+                } else {
+                  onDone();
+                }
+              }}
+            >
+              <Text style={styles.doneBtnText}>Done for today ✓</Text>
+            </Pressable>
+            <Pressable style={styles.shareBtn} onPress={handleShare} disabled={isSharing}>
+              <Text style={styles.shareBtnText}>↗</Text>
+            </Pressable>
+          </View>
         </Animated.View>
 
         {/* Rate prompt */}
@@ -229,6 +255,11 @@ export default function PostSession({
           onDone();
         }}
       />
+
+      {/* Off-screen share card for capture */}
+      <View style={styles.offScreen} pointerEvents="none">
+        <ShareCard ref={shareRef} data={shareData} />
+      </View>
     </SafeAreaView>
   );
 }
@@ -347,7 +378,13 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 4,
   },
+  primaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
   doneBtn: {
+    flex: 1,
     height: 52,
     borderRadius: 26,
     borderWidth: 1.5,
@@ -359,6 +396,25 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     color: C.green,
     fontSize: 16,
+  },
+  shareBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: C.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareBtnText: {
+    fontFamily: fonts.bodyBold,
+    color: C.t2,
+    fontSize: 18,
+  },
+  offScreen: {
+    position: 'absolute',
+    left: -9999,
+    top: 0,
   },
   bonusBtn: {
     backgroundColor: C.amberTint,

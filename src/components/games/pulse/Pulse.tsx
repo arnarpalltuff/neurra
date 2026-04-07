@@ -20,7 +20,7 @@ interface PulseProps {
   isOnboarding?: boolean;
 }
 
-const TOTAL_SHAPES = 24;
+const TOTAL_SHAPES = 30;
 const SHAPE_TYPES: ShapeType[] = ['circle', 'square', 'triangle'];
 
 export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = false }: PulseProps) {
@@ -35,8 +35,10 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
   const [perfectStreak, setPerfectStreak] = useState(0);
   const [prevShapeColor, setPrevShapeColor] = useState<ShapeColor | null>(null);
   const [missed, setMissed] = useState(false);
+  const [lives, setLives] = useState(3);
 
   const shapeIdRef = useRef(0);
+  const livesRef = useRef(3);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const shapeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
@@ -97,7 +99,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
 
     // Pick color
     const rand = Math.random();
-    const color: ShapeColor = rand < 0.55 ? 'green' : rand < 0.85 ? 'red' : 'yellow';
+    const color: ShapeColor = rand < 0.70 ? 'green' : rand < 0.90 ? 'red' : 'yellow';
     const type = SHAPE_TYPES[Math.floor(Math.random() * SHAPE_TYPES.length)];
 
     tappedRef.current = false;
@@ -127,6 +129,13 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
           attemptsRef.current += 1;
           updateDifficulty('pulse', false);
           setPerfectStreak(0);
+          livesRef.current -= 1;
+          setLives(livesRef.current);
+          if (livesRef.current <= 0) {
+            setCurrentShape(null);
+            finishGame();
+            return;
+          }
         }
       }
 
@@ -188,6 +197,11 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
       bgFlash.value = withSequence(withTiming(1, { duration: 80 }), withTiming(0, { duration: 200 }));
       burstWrong({ x: width / 2, y: height / 2 });
       updateDifficulty('pulse', false);
+      livesRef.current -= 1;
+      setLives(livesRef.current);
+      if (livesRef.current <= 0) {
+        setTimeout(() => { if (!cancelledRef.current) finishGame(); }, 300);
+      }
     }
 
     shapeScale.value = withSequence(
@@ -254,6 +268,9 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
           {perfectStreak > 4 && (
             <Text style={styles.streakText}>{perfectStreak} streak!</Text>
           )}
+          <Text style={styles.livesText}>
+            {Array.from({ length: 3 }, (_, i) => i < lives ? '♥' : '♡').join('')}
+          </Text>
         </View>
 
         {/* Progress */}
@@ -403,5 +420,10 @@ const styles = StyleSheet.create({
     color: C.t3,
     fontSize: 13,
     fontWeight: '500',
+  },
+  livesText: {
+    color: C.coral,
+    fontSize: 18,
+    letterSpacing: 4,
   },
 });

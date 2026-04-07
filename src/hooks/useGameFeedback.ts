@@ -1,5 +1,6 @@
 import { useRef, useCallback, useState, useMemo } from 'react';
-import { tapLight, tapMedium, tapHeavy, success as hapticSuccess } from '../utils/haptics';
+import { useSharedValue, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
+import { tapLight, tapMedium, tapHeavy, success as hapticSuccess, warning as hapticWarning } from '../utils/haptics';
 import { playCorrectCombo, playWrong } from '../utils/sound';
 import type { FeedbackType } from '../components/ui/FeedbackBurst';
 
@@ -23,6 +24,9 @@ interface FeedbackState {
  * Handles haptics, sound, combo tracking, and mystery orb spawning.
  */
 export function useGameFeedback() {
+  const shakeX = useSharedValue(0);
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
+
   const [baseFeedback, setBaseFeedback] = useState({
     type: 'correct' as FeedbackType,
     combo: 0,
@@ -75,8 +79,16 @@ export function useGameFeedback() {
     comboRef.current = 0;
     triggerRef.current += 1;
 
-    tapMedium();
+    hapticWarning();
     playWrong();
+
+    // Shake: -4, 4, -4, 0 over 200ms
+    shakeX.value = withSequence(
+      withTiming(-4, { duration: 50 }),
+      withTiming(4, { duration: 50 }),
+      withTiming(-4, { duration: 50 }),
+      withTiming(0, { duration: 50 }),
+    );
 
     setBaseFeedback({
       type: 'wrong',
@@ -103,5 +115,6 @@ export function useGameFeedback() {
     fireCorrect,
     fireWrong,
     resetCombo,
+    shakeStyle,
   } as const;
 }

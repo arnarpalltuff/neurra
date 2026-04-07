@@ -8,6 +8,7 @@ import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { GROVE_PALETTES } from '../../constants/groveThemes';
 import { useProgressStore } from '../../stores/progressStore';
+import { useCoinStore } from '../../stores/coinStore';
 import {
   useGroveStore,
   GROVE_THEMES,
@@ -124,7 +125,7 @@ export default function GroveShop({ visible, onClose, onPlaceDecoration }: Grove
   const [tab, setTab] = useState<ShopTab>('themes');
   const [decoFilter, setDecoFilter] = useState<DecoFilterCategory>('all');
   const coins = useProgressStore(s => s.coins);
-  const spendCoins = useProgressStore(s => s.spendCoins);
+  const spendCoins = useCoinStore(s => s.spendCoins);
   const activeTheme = useGroveStore(s => s.activeTheme);
   const unlockedThemes = useGroveStore(s => s.unlockedThemes);
   const ownedDecorations = useGroveStore(s => s.ownedDecorations);
@@ -311,8 +312,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: C.border,
   },
-  closeText: { fontFamily: 'Nunito_600SemiBold', color: C.blue, fontSize: 15 },
-  title: { fontFamily: 'Quicksand_700Bold', color: C.t1, fontSize: 18 },
+  closeText: { fontFamily: fonts.bodySemi, color: C.blue, fontSize: 15 },
+  title: { fontFamily: fonts.heading, color: C.t1, fontSize: 18 },
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   coinIcon: { fontSize: 14 },
-  coinCount: { fontFamily: 'Nunito_700Bold', color: C.peach, fontSize: 14 },
+  coinCount: { fontFamily: fonts.bodyBold, color: C.peach, fontSize: 14 },
 
   // Tabs
   tabs: {
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface,
   },
   tabActive: { backgroundColor: C.green },
-  tabText: { fontFamily: 'Nunito_600SemiBold', color: C.t3, fontSize: 13 },
+  tabText: { fontFamily: fonts.bodySemi, color: C.t3, fontSize: 13 },
   tabTextActive: { color: C.bg2 },
 
   content: { flex: 1, paddingTop: 12 },
@@ -395,11 +396,11 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     opacity: 0.7,
   },
-  themeName: { fontFamily: 'Nunito_700Bold', color: C.t1, fontSize: 13 },
-  themeDesc: { fontFamily: 'Nunito_400Regular', color: C.t3, fontSize: 11, marginTop: 2, marginBottom: 6 },
-  themeActive: { fontFamily: 'Nunito_700Bold', color: C.green, fontSize: 12 },
-  themeOwned: { fontFamily: 'Nunito_600SemiBold', color: C.blue, fontSize: 12 },
-  themeCost: { fontFamily: 'Nunito_700Bold', color: C.peach, fontSize: 12 },
+  themeName: { fontFamily: fonts.bodyBold, color: C.t1, fontSize: 13 },
+  themeDesc: { fontFamily: fonts.body, color: C.t3, fontSize: 11, marginTop: 2, marginBottom: 6 },
+  themeActive: { fontFamily: fonts.bodyBold, color: C.green, fontSize: 12 },
+  themeOwned: { fontFamily: fonts.bodySemi, color: C.blue, fontSize: 12 },
+  themeCost: { fontFamily: fonts.bodyBold, color: C.peach, fontSize: 12 },
   proBadge: {
     backgroundColor: C.purple,
     paddingHorizontal: 10,
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignSelf: 'flex-start',
   },
-  proBadgeText: { fontFamily: 'Nunito_700Bold', color: '#FFF', fontSize: 10 },
+  proBadgeText: { fontFamily: fonts.bodyBold, color: '#FFF', fontSize: 10 },
 
   // Category filter
   filterRow: {
@@ -423,7 +424,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   filterChipActive: { backgroundColor: C.green },
-  filterText: { fontFamily: 'Nunito_600SemiBold', color: C.t3, fontSize: 12 },
+  filterText: { fontFamily: fonts.bodySemi, color: C.t3, fontSize: 12 },
   filterTextActive: { color: C.bg2 },
 
   // Decorations grid
@@ -441,20 +442,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   decoEmoji: { fontSize: 28 },
-  decoName: { fontFamily: 'Nunito_600SemiBold', color: C.t2, fontSize: 11, textAlign: 'center' },
-  decoPlace: { fontFamily: 'Nunito_700Bold', color: C.green, fontSize: 11 },
-  decoCost: { fontFamily: 'Nunito_700Bold', color: C.peach, fontSize: 12 },
+  decoName: { fontFamily: fonts.bodySemi, color: C.t2, fontSize: 11, textAlign: 'center' },
+  decoPlace: { fontFamily: fonts.bodyBold, color: C.green, fontSize: 11 },
+  decoCost: { fontFamily: fonts.bodyBold, color: C.peach, fontSize: 12 },
   proBadgeSmall: {
     backgroundColor: C.purple,
     paddingHorizontal: 8,
     paddingVertical: 1,
     borderRadius: 999,
   },
-  proBadgeSmallText: { fontFamily: 'Nunito_700Bold', color: '#FFF', fontSize: 9 },
+  proBadgeSmallText: { fontFamily: fonts.bodyBold, color: '#FFF', fontSize: 9 },
 
   // Empty state
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
   emptyEmoji: { fontSize: 40 },
-  emptyText: { fontFamily: 'Quicksand_700Bold', color: C.t1, fontSize: 16 },
-  emptySubtext: { fontFamily: 'Nunito_400Regular', color: C.t3, fontSize: 13 },
+  emptyText: { fontFamily: fonts.heading, color: C.t1, fontSize: 16 },
+  emptySubtext: { fontFamily: fonts.body, color: C.t3, fontSize: 13 },
 });

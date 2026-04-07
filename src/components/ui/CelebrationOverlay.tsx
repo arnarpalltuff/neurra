@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Pressable, TouchableOpacity } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -12,9 +12,12 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import { tapHeavy } from '../../utils/haptics';
 import { playLevelUp, playStreakMilestone, playConfetti } from '../../utils/sound';
 import Celebration, { CelebrationType } from './Celebration';
+import ShareCard, { MilestoneShareData } from './ShareCard';
+import { captureAndShare } from '../../utils/shareCapture';
 
 const { width, height } = Dimensions.get('window');
 
@@ -68,6 +71,24 @@ export default function CelebrationOverlay({ kind, value, visible, onDismiss }: 
   const glowScale = useSharedValue(0);
   const firedRef = useRef(false);
   const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [isSharing, setIsSharing] = useState(false);
+  const shareRef = useRef<View>(null);
+
+  const milestoneKind: MilestoneShareData['kind'] =
+    kind === 'levelUp' ? 'level' : kind === 'leaguePromotion' ? 'league' : 'streak';
+
+  const shareData: MilestoneShareData = {
+    type: 'milestone',
+    kind: milestoneKind,
+    value,
+    subtitle: config.subtitle(value),
+  };
+
+  const handleShare = async () => {
+    setIsSharing(true);
+    await captureAndShare(shareRef);
+    setIsSharing(false);
+  };
 
   useEffect(() => {
     if (visible && !firedRef.current) {
@@ -128,6 +149,9 @@ export default function CelebrationOverlay({ kind, value, visible, onDismiss }: 
           <Text style={[styles.title, { color: config.glowColor }]}>{config.title}</Text>
           <Text style={styles.subtitle}>{config.subtitle(value)}</Text>
           <Text style={styles.tapHint}>Tap to continue</Text>
+          <TouchableOpacity style={styles.shareBtn} onPress={handleShare} disabled={isSharing}>
+            <Text style={styles.shareBtnText}>Share ↗</Text>
+          </TouchableOpacity>
         </Animated.View>
       </Pressable>
 
@@ -137,6 +161,11 @@ export default function CelebrationOverlay({ kind, value, visible, onDismiss }: 
         trigger={confettiTrigger}
         origin={{ x: width / 2, y: height * 0.3 }}
       />
+
+      {/* Off-screen share card for capture */}
+      <View style={styles.offScreen} pointerEvents="none">
+        <ShareCard ref={shareRef} data={shareData} />
+      </View>
     </Animated.View>
   );
 }
@@ -167,19 +196,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontFamily: 'Quicksand_700Bold',
+    fontFamily: fonts.heading,
     fontSize: 32,
     letterSpacing: 2,
   },
   subtitle: {
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: fonts.bodySemi,
     color: C.t1,
     fontSize: 18,
   },
   tapHint: {
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: fonts.body,
     color: C.t3,
     fontSize: 13,
     marginTop: 24,
+  },
+  shareBtn: {
+    marginTop: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  shareBtnText: {
+    fontFamily: fonts.bodySemi,
+    color: C.t2,
+    fontSize: 14,
+  },
+  offScreen: {
+    position: 'absolute',
+    left: -9999,
+    top: 0,
   },
 });

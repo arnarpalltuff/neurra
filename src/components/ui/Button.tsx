@@ -2,6 +2,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { C } from '../../constants/colors';
+import { fonts } from '../../constants/typography';
 import { tapLight } from '../../utils/haptics';
 import { playTap } from '../../utils/sound';
 
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
   size_sm: { paddingHorizontal: 20, paddingVertical: 10, minHeight: 36 },
   size_md: { paddingHorizontal: 28, paddingVertical: 14, minHeight: 48 },
   size_lg: { paddingHorizontal: 36, paddingVertical: 18, minHeight: 56 },
-  text: { fontFamily: 'Nunito_700Bold' as const, letterSpacing: 0.3 },
+  text: { fontFamily: fonts.bodyBold, letterSpacing: 0.3 },
   text_primary: { color: C.bg2 },
   text_secondary: { color: C.green },
   text_ghost: { color: C.t2 },
