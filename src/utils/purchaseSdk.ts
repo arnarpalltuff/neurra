@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import Purchases, {
   type CustomerInfo,
   type PurchasesPackage,
@@ -21,6 +22,10 @@ let initialized = false;
 
 export async function initializePurchases(): Promise<void> {
   if (initialized) return;
+  if (Constants.appOwnership === 'expo') {
+    console.warn('[purchaseSdk] Skipping RevenueCat init — running in Expo Go');
+    return;
+  }
   try {
     if (__DEV__) {
       Purchases.setLogLevel(LOG_LEVEL.DEBUG);
