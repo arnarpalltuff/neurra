@@ -306,8 +306,13 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
-          const accuracy = wordCountRef.current > 0 ? Math.min(1, wordCountRef.current / 8) : 0.5;
-          onComplete(scoreRef.current, accuracy);
+          // Defer onComplete outside the setState updater so we don't
+          // trigger a parent setState during our own render.
+          setTimeout(() => {
+            if (cancelledRef.current) return;
+            const accuracy = wordCountRef.current > 0 ? Math.min(1, wordCountRef.current / 8) : 0.5;
+            onComplete(scoreRef.current, accuracy);
+          }, 0);
           return 0;
         }
         return t - 1;
