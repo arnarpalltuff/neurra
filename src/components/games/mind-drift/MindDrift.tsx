@@ -1,13 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { success as hapticSuccess } from '../../../utils/haptics';
+import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import Animated, {
+  FadeIn, FadeOut, useSharedValue, useAnimatedStyle,
+  withSpring, withTiming, withSequence, withDelay, Easing, interpolate,
+} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Line, Circle as SvgCircle } from 'react-native-svg';
+import { success as hapticSuccess, tapMedium, error as hapticError } from '../../../utils/haptics';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
+import FloatingParticles from '../../ui/FloatingParticles';
 import { updateDifficulty, getDifficulty, mindDriftParams } from '../../../utils/difficultyEngine';
 import { pickRandom } from '../../../utils/arrayUtils';
-import ProgressBar from '../../ui/ProgressBar';
 
 const { width: W } = Dimensions.get('window');
 const GRID_SIZE = W - 60;
@@ -74,6 +79,31 @@ function generatePath(grid: HexCell[], length: number): HexCell[] {
   return path;
 }
 
+// Float score
+function FloatScore({ points }: { points: number }) {
+  const rise = useSharedValue(0);
+  const fade = useSharedValue(1);
+  useEffect(() => {
+    rise.value = withTiming(1, { duration: 1000, easing: Easing.out(Easing.cubic) });
+    fade.value = withSequence(
+      withTiming(1, { duration: 200 }),
+      withDelay(350, withTiming(0, { duration: 500 })),
+    );
+  }, []);
+  const style = useAnimatedStyle(() => ({
+    opacity: fade.value,
+    transform: [
+      { translateY: interpolate(rise.value, [0, 1], [0, -80]) },
+      { scale: interpolate(rise.value, [0, 0.2, 1], [0.6, 1.2, 1]) },
+    ],
+  }));
+  return (
+    <Animated.Text style={[styles.floatScore, style]} pointerEvents="none">
+      +{points}
+    </Animated.Text>
+  );
+}
+
 export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftProps) {
   const diff = getDifficulty('mind-drift', 0);
   const level = Math.max(initialLevel, diff.level);
@@ -91,13 +121,18 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   const [round, setRound] = useState(1);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
+  const [floatScores, setFloatScores] = useState<{ id: number; points: number }[]>([]);
 
   const scoreRef = useRef(0);
   const correctRef = useRef(0);
   const roundRef = useRef(1);
+  const floatIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
   const roundStartRef = useRef(Date.now());
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  const scorePulse = useSharedValue(1);
+  const rootShake = useSharedValue(0);
 
   const safeTimeout = useCallback((fn: () => void, ms: number) => {
     const id = setTimeout(fn, ms);
@@ -158,6 +193,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
 
     if (isCorrect) {
       burstCorrect({ x: cell.cx + 30, y: cell.cy + 100 });
+      tapMedium();
       const newTapped = [...tapped, cell];
       setTapped(newTapped);
       updateDifficulty('mind-drift', true);
@@ -170,11 +206,29 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
         scoreRef.current += pts;
         setScore(scoreRef.current);
         setFeedback('correct');
+        scorePulse.value = withSequence(
+          withSpring(1.22, { damping: 6 }),
+          withSpring(1, { damping: 10 }),
+        );
+        floatIdRef.current += 1;
+        const fid = floatIdRef.current;
+        setFloatScores(prev => [...prev, { id: fid, points: pts }]);
+        safeTimeout(() => {
+          setFloatScores(prev => prev.filter(f => f.id !== fid));
+        }, 1200);
         hapticSuccess();
         safeTimeout(() => { setFeedback(null); advanceRound(); }, 800);
       }
     } else {
       burstWrong({ x: cell.cx + 30, y: cell.cy + 100 });
+      hapticError();
+      rootShake.value = withSequence(
+        withTiming(-5, { duration: 50 }),
+        withTiming(5, { duration: 50 }),
+        withTiming(-3, { duration: 50 }),
+        withTiming(3, { duration: 50 }),
+        withTiming(0, { duration: 50 }),
+      );
       updateDifficulty('mind-drift', false);
       setFeedback('wrong');
       safeTimeout(() => { setFeedback(null); advanceRound(); }, 1200);
@@ -187,7 +241,6 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
     return s;
   }, [path]);
 
-  // Cache path index per cell to avoid repeated findIndex in render
   const pathIndexMap = useMemo(() => {
     const m = new Map<string, number>();
     path.forEach((c, i) => m.set(`${c.row},${c.col}`, i));
@@ -201,24 +254,104 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   }, [tapped]);
 
   const hexR = GRID_SIZE / (params.gridCols * 2 + 1);
+  const gridH = GRID_SIZE * 0.85;
+
+  // Path lines for SVG layer
+  const showingLines = useMemo(() => {
+    if (phase !== 'showing' || litIndex < 1) return [];
+    return path.slice(0, litIndex + 1).map((c, i, arr) => {
+      if (i === 0) return null;
+      return { x1: arr[i - 1].cx, y1: arr[i - 1].cy, x2: c.cx, y2: c.cy };
+    }).filter(Boolean);
+  }, [phase, litIndex, path]);
+
+  const tappedLines = useMemo(() => {
+    return tapped.map((c, i, arr) => {
+      if (i === 0) return null;
+      return { x1: arr[i - 1].cx, y1: arr[i - 1].cy, x2: c.cx, y2: c.cy };
+    }).filter(Boolean);
+  }, [tapped]);
+
+  const scorePulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scorePulse.value }],
+  }));
+  const rootStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: rootShake.value }],
+  }));
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, rootStyle]}>
+      <LinearGradient
+        colors={['#0A0E1F', '#070A18', '#040710']}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <FloatingParticles count={10} color="rgba(155,114,224,0.4)" />
+
       <FeedbackBurst {...burstFeedback} />
+
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.roundText}>Path {round}/{params.totalRounds}</Text>
-        <Text style={styles.scoreText}>{score}</Text>
+        <View style={styles.pill}>
+          <Text style={styles.pillLabel}>PATH</Text>
+          <Text style={styles.pillText}>{round}<Text style={styles.pillTextDim}>/{params.totalRounds}</Text></Text>
+        </View>
+        <Animated.View style={scorePulseStyle}>
+          <Text style={styles.scoreText}>{score}</Text>
+          <Text style={styles.scoreLabel}>POINTS</Text>
+        </Animated.View>
+        <View style={{ width: 70 }} />
       </View>
-      <ProgressBar value={round - 1} max={params.totalRounds} style={{ marginBottom: 12 }} />
 
-      {phase === 'showing' && (
-        <Text style={styles.phaseText}>Watch the path...</Text>
-      )}
-      {phase === 'tracing' && (
-        <Text style={styles.phaseText}>Trace it back — {tapped.length}/{path.length}</Text>
-      )}
+      {/* Progress bar */}
+      <View style={styles.progressBar}>
+        <LinearGradient
+          colors={['#A87CE8', '#7CB8E8']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.progressFill, { width: `${Math.min(100, ((round - 1) / params.totalRounds) * 100)}%` }]}
+        />
+      </View>
 
-      <View style={[styles.gridContainer, { width: GRID_SIZE, height: GRID_SIZE * 0.85 }]}>
+      {/* Phase label */}
+      <View style={styles.phaseSlot}>
+        {phase === 'showing' && (
+          <Text style={styles.phaseText}>WATCH THE PATH…</Text>
+        )}
+        {phase === 'tracing' && (
+          <Text style={styles.phaseText}>
+            TRACE IT BACK · {tapped.length}/{path.length}
+          </Text>
+        )}
+      </View>
+
+      {/* Grid */}
+      <View style={[styles.gridContainer, { width: GRID_SIZE, height: gridH }]}>
+        {/* Star-field background under the grid */}
+        <View style={styles.gridBg} pointerEvents="none">
+          <LinearGradient
+            colors={['rgba(155,114,224,0.06)', 'rgba(0,0,0,0)']}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </View>
+
+        {/* SVG connecting lines */}
+        <Svg width={GRID_SIZE} height={gridH} style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          {showingLines.map((l, i) => l && (
+            <Line
+              key={`s-${i}`}
+              x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+              stroke="#A87CE8" strokeWidth={2} strokeLinecap="round" opacity={0.7}
+            />
+          ))}
+          {tappedLines.map((l, i) => l && (
+            <Line
+              key={`t-${i}`}
+              x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+              stroke="#7DD3A8" strokeWidth={2.5} strokeLinecap="round" opacity={0.9}
+            />
+          ))}
+        </Svg>
+
         {grid.map((cell) => {
           const key = `${cell.row},${cell.col}`;
           const isLit = litIndex >= 0 && path[litIndex] &&
@@ -229,57 +362,242 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
           const showWrong = feedback === 'wrong' && pathSet.has(key) && !tappedSet.has(key);
 
           return (
-            <TouchableOpacity
+            <Pressable
               key={key}
               style={[
                 styles.hex,
                 {
-                  left: cell.cx - hexR * 0.8,
-                  top: cell.cy - hexR * 0.8,
-                  width: hexR * 1.6,
-                  height: hexR * 1.6,
-                  borderRadius: hexR * 0.8,
+                  left: cell.cx - hexR * 0.85,
+                  top: cell.cy - hexR * 0.85,
+                  width: hexR * 1.7,
+                  height: hexR * 1.7,
+                  borderRadius: hexR * 0.85,
                 },
                 isLit && styles.hexLit,
-                isOnPath && styles.hexPath,
+                isOnPath && !isLit && styles.hexPath,
                 isTapped && styles.hexTapped,
                 showWrong && styles.hexMissed,
               ]}
               onPress={() => handleHexTap(cell)}
-              activeOpacity={0.7}
               disabled={phase !== 'tracing' || isTapped}
               accessibilityLabel={`Hex ${cell.row}-${cell.col}`}
-            />
+            >
+              <View
+                style={[
+                  styles.hexCore,
+                  isLit && styles.hexCoreLit,
+                  isTapped && styles.hexCoreTapped,
+                  showWrong && styles.hexCoreMissed,
+                  isOnPath && !isLit && styles.hexCorePath,
+                ]}
+              />
+            </Pressable>
           );
         })}
+
+        {floatScores.map(f => <FloatScore key={f.id} points={f.points} />)}
       </View>
 
-      {feedback === 'correct' && (
-        <Animated.View entering={FadeIn} exiting={FadeOut}>
-          <Text style={styles.correctText}>Perfect trace!</Text>
-        </Animated.View>
-      )}
-      {feedback === 'wrong' && (
-        <Animated.View entering={FadeIn} exiting={FadeOut}>
-          <Text style={styles.wrongText}>Wrong step — path shown</Text>
-        </Animated.View>
-      )}
-    </View>
+      {/* Bottom feedback */}
+      <View style={styles.bottomSlot}>
+        {feedback === 'correct' && (
+          <Animated.Text entering={FadeIn.duration(160)} exiting={FadeOut.duration(220)} style={styles.correctText}>
+            ✦ Perfect trace
+          </Animated.Text>
+        )}
+        {feedback === 'wrong' && (
+          <Animated.Text entering={FadeIn.duration(160)} exiting={FadeOut.duration(220)} style={styles.wrongText}>
+            Wrong step — path shown
+          </Animated.Text>
+        )}
+      </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  roundText: { color: C.t2, fontSize: 14, fontWeight: '600' },
-  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
-  phaseText: { color: C.t2, fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  gridContainer: { alignSelf: 'center', position: 'relative' },
-  hex: { position: 'absolute', backgroundColor: C.bg4, borderWidth: 1, borderColor: '#1F2A42' },
-  hexLit: { backgroundColor: C.green, borderColor: C.green, shadowColor: C.green, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 12, elevation: 6 },
-  hexPath: { backgroundColor: 'rgba(110,207,154,0.19)', borderColor: C.green },
-  hexTapped: { backgroundColor: C.green, borderColor: C.green, opacity: 0.9 },
-  hexMissed: { backgroundColor: C.coral, borderColor: C.coral, opacity: 0.6 },
-  correctText: { color: C.green, fontSize: 18, fontWeight: '800', textAlign: 'center', marginTop: 16 },
-  wrongText: { color: C.coral, fontSize: 16, fontWeight: '700', textAlign: 'center', marginTop: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#040710',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  pillLabel: {
+    color: C.t3,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  pillText: {
+    color: C.t1,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  pillTextDim: {
+    color: C.t3,
+    fontWeight: '700',
+  },
+  scoreText: {
+    color: C.peach,
+    fontSize: 28,
+    fontWeight: '900',
+    textAlign: 'center',
+    lineHeight: 30,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(224,155,107,0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+  scoreLabel: {
+    color: C.t3,
+    fontSize: 9,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 1.4,
+    marginTop: -1,
+  },
+
+  progressBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+
+  phaseSlot: {
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  phaseText: {
+    color: C.t2,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.6,
+  },
+
+  gridContainer: {
+    alignSelf: 'center',
+    position: 'relative',
+  },
+  gridBg: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+
+  hex: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hexCore: {
+    width: '70%',
+    height: '70%',
+    borderRadius: 999,
+    backgroundColor: 'rgba(155,114,224,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(155,114,224,0.25)',
+  },
+  hexLit: {
+    shadowColor: '#A87CE8',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 18,
+    elevation: 12,
+  },
+  hexCoreLit: {
+    backgroundColor: '#A87CE8',
+    borderColor: '#D7BFFF',
+    borderWidth: 2,
+  },
+  hexPath: {},
+  hexCorePath: {
+    backgroundColor: 'rgba(168,124,232,0.35)',
+    borderColor: '#A87CE8',
+  },
+  hexTapped: {
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  hexCoreTapped: {
+    backgroundColor: C.green,
+    borderColor: '#B7F0CE',
+    borderWidth: 2,
+  },
+  hexMissed: {
+    shadowColor: C.coral,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  hexCoreMissed: {
+    backgroundColor: 'rgba(232,112,126,0.45)',
+    borderColor: C.coral,
+  },
+
+  floatScore: {
+    position: 'absolute',
+    top: '50%',
+    alignSelf: 'center',
+    color: C.peach,
+    fontSize: 24,
+    fontWeight: '900',
+    textShadowColor: 'rgba(224,155,107,0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+
+  bottomSlot: {
+    minHeight: 28,
+    marginTop: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  correctText: {
+    color: C.green,
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(125,211,168,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  wrongText: {
+    color: C.coral,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
 });
