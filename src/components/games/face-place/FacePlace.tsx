@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput, Dimensions } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring, withTiming,
-  withSequence, FadeIn, FadeOut, SlideInRight,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming, withSequence,
+  withDelay, FadeIn, FadeOut, FadeInDown, SlideInRight, Easing, interpolate,
 } from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
-import { Svg, Circle, Ellipse, Rect, Path, G, Text as SvgText } from 'react-native-svg';
+import FloatingParticles from '../../ui/FloatingParticles';
+import { Svg, Circle, Ellipse, Rect, Path } from 'react-native-svg';
 import { C } from '../../../constants/colors';
 import { updateDifficulty, getDifficulty, facePlaceParams } from '../../../utils/difficultyEngine';
-import { shuffle, pickRandom } from '../../../utils/arrayUtils';
+import { shuffle } from '../../../utils/arrayUtils';
+import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
 
 const { width } = Dimensions.get('window');
 
-// Illustrated face data — distinct features for memorability
 const FACE_POOL = [
   { id: 'a', name: 'Maya', hair: '#2D1B0E', skin: '#D4A574', feature: 'glasses', accent: '#E87C8A' },
   { id: 'b', name: 'Sam', hair: '#FFD700', skin: '#F5D0B0', feature: 'hat', accent: '#7CB8E8' },
@@ -51,6 +53,7 @@ interface FaceItem {
   accent: string;
 }
 
+// Illustrated face — unchanged from original, just kept as-is
 function IllustratedFace({ face, size = 80, showName = false, correct, wrong }: {
   face: FaceItem; size?: number; showName?: boolean; correct?: boolean; wrong?: boolean;
 }) {
@@ -58,26 +61,21 @@ function IllustratedFace({ face, size = 80, showName = false, correct, wrong }: 
   const cx = s / 2;
   const cy = s / 2;
   const headR = s * 0.35;
-  const borderColor = correct ? C.green : wrong ? C.coral : '#1F2A42';
+  const borderColor = correct ? C.green : wrong ? C.coral : 'rgba(155,114,224,0.35)';
 
   return (
     <View style={[styles.faceContainer, { width: s, height: s + (showName ? 24 : 0), borderColor }]}>
       <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
-        {/* Hair background */}
         <Circle cx={cx} cy={cy - headR * 0.1} r={headR + 4} fill={face.hair} />
-        {/* Head */}
         <Circle cx={cx} cy={cy} r={headR} fill={face.skin} />
-        {/* Eyes */}
         <Circle cx={cx - headR * 0.28} cy={cy - headR * 0.08} r={headR * 0.1} fill="#2D1B0E" />
         <Circle cx={cx + headR * 0.28} cy={cy - headR * 0.08} r={headR * 0.1} fill="#2D1B0E" />
         <Circle cx={cx - headR * 0.24} cy={cy - headR * 0.12} r={headR * 0.04} fill="#FFF" opacity={0.8} />
         <Circle cx={cx + headR * 0.32} cy={cy - headR * 0.12} r={headR * 0.04} fill="#FFF" opacity={0.8} />
-        {/* Smile */}
         <Path
           d={`M${cx - headR * 0.2} ${cy + headR * 0.25} Q${cx} ${cy + headR * 0.42} ${cx + headR * 0.2} ${cy + headR * 0.25}`}
           stroke="#2D1B0E" strokeWidth={1.5} fill="none" strokeLinecap="round"
         />
-        {/* Feature */}
         {face.feature === 'glasses' && (
           <>
             <Circle cx={cx - headR * 0.28} cy={cy - headR * 0.08} r={headR * 0.18} stroke={face.accent} strokeWidth={1.5} fill="none" />
@@ -135,6 +133,67 @@ function IllustratedFace({ face, size = 80, showName = false, correct, wrong }: 
   );
 }
 
+// Choice button with press spring
+function ChoiceButton({ name, onPress }: { name: string; onPress: () => void }) {
+  const press = useSharedValue(1);
+  const handlePressIn = () => {
+    press.value = withSpring(0.93, { damping: 12, stiffness: 240 });
+  };
+  const handlePressOut = () => {
+    press.value = withSpring(1, { damping: 8, stiffness: 200 });
+  };
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: press.value }],
+  }));
+  return (
+    <Animated.View style={[styles.choiceBtn, style]}>
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        accessibilityLabel={name}
+        style={({ pressed }) => [
+          styles.choiceBtnInner,
+          pressed && styles.choiceBtnPressed,
+        ]}
+      >
+        <LinearGradient
+          colors={['rgba(155,114,224,0.10)', 'rgba(155,114,224,0.03)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <Text style={styles.choiceText}>{name}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+// Float score
+function FloatScore({ points }: { points: number }) {
+  const rise = useSharedValue(0);
+  const fade = useSharedValue(1);
+  useEffect(() => {
+    rise.value = withTiming(1, { duration: 1000, easing: Easing.out(Easing.cubic) });
+    fade.value = withSequence(
+      withTiming(1, { duration: 200 }),
+      withDelay(350, withTiming(0, { duration: 500 })),
+    );
+  }, []);
+  const style = useAnimatedStyle(() => ({
+    opacity: fade.value,
+    transform: [
+      { translateY: interpolate(rise.value, [0, 1], [0, -90]) },
+      { scale: interpolate(rise.value, [0, 0.2, 1], [0.6, 1.2, 1]) },
+    ],
+  }));
+  return (
+    <Animated.Text style={[styles.floatScore, style]} pointerEvents="none">
+      +{points}
+    </Animated.Text>
+  );
+}
+
 export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlaceProps) {
   const diff = getDifficulty('face-place', 0);
   const level = Math.max(initialLevel, diff.level);
@@ -147,19 +206,21 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
   const [recallIndex, setRecallIndex] = useState(0);
   const [choices, setChoices] = useState<string[]>([]);
   const [score, setScore] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [totalAttempts, setTotalAttempts] = useState(0);
   const [feedback, setFeedback] = useState<{ correct: boolean; answer: string } | null>(null);
   const [typedName, setTypedName] = useState('');
+  const [floatScores, setFloatScores] = useState<{ id: number; points: number }[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const answerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
   const startTimeRef = useRef(Date.now());
   const scoreRef = useRef(0);
   const correctCountRef = useRef(0);
+  const floatIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
 
-  // Init faces
+  const scorePulse = useSharedValue(1);
+  const rootShake = useSharedValue(0);
+
   useEffect(() => {
     cancelledRef.current = false;
     const selected = shuffle(FACE_POOL).slice(0, params.numFaces);
@@ -169,7 +230,6 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
     return () => { cancelledRef.current = true; };
   }, [params.numFaces]);
 
-  // Auto-advance study phase
   useEffect(() => {
     if (phase !== 'study' || faces.length === 0) return;
     timerRef.current = setTimeout(() => {
@@ -183,6 +243,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
   }, [phase, studyIndex, faces, params.displayTime]);
 
   const skipStudy = useCallback(() => {
+    selection();
     if (timerRef.current) clearTimeout(timerRef.current);
     if (studyIndex + 1 < faces.length) {
       setStudyIndex(i => i + 1);
@@ -217,18 +278,38 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
     const isCorrect = answer.toLowerCase().trim() === currentFace.name.toLowerCase();
     const elapsed = (Date.now() - startTimeRef.current) / 1000;
 
-    setTotalAttempts(t => t + 1);
     updateDifficulty('face-place', isCorrect);
 
     if (isCorrect) {
       correctCountRef.current += 1;
-      setCorrectCount(correctCountRef.current);
       const speedBonus = elapsed < 2 ? 60 : 0;
       const pts = 120 + speedBonus;
       scoreRef.current += pts;
       setScore(s => s + pts);
+      success();
+      tapMedium();
+      scorePulse.value = withSequence(
+        withSpring(1.22, { damping: 6 }),
+        withSpring(1, { damping: 10 }),
+      );
+      floatIdRef.current += 1;
+      const fid = floatIdRef.current;
+      setFloatScores(prev => [...prev, { id: fid, points: pts }]);
+      setTimeout(() => {
+        if (!cancelledRef.current) {
+          setFloatScores(prev => prev.filter(f => f.id !== fid));
+        }
+      }, 1200);
       burstCorrect({ x: width / 2, y: 300 });
     } else {
+      hapticError();
+      rootShake.value = withSequence(
+        withTiming(-5, { duration: 50 }),
+        withTiming(5, { duration: 50 }),
+        withTiming(-3, { duration: 50 }),
+        withTiming(3, { duration: 50 }),
+        withTiming(0, { duration: 50 }),
+      );
       burstWrong({ x: width / 2, y: 300 });
     }
 
@@ -250,18 +331,47 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
     }, 1200);
   }, [recallIndex, recallOrder, faces, onComplete]);
 
+  const scorePulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scorePulse.value }],
+  }));
+  const rootStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: rootShake.value }],
+  }));
+
   const currentStudyFace = faces[studyIndex];
   const currentRecallFace = recallOrder[recallIndex];
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, rootStyle]}>
+      <LinearGradient
+        colors={['#150B1E', '#0E0816', '#080510']}
+        style={StyleSheet.absoluteFillObject}
+      />
+      <LinearGradient
+        colors={['rgba(155,114,224,0.10)', 'rgba(0,0,0,0)']}
+        style={styles.topGlow}
+        pointerEvents="none"
+      />
+      <FloatingParticles count={6} color="rgba(180,140,240,0.3)" />
+
       <FeedbackBurst {...burstFeedback} />
+
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.phaseText}>{phase === 'study' ? 'Study' : 'Recall'}</Text>
-        <Text style={styles.scoreText}>{score} pts</Text>
+        <View style={styles.pill}>
+          <Text style={styles.pillLabel}>{phase === 'study' ? 'STUDY' : 'RECALL'}</Text>
+          <Text style={styles.pillText}>
+            {phase === 'study' ? `${studyIndex + 1}/${faces.length}` : `${recallIndex + 1}/${recallOrder.length}`}
+          </Text>
+        </View>
+        <Animated.View style={scorePulseStyle}>
+          <Text style={styles.scoreText}>{score}</Text>
+          <Text style={styles.scoreLabel}>POINTS</Text>
+        </Animated.View>
+        <View style={{ width: 70 }} />
       </View>
 
-      {/* Progress */}
+      {/* Progress pips */}
       <View style={styles.progressRow}>
         {faces.map((_, i) => (
           <View key={i} style={[
@@ -275,31 +385,56 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
 
       {/* Study phase */}
       {phase === 'study' && currentStudyFace && (
-        <Animated.View entering={SlideInRight.duration(300)} key={currentStudyFace.id} style={styles.studyArea}>
-          <Text style={styles.studyLabel}>Remember this face</Text>
-          <IllustratedFace face={currentStudyFace} size={140} showName />
-          <Text style={styles.nameDisplay}>{currentStudyFace.name}</Text>
-          <TouchableOpacity onPress={skipStudy} style={styles.skipBtn}>
+        <Animated.View
+          entering={SlideInRight.duration(280)}
+          key={currentStudyFace.id}
+          style={styles.studyArea}
+        >
+          <Text style={styles.phaseLabel}>REMEMBER THIS FACE</Text>
+
+          <View style={styles.portraitFrame}>
+            <View style={[styles.frameCorner, styles.frameCornerTL]} />
+            <View style={[styles.frameCorner, styles.frameCornerTR]} />
+            <View style={[styles.frameCorner, styles.frameCornerBL]} />
+            <View style={[styles.frameCorner, styles.frameCornerBR]} />
+            <IllustratedFace face={currentStudyFace} size={150} />
+          </View>
+
+          <View style={styles.namePlate}>
+            <View style={styles.namePlateLine} />
+            <Text style={styles.nameDisplay}>{currentStudyFace.name}</Text>
+            <View style={styles.namePlateLine} />
+          </View>
+
+          <Pressable onPress={skipStudy} style={styles.skipBtn}>
             <Text style={styles.skipText}>Got it →</Text>
-          </TouchableOpacity>
+          </Pressable>
         </Animated.View>
       )}
 
       {/* Recall phase */}
       {phase === 'recall' && currentRecallFace && (
-        <Animated.View entering={FadeIn} key={`recall-${recallIndex}`} style={styles.recallArea}>
-          <Text style={styles.recallLabel}>Who is this?</Text>
-          <IllustratedFace
-            face={currentRecallFace}
-            size={130}
-            correct={feedback?.correct === true}
-            wrong={feedback?.correct === false}
-          />
+        <Animated.View entering={FadeIn.duration(220)} key={`recall-${recallIndex}`} style={styles.recallArea}>
+          <Text style={styles.phaseLabel}>WHO IS THIS?</Text>
+
+          <View style={styles.portraitFrame}>
+            <View style={[styles.frameCorner, styles.frameCornerTL]} />
+            <View style={[styles.frameCorner, styles.frameCornerTR]} />
+            <View style={[styles.frameCorner, styles.frameCornerBL]} />
+            <View style={[styles.frameCorner, styles.frameCornerBR]} />
+            <IllustratedFace
+              face={currentRecallFace}
+              size={140}
+              correct={feedback?.correct === true}
+              wrong={feedback?.correct === false}
+            />
+            {floatScores.map(f => <FloatScore key={f.id} points={f.points} />)}
+          </View>
 
           {feedback && (
-            <Animated.View entering={FadeIn} style={styles.feedbackRow}>
+            <Animated.View entering={FadeIn.duration(160)} style={styles.feedbackRow}>
               <Text style={[styles.feedbackText, feedback.correct ? styles.feedbackCorrect : styles.feedbackWrong]}>
-                {feedback.correct ? '✓ Correct!' : `✗ It was ${feedback.answer}`}
+                {feedback.correct ? '✓ Correct' : `✗ It was ${feedback.answer}`}
               </Text>
             </Animated.View>
           )}
@@ -307,14 +442,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
           {!feedback && params.recallType === 'choice' && (
             <View style={styles.choiceGrid}>
               {choices.map(name => (
-                <TouchableOpacity
-                  key={name}
-                  style={styles.choiceBtn}
-                  onPress={() => handleAnswer(name)}
-                  accessibilityLabel={name}
-                >
-                  <Text style={styles.choiceText}>{name}</Text>
-                </TouchableOpacity>
+                <ChoiceButton key={name} name={name} onPress={() => handleAnswer(name)} />
               ))}
             </View>
           )}
@@ -337,36 +465,290 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
           )}
         </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg2, padding: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  phaseText: { color: C.t2, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  scoreText: { color: C.peach, fontSize: 18, fontWeight: '800' },
-  progressRow: { flexDirection: 'row', gap: 6, marginBottom: 20, justifyContent: 'center' },
-  pip: { width: 20, height: 5, borderRadius: 2.5, backgroundColor: C.bg4 },
-  pipActive: { backgroundColor: C.purple, opacity: 0.7 },
-  pipDone: { backgroundColor: C.purple },
-  studyArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  studyLabel: { color: C.t3, fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  nameDisplay: { color: C.t1, fontSize: 28, fontWeight: '800' },
-  skipBtn: { backgroundColor: C.bg4, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10, borderWidth: 1, borderColor: '#1F2A42' },
-  skipText: { color: C.t2, fontSize: 14, fontWeight: '700' },
-  recallArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  recallLabel: { color: C.t3, fontSize: 14, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  feedbackRow: { height: 30, justifyContent: 'center' },
-  feedbackText: { fontSize: 16, fontWeight: '800' },
-  feedbackCorrect: { color: C.green },
-  feedbackWrong: { color: C.coral },
-  choiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', maxWidth: width - 40, marginTop: 8 },
-  choiceBtn: { backgroundColor: C.bg4, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 12, borderWidth: 1, borderColor: '#1F2A42', minWidth: (width - 80) / 2 - 5, alignItems: 'center' },
-  choiceText: { color: C.t1, fontSize: 16, fontWeight: '700' },
-  typeArea: { gap: 10, width: '100%', alignItems: 'center' },
-  hintText: { color: C.t3, fontSize: 13, fontWeight: '600' },
-  typeInput: { backgroundColor: C.bg4, borderRadius: 14, paddingHorizontal: 20, paddingVertical: 14, color: C.t1, fontSize: 20, fontWeight: '700', borderWidth: 2, borderColor: '#1F2A42', textAlign: 'center', width: '80%' },
-  faceContainer: { alignItems: 'center', borderRadius: 20, borderWidth: 2, borderColor: '#1F2A42', overflow: 'hidden', backgroundColor: C.bg3, padding: 6 },
-  faceName: { color: C.t1, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  container: {
+    flex: 1,
+    backgroundColor: '#080510',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+  topGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 240,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  pillLabel: {
+    color: C.t3,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  pillText: {
+    color: C.t1,
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  scoreText: {
+    color: C.peach,
+    fontSize: 28,
+    fontWeight: '900',
+    textAlign: 'center',
+    lineHeight: 30,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(224,155,107,0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+  scoreLabel: {
+    color: C.t3,
+    fontSize: 9,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 1.4,
+    marginTop: -1,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 22,
+    justifyContent: 'center',
+  },
+  pip: {
+    width: 22,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  pipActive: {
+    backgroundColor: C.purple,
+  },
+  pipDone: {
+    backgroundColor: C.purple,
+    opacity: 0.5,
+  },
+
+  studyArea: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 22,
+  },
+  recallArea: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 18,
+  },
+  phaseLabel: {
+    color: C.t2,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.8,
+  },
+
+  // Portrait frame
+  portraitFrame: {
+    padding: 18,
+    borderRadius: 20,
+    backgroundColor: 'rgba(155,114,224,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(155,114,224,0.25)',
+    position: 'relative',
+  },
+  frameCorner: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderColor: C.purple,
+  },
+  frameCornerTL: {
+    top: 4,
+    left: 4,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderTopLeftRadius: 4,
+  },
+  frameCornerTR: {
+    top: 4,
+    right: 4,
+    borderTopWidth: 2,
+    borderRightWidth: 2,
+    borderTopRightRadius: 4,
+  },
+  frameCornerBL: {
+    bottom: 4,
+    left: 4,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderBottomLeftRadius: 4,
+  },
+  frameCornerBR: {
+    bottom: 4,
+    right: 4,
+    borderBottomWidth: 2,
+    borderRightWidth: 2,
+    borderBottomRightRadius: 4,
+  },
+
+  // Name plate
+  namePlate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  namePlateLine: {
+    width: 28,
+    height: 1,
+    backgroundColor: 'rgba(155,114,224,0.4)',
+  },
+  nameDisplay: {
+    color: '#EDE9E0',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(155,114,224,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+
+  skipBtn: {
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 14,
+    backgroundColor: 'rgba(155,114,224,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(155,114,224,0.35)',
+  },
+  skipText: {
+    color: C.purple,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+
+  feedbackRow: {
+    height: 30,
+    justifyContent: 'center',
+  },
+  feedbackText: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+  },
+  feedbackCorrect: {
+    color: C.green,
+    textShadowColor: 'rgba(125,211,168,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  feedbackWrong: {
+    color: C.coral,
+  },
+
+  choiceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+    maxWidth: width - 40,
+    marginTop: 4,
+  },
+  choiceBtn: {
+    minWidth: (width - 80) / 2 - 5,
+  },
+  choiceBtnInner: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(155,114,224,0.25)',
+    alignItems: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  choiceBtnPressed: {
+    borderColor: C.purple,
+  },
+  choiceText: {
+    color: '#EDE9E0',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+
+  typeArea: {
+    gap: 12,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  hintText: {
+    color: C.t3,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  typeInput: {
+    backgroundColor: 'rgba(155,114,224,0.08)',
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    color: C.t1,
+    fontSize: 22,
+    fontWeight: '800',
+    borderWidth: 2,
+    borderColor: 'rgba(155,114,224,0.35)',
+    textAlign: 'center',
+    width: '80%',
+    letterSpacing: 0.5,
+  },
+
+  faceContainer: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 2,
+    overflow: 'hidden',
+    backgroundColor: '#10131F',
+    padding: 6,
+  },
+  faceName: {
+    color: C.t1,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+
+  floatScore: {
+    position: 'absolute',
+    bottom: 70,
+    alignSelf: 'center',
+    color: C.peach,
+    fontSize: 24,
+    fontWeight: '900',
+    textShadowColor: 'rgba(224,155,107,0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
 });
