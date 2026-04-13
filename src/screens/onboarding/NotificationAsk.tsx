@@ -6,6 +6,8 @@ import { fonts } from '../../constants/typography';
 import Kova from '../../components/kova/Kova';
 import Button from '../../components/ui/Button';
 import { requestNotificationSetup, scheduleDefaultReminder } from '../../utils/notificationSchedule';
+import { LinearGradient } from 'expo-linear-gradient';
+import FloatingParticles from '../../components/ui/FloatingParticles';
 
 interface Props {
   onDone: (enabled: boolean) => void;
@@ -20,6 +22,8 @@ export default function NotificationAsk({ onDone }: Props) {
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={[C.bg1, '#0A0E1A', C.bg1]} style={StyleSheet.absoluteFillObject} />
+      <FloatingParticles count={6} color="rgba(110,207,154,0.12)" />
       <Animated.View entering={FadeInDown.delay(80)} style={styles.kova}>
         <Kova size={100} emotion="happy" showSpeechBubble={false} />
       </Animated.View>
@@ -34,7 +38,7 @@ export default function NotificationAsk({ onDone }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: C.bg2 },
+  container: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: C.bg1 },
   kova: { alignItems: 'center', marginBottom: 16 },
   content: { gap: 12 },
   title: {

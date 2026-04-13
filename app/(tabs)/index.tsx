@@ -1,17 +1,29 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  Dimensions, SafeAreaView, Pressable, Alert,
+  Dimensions, Pressable, Alert,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   FadeInDown, FadeIn, FadeOut, useSharedValue, useAnimatedStyle,
   withRepeat, withSequence, withTiming, withSpring, Easing,
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import FloatingParticles from '../../src/components/ui/FloatingParticles';
 import { C } from '../../src/constants/colors';
-import { fonts } from '../../src/constants/typography';
-import { glow } from '../../src/utils/glow';
+import { fonts, type as t } from '../../src/constants/typography';
+import {
+  space,
+  radii,
+  shadows,
+  accentGlow,
+  motion,
+  asymmetry,
+  pillButton,
+} from '../../src/constants/design';
+import BrainFactCard from '../../src/components/ui/BrainFactCard';
+import GameUnlockBanner from '../../src/components/games/GameUnlockBanner';
 import Kova from '../../src/components/kova/Kova';
 import CelebrationOverlay, { CelebrationKind } from '../../src/components/ui/CelebrationOverlay';
 import { useUserStore } from '../../src/stores/userStore';
@@ -26,20 +38,26 @@ import StreakBreakOverlay from '../../src/components/ui/StreakBreakOverlay';
 import Celebration from '../../src/components/ui/Celebration';
 import { useStreakUrgency } from '../../src/hooks/useStreakUrgency';
 import { tapLight } from '../../src/utils/haptics';
+import { playTap, playTransition } from '../../src/utils/sound';
 import { getGreeting } from '../../src/constants/kovaDialogue';
 import { useProStore } from '../../src/stores/proStore';
-import { useStoryStore } from '../../src/stores/storyStore';
-import { getArcLabel } from '../../src/constants/story';
-import { generateInsights } from '../../src/utils/insightsEngine';
-import TopInsightCard from '../../src/components/insights/TopInsightCard';
-import CoachInsightCard from '../../src/components/insights/CoachInsightCard';
 import { useDailyBriefing } from '../../src/hooks/useDailyBriefing';
+import { getDailyQuote } from '../../src/constants/quotes';
 import PaywallNudge from '../../src/components/paywall/PaywallNudge';
 import PaywallFull from '../../src/components/paywall/PaywallFull';
-import {
-  useWeeklyReportStore,
-  getLatestReportWeekId,
-} from '../../src/stores/weeklyReportStore';
+import { useEnergyStore, maxHeartsFor, MAX_QUICK_HITS_PER_DAY } from '../../src/stores/energyStore';
+import { useBrainHistoryStore } from '../../src/stores/brainHistoryStore';
+import { classifyBrainWeather } from '../../src/utils/brainWeather';
+import { useGroveStore } from '../../src/stores/groveStore';
+import type { SessionLength } from '../../src/stores/userStore';
+import { FREE_DEEP_SESSIONS_PER_WEEK } from '../../src/stores/userStore';
+import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
+import { useKovaStore, stageConfigFor, pickDialogue } from '../../src/stores/kovaStore';
+import KovaParticles from '../../src/components/kova/KovaParticles';
+import KovaSpeechBubble from '../../src/components/kova/KovaSpeechBubble';
+import KovaEvolutionAnimation from '../../src/components/kova/KovaEvolutionAnimation';
+import DailyChallengeList from '../../src/components/challenges/DailyChallengeList';
+import RewardChest from '../../src/components/rewards/RewardChest';
 
 const { width } = Dimensions.get('window');
 
@@ -50,12 +68,82 @@ const GREETINGS: Record<string, string> = {
   lateNight: 'Still up?',
 };
 
-export default function HomeScreen() {
+// Rotating session card slogans — keeps the CTA feeling fresh
+const SESSION_SLOGANS = [
+  "5 minutes. That's all Kova's asking for today.",
+  "Train your brain. Grow your grove.",
+  "Your brain called. It wants a workout.",
+  "5 minutes now, sharper all day.",
+  "Small reps. Big brain gains.",
+  "Level up your mind. One session at a time.",
+  "Your neurons are warming up. Let's go.",
+  "The daily grind — but for your brain.",
+  "Flex those neurons. They'll thank you later.",
+  "Sharper today than yesterday. That's the deal.",
+];
+
+const DONE_SLOGANS = [
+  "All wrapped up. Your brain grew today.",
+  "Session complete. Neurons fired. Streak alive.",
+  "Done. Your future self just sent a thank-you.",
+  "That's a wrap. Your grove is glowing.",
+  "Brain trained. Kova is proud. See you tomorrow.",
+];
+
+function getDailySlogan(pool: string[]): string {
+  // Same slogan all day, changes tomorrow
+  const dayIndex = Math.floor(Date.now() / 86400000) % pool.length;
+  return pool[dayIndex];
+}
+
+function HomeScreenInner() {
+  // Notch-aware insets — pushes the floating coin/hearts rows below the notch
+  // on iPhones with one. SafeAreaView in this file is from safe-area-context,
+  // so insets are reliable.
+  const insets = useSafeAreaInsets();
+
+  // ── Kova engagement system ─────────────────────────────────
+  const kovaStage = useKovaStore(s => s.currentStage);
+  const kovaEmotion = useKovaStore(s => s.currentEmotion);
+  const kovaStreak = useKovaStore(s => s.currentStreak);
+  const pendingEvolution = useKovaStore(s => s.pendingEvolution);
+  const pendingDeEvolution = useKovaStore(s => s.pendingDeEvolution);
+  const evaluateKovaOnOpen = useKovaStore(s => s.evaluateOnOpen);
+  const clearPendingEvolution = useKovaStore(s => s.clearPendingEvolution);
+  const kovaStageConfig = stageConfigFor(kovaStage);
+  const [showRewardChest, setShowRewardChest] = useState(false);
+  const [kovaDialogue, setKovaDialogue] = useState<string | null>(null);
+  const [showKovaBubble, setShowKovaBubble] = useState(false);
+
+  // Evaluate Kova state on mount
+  useEffect(() => {
+    evaluateKovaOnOpen();
+  }, []);
+
+  // Show Kova greeting after evaluation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const line = pickDialogue(kovaEmotion);
+      setKovaDialogue(line);
+      setShowKovaBubble(true);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [kovaEmotion]);
+
+  const handlePlayChallenge = useCallback((challengeId: string, gameType: string) => {
+    playTransition();
+    router.push({ pathname: '/focus-practice', params: { games: gameType, challengeId } } as any);
+  }, []);
+
   const name = useUserStore(s => s.name);
   const mood = useUserStore(s => s.mood);
   const moodHistory = useUserStore(s => s.moodHistory);
   const setMood = useUserStore(s => s.setMood);
+  const sessionLength = useUserStore(s => s.sessionLength);
+  const setSessionLength = useUserStore(s => s.setSessionLength);
+  const deepSessionsThisWeek = useUserStore(s => s.deepSessionsThisWeek);
   const streak = useProgressStore(s => s.streak);
+  const lastSessionDate = useProgressStore(s => s.lastSessionDate);
   const coins = useProgressStore(s => s.coins);
   const xp = useProgressStore(s => s.xp);
   const level = useProgressStore(s => s.level);
@@ -64,24 +152,31 @@ export default function HomeScreen() {
   const isSessionDoneToday = useProgressStore(s => s.isSessionDoneToday);
   const stage = stageFromXP(xp);
   const sessionDone = isSessionDoneToday();
-  const [dailyGames] = useState(() => selectDailyGames());
+  const [dailyGames, setDailyGames] = useState(() => selectDailyGames(useUserStore.getState().sessionLength));
+  // F6: re-pick games when the user changes session length so the preview list updates.
+  useEffect(() => {
+    setDailyGames(selectDailyGames(sessionLength));
+  }, [sessionLength]);
 
-  const sessions = useProgressStore(s => s.sessions);
+  // F3 Quick Hit: subscribe to a derived value so the UI re-renders the
+  // moment a Quick Hit is consumed (and so it shows the full quota again on
+  // a fresh day, since the date check is part of the selector).
+  const qhLeft = useEnergyStore((s) =>
+    s.quickHitsDate === todayStr()
+      ? Math.max(0, MAX_QUICK_HITS_PER_DAY - s.quickHitsUsed)
+      : MAX_QUICK_HITS_PER_DAY,
+  );
+  const handleStartQuickHit = useCallback(() => {
+    if (qhLeft <= 0) return;
+    tapLight();
+    playTap();
+    router.push('/quick-hit' as any);
+  }, [qhLeft]);
+
   const brainScores = useProgressStore(s => s.brainScores);
-  const gameHistory = useProgressStore(s => s.gameHistory);
-  const personalBests = useProgressStore(s => s.personalBests);
 
   const xpProgress = useMemo(() => getXPProgress(xp, level), [xp, level]);
 
-  // Brain Pulse insights (for home card)
-  const { pulse, insights: allInsights } = useMemo(
-    () => generateInsights({
-      sessions, brainScores, gameHistory, personalBests,
-      streak, longestStreak, totalSessions, xp, level,
-      mood, moodHistory,
-    }),
-    [sessions, brainScores, gameHistory, personalBests, streak, longestStreak, totalSessions, xp, level, mood, moodHistory],
-  );
   const moodLoggedToday = useMemo(() => moodHistory.some(e => e.date === todayStr()), [moodHistory]);
   const [moodDismissed, setMoodDismissed] = useState(false);
   const [heartsTrigger, setHeartsTrigger] = useState(0);
@@ -90,18 +185,54 @@ export default function HomeScreen() {
   const fallbackGreeting = useMemo(() => getGreeting({ streak, totalSessions }), [streak, totalSessions]);
   const kovaGreeting = coachBriefing?.greeting ?? fallbackGreeting;
 
-  // Paywall nudge
+  // F12 Energy + F7: refill hearts and prune stale area streaks BEFORE the
+  // first paint so the UI never shows a one-frame stale state. useState's
+  // initializer runs synchronously during render and only once per mount,
+  // which is exactly the semantics we want here.
   const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
+  useState(() => {
+    const proAtMount =
+      useProStore.getState().isPro || useProStore.getState().debugSimulatePro;
+    useEnergyStore.getState().refillIfNewDay(proAtMount);
+    useGroveStore.getState().recalcAreaStreaks();
+    return null;
+  });
+  const hearts = useEnergyStore(s => s.hearts);
+  const heartMax = maxHeartsFor(isPro);
+  const heartsClamped = Math.min(hearts, heartMax);
+  const energyDepleted = heartsClamped <= 0;
+
+  // F2 Brain Weather: snapshot today's scores once on mount, then classify.
+  const recordBrainSnapshot = useBrainHistoryStore(s => s.recordSnapshot);
+  const getSnapshotFromDaysAgo = useBrainHistoryStore(s => s.getSnapshotFromDaysAgo);
+  useEffect(() => {
+    recordBrainSnapshot(brainScores);
+  }, [recordBrainSnapshot, brainScores]);
+  const weatherReport = useMemo(() => {
+    const weekAgo = getSnapshotFromDaysAgo(7);
+    const gap = lastSessionDate
+      ? Math.round(
+          (new Date(`${todayStr()}T12:00:00`).getTime() -
+            new Date(`${lastSessionDate}T12:00:00`).getTime()) /
+            (1000 * 60 * 60 * 24),
+        )
+      : Infinity;
+    const returningToday = sessionDone && gap === 0 && streak === 1 && totalSessions > 1;
+    return classifyBrainWeather({
+      current: brainScores,
+      weekAgo,
+      streak,
+      lastSessionDate,
+      returningToday,
+    });
+  }, [brainScores, getSnapshotFromDaysAgo, lastSessionDate, streak, sessionDone, totalSessions]);
+
+  // Paywall nudge
   const canShowNudge = useProStore(s => s.canShowNudge);
   const recordNudge = useProStore(s => s.recordNudge);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const showNudge = !isPro && !nudgeDismissed && canShowNudge(totalSessions);
-
-  // Story mode
-  const storyEnabled = useStoryStore(s => s.storyEnabled);
-  const storyDay = useStoryStore(s => s.currentDay);
-  const arcLabel = storyEnabled ? getArcLabel(storyDay) : null;
 
   const {
     urgencyDim,
@@ -115,8 +246,6 @@ export default function HomeScreen() {
 
   const pendingFreezeMsg = useProgressStore(s => s.pendingStreakFreezeMessage);
   const clearPendingFreezeMsg = useProgressStore(s => s.clearPendingStreakFreezeMessage);
-  const reportMap = useWeeklyReportStore((s) => s.reports);
-  const homeBannerDismissed = useWeeklyReportStore((s) => s.homeBannerDismissedWeekId);
 
   const prevCoinsRef = useRef<number | null>(null);
   const [coinFloat, setCoinFloat] = useState<{ amount: number; key: number } | null>(null);
@@ -139,12 +268,6 @@ export default function HomeScreen() {
     }
     return undefined;
   }, [coins]);
-
-  const latestWeekId = getLatestReportWeekId();
-  const showWeeklyBanner =
-    !!latestWeekId &&
-    !!reportMap[latestWeekId] &&
-    homeBannerDismissed !== latestWeekId;
 
   // CTA pulse for session button
   const ctaPulse = useSharedValue(1);
@@ -173,9 +296,25 @@ export default function HomeScreen() {
   const handleStartSession = useCallback(() => {
     if (navigatingRef.current) return;
     navigatingRef.current = true;
-    router.push('/session');
+    playTransition();
+    const length = useUserStore.getState().sessionLength;
+    router.push(`/session?length=${length}` as any);
     navTimerRef.current = setTimeout(() => { navigatingRef.current = false; }, 1000);
   }, []);
+
+  // F6: Deep mode gating. Pro users always allowed; free users get
+  // FREE_DEEP_SESSIONS_PER_WEEK per rolling 7-day window.
+  const deepUsedThisWeek = deepSessionsThisWeek();
+  const deepAllowed = isPro || deepUsedThisWeek < FREE_DEEP_SESSIONS_PER_WEEK;
+
+  const handlePickLength = useCallback(
+    (length: SessionLength) => {
+      if (length === 'deep' && !deepAllowed) return;
+      tapLight();
+      setSessionLength(length);
+    },
+    [deepAllowed, setSessionLength],
+  );
 
   // Level-up celebration
   const prevLevelRef = useRef(level);
@@ -201,7 +340,20 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <View style={styles.coinRow} pointerEvents="box-none">
+      {/* Background gradient */}
+      <LinearGradient
+        colors={[C.bg1, C.bg2, C.bg1]}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      {/* F2 Brain Weather tint — sits behind everything, never blocks touch. */}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: weatherReport.tint }]}
+      />
+      <FloatingParticles count={5} color="rgba(155,114,224,0.12)" />
+      <View style={[styles.coinRow, { top: insets.top + 8 }]} pointerEvents="box-none">
+        <View style={styles.coinPillBg} />
         <View style={styles.coinIcon} />
         <Text style={styles.coinBalance}>{coins}</Text>
         {coinFloat && (
@@ -214,6 +366,21 @@ export default function HomeScreen() {
             +{coinFloat.amount}
           </Animated.Text>
         )}
+      </View>
+      {/* F12 Energy hearts — top right, mirrors coin row. */}
+      <View style={[styles.heartsRow, { top: insets.top + 8 }]} pointerEvents="none">
+        <View style={styles.heartsPillBg} />
+        {Array.from({ length: heartMax }).map((_, i) => (
+          <Text
+            key={i}
+            style={[
+              styles.heartIcon,
+              i >= heartsClamped && styles.heartIconSpent,
+            ]}
+          >
+            ♥
+          </Text>
+        ))}
       </View>
       {celebration && (
         <CelebrationOverlay
@@ -235,27 +402,56 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ROW 1: Greeting + Streak */}
-        <Animated.View entering={FadeIn.delay(80).duration(400)} style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greetingSub}>{GREETINGS[timeOfDay]}</Text>
+        {/* ROW 1: Greeting (left) + Streak (right, dropped 8px). Asymmetric. */}
+        <View style={styles.headerRow}>
+          <Animated.View entering={FadeIn.delay(0).duration(400)} style={styles.headerLeft}>
+            <Text style={styles.greetingSub}>
+              {weatherReport.icon}  {GREETINGS[timeOfDay].toUpperCase()}
+            </Text>
             <Text style={styles.greetingName}>{name || 'friend'}</Text>
-          </View>
-          <View style={styles.streakColumn}>
-            <View style={styles.streakFlameRow}>
-              <Text style={styles.flameEmoji}>🔥</Text>
-              <Text style={styles.streakNumber}>{streak}</Text>
-            </View>
-            <Text style={styles.streakLabel}>DAY STREAK</Text>
-          </View>
-        </Animated.View>
+            <Text style={styles.weatherHeadline}>{weatherReport.headline}</Text>
+          </Animated.View>
+          {streak > 0 && (
+            <Animated.View entering={FadeIn.delay(120).duration(400)} style={styles.streakColumn}>
+              <View style={styles.streakGlowBg} />
+              <View style={styles.streakFlameRow}>
+                <Text style={styles.flameEmoji}>🔥</Text>
+                <Text style={styles.streakNumber}>{streak}</Text>
+              </View>
+              <Text style={styles.streakLabel}>DAY STREAK</Text>
+            </Animated.View>
+          )}
+        </View>
 
-        {/* ROW 2: Kova */}
-        <Animated.View entering={FadeIn.delay(160).duration(400)} style={styles.kovaZone}>
+        {/* ROW 2: Kova — generous breathing room + ambient glow + particles */}
+        <Animated.View entering={FadeIn.delay(180).duration(500)} style={styles.kovaZone}>
+          <View style={styles.kovaGlow} pointerEvents="none">
+            <LinearGradient
+              colors={[
+                `${kovaStageConfig.primaryColor}15`,
+                'transparent',
+              ]}
+              style={styles.kovaGlowGradient}
+              start={{ x: 0.5, y: 0.3 }}
+              end={{ x: 0.5, y: 1 }}
+            />
+          </View>
+          <KovaParticles
+            emotion={kovaEmotion}
+            primaryColor={kovaStageConfig.primaryColor}
+            size={160}
+            glowIntensity={kovaStageConfig.glowIntensity}
+          />
+          <KovaSpeechBubble
+            text={kovaDialogue ?? ''}
+            primaryColor={kovaStageConfig.primaryColor}
+            visible={showKovaBubble}
+            onDismiss={() => setShowKovaBubble(false)}
+          />
           <Kova
             stage={stage}
             emotion={sessionDone ? 'happy' : isUrgent ? 'worried' : streak === 0 ? 'curious' : 'idle'}
-            size={160}
+            size={160 * kovaStageConfig.size}
             onTap={() => setHeartsTrigger(t => t + 1)}
             dialogueContext={
               timeOfDay === 'morning' ? 'tapMorning' :
@@ -270,32 +466,8 @@ export default function HomeScreen() {
         {isUrgent && streak > 0 && (
           <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.urgencyBanner}>
             <Text style={styles.urgencyText}>
-              Your streak flame is fading! Play now to keep it alive.
+              Your streak's running low. A quick session keeps the flame alive.
             </Text>
-          </Animated.View>
-        )}
-
-        {/* Story mode indicator */}
-        {storyEnabled && arcLabel && (
-          <Animated.View entering={FadeInDown.delay(200).duration(300)} style={styles.storyBadge}>
-            <Text style={styles.storyBadgeText}>Day {storyDay} — {arcLabel}</Text>
-          </Animated.View>
-        )}
-
-        {showWeeklyBanner && latestWeekId && (
-          <Animated.View entering={FadeInDown.delay(220).duration(350)} style={styles.weekBanner}>
-            <Pressable
-              style={styles.weekBannerInner}
-              onPress={() =>
-                router.push({
-                  pathname: '/weekly-report',
-                  params: { weekId: latestWeekId },
-                } as unknown as Parameters<typeof router.push>[0])
-              }
-            >
-              <Text style={styles.weekBannerTitle}>Your week in review</Text>
-              <Text style={styles.weekBannerSub}>See how you trained · Tap to open</Text>
-            </Pressable>
           </Animated.View>
         )}
 
@@ -307,13 +479,18 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* ROW 3: Session card */}
-        <Animated.View entering={FadeInDown.delay(280).duration(400)}>
+        {/* ── Daily Challenges ─────────────────────────────── */}
+        <View style={styles.challengeSection}>
+          <DailyChallengeList onPlayChallenge={handlePlayChallenge} />
+        </View>
+
+        {/* ROW 3: Session card — slightly off-center left for asymmetry. */}
+        <Animated.View entering={FadeInDown.delay(280).duration(500)}>
           {sessionDone ? (
-            <View style={styles.sessionCardDone}>
+            <View style={[styles.sessionCardDone, styles.sessionCardOffset]}>
               <Text style={styles.doneEmoji}>✨</Text>
-              <Text style={styles.doneTitle}>Done for today</Text>
-              <Text style={styles.doneSubtitle}>Come back tomorrow to keep your streak alive</Text>
+              <Text style={styles.doneTitle}>{getDailySlogan(DONE_SLOGANS)}</Text>
+              <Text style={styles.doneSubtitle}>Come back tomorrow — your streak is safe.</Text>
               <Pressable
                 style={styles.bonusBtn}
                 onPress={handleStartSession}
@@ -323,16 +500,73 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           ) : (
-            <View style={styles.sessionCard}>
-              <Text style={styles.sessionLabelMicro}>TODAY'S SESSION</Text>
-              <Text style={styles.gameNamesText}>{gameNames}</Text>
+            <View style={[styles.sessionCard, styles.sessionCardOffset]}>
+              <LinearGradient
+                colors={['rgba(110,207,154,0.06)', 'transparent']}
+                style={styles.sessionTopGlow}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+              />
+              <View style={styles.sessionAccentLine} />
+              <Text style={styles.sessionLabelMicro}>
+                {totalSessions === 0 ? 'YOUR FIRST SESSION' : "TODAY'S SESSION"}
+              </Text>
+              <Text style={styles.sessionPitch}>
+                {totalSessions === 0
+                  ? "Kova's ready. 5 minutes is all it takes to start training your brain."
+                  : getDailySlogan(SESSION_SLOGANS)}
+              </Text>
+              {totalSessions > 0 && <Text style={styles.gameNamesText}>{gameNames}</Text>}
               {coachBriefing?.recommendation && (
                 <Text style={styles.coachRec}>{coachBriefing.recommendation}</Text>
               )}
-              <Text style={styles.sessionTime}>~5 min</Text>
+              {energyDepleted && (
+                <Text style={styles.lowEnergyNote}>
+                  Low energy. You can still play, but your brain absorbs more when it's rested.
+                </Text>
+              )}
 
-              {/* CTA Button */}
-              <Animated.View style={[ctaPulseStyle, btnStyle]}>
+              {/* F6: session length selector — hidden for first-timers */}
+              {totalSessions > 0 && (
+                <>
+                  <View style={styles.lengthRow}>
+                    {(['quick', 'standard', 'deep'] as SessionLength[]).map((opt) => {
+                      const selected = sessionLength === opt;
+                      const locked = opt === 'deep' && !deepAllowed;
+                      return (
+                        <Pressable
+                          key={opt}
+                          onPress={() => handlePickLength(opt)}
+                          style={[
+                            styles.lengthPill,
+                            selected && styles.lengthPillActive,
+                            locked && styles.lengthPillLocked,
+                          ]}
+                        >
+                          <Text style={[
+                            styles.lengthPillText,
+                            selected && styles.lengthPillTextActive,
+                            locked && styles.lengthPillTextLocked,
+                          ]}>
+                            {opt === 'quick' ? 'Quick · 2' : opt === 'standard' ? 'Standard · 3' : 'Deep · 5'}
+                          </Text>
+                          {locked && <Text style={styles.lengthPillLockBadge}>PRO</Text>}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <Text style={styles.lengthMeta}>
+                    {sessionLength === 'quick' && '~3 min · short and sweet'}
+                    {sessionLength === 'standard' && '~5 min · the classic'}
+                    {sessionLength === 'deep' && (isPro
+                      ? '~8 min · 1.5× XP · Zen Flow mid-session'
+                      : `~8 min · 1.5× XP · ${Math.max(0, FREE_DEEP_SESSIONS_PER_WEEK - deepUsedThisWeek)} free this week`)}
+                  </Text>
+                </>
+              )}
+
+              {/* CTA Button — gradient fill, glow, pulse */}
+              <Animated.View style={[ctaPulseStyle, btnStyle, styles.ctaWrap]}>
                 <Pressable
                   style={styles.ctaButton}
                   onPress={handleStartSession}
@@ -344,14 +578,108 @@ export default function HomeScreen() {
                     btnScale.value = withSpring(1, { damping: 15, stiffness: 200 });
                   }}
                 >
-                  <Text style={styles.ctaText}>LET'S GO</Text>
+                  <LinearGradient
+                    colors={['#7DD3A8', '#5BC088']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[StyleSheet.absoluteFillObject, { borderRadius: 999 }]}
+                  />
+                  <Text style={styles.ctaText}>Let's Go</Text>
                 </Pressable>
               </Animated.View>
             </View>
           )}
         </Animated.View>
 
-        {/* Paywall nudge (non-Pro, after session 7) */}
+        {/* F3 Quick Hit — hidden until first session completed */}
+        {totalSessions > 0 && (
+          <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.weeklyChallengeWrap}>
+            <Pressable
+              style={[styles.quickHitCard, qhLeft <= 0 && styles.quickHitCardDisabled]}
+              onPress={handleStartQuickHit}
+            >
+              <Text style={styles.quickHitBolt}>⚡</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.quickHitTitle}>Quick Hit · 30 seconds</Text>
+                <Text style={styles.quickHitSub}>
+                  {qhLeft > 0
+                    ? `${qhLeft} Quick Hit${qhLeft === 1 ? '' : 's'} left today · bonus XP, no streak cost`
+                    : 'No Quick Hits left. Resets at midnight.'}
+                </Text>
+              </View>
+              {qhLeft > 0 && <Text style={styles.quickHitArrow}>›</Text>}
+            </Pressable>
+          </Animated.View>
+        )}
+
+        {/* Game unlock banner — only shows on days when new games unlock */}
+        <View style={styles.weeklyChallengeWrap}>
+          <GameUnlockBanner />
+        </View>
+
+        {/* XP progress bar */}
+        {totalSessions > 0 && (
+          <Animated.View entering={FadeInDown.delay(320).duration(400)} style={styles.xpBarWrap}>
+            <View style={styles.xpBarTrack}>
+              <LinearGradient
+                colors={['#9B72E0', '#7A5CC0']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.xpBarFill, { width: `${Math.min(100, (xpProgress.xpIntoLevel / xpProgress.xpNeeded) * 100)}%` }]}
+              />
+            </View>
+            <Text style={styles.xpBarText}>
+              Lv {level} · {xpProgress.xpNeeded - xpProgress.xpIntoLevel} XP to next
+            </Text>
+          </Animated.View>
+        )}
+
+        {/* Compact stats — individual glass cards */}
+        {totalSessions > 0 ? (
+          <Animated.View entering={FadeInDown.delay(360).duration(400)} style={styles.compactStatsRow}>
+            {[
+              { value: `${longestStreak}`, unit: 'd', label: 'best streak', color: C.amber },
+              { value: `${totalSessions}`, unit: '', label: 'sessions', color: C.blue },
+              { value: `${Math.round(xp)}`, unit: '', label: 'total XP', color: C.purple },
+            ].map((item) => (
+              <View
+                key={item.label}
+                style={[styles.compactStatCard, {
+                  borderColor: `${item.color}20`,
+                  shadowColor: item.color,
+                }]}
+              >
+                <Text style={[styles.compactStatValue, { color: item.color }]}>
+                  {item.value}<Text style={styles.compactStatUnit}>{item.unit}</Text>
+                </Text>
+                <Text style={styles.compactStatLabel}>{item.label}</Text>
+              </View>
+            ))}
+          </Animated.View>
+        ) : null}
+
+        {/* Daily brain fact */}
+        <Animated.View
+          entering={FadeInDown.delay(400).duration(400)}
+          style={styles.brainFactWrap}
+        >
+          <BrainFactCard />
+        </Animated.View>
+
+        {/* Daily quote from a brilliant mind */}
+        <Animated.View entering={FadeInDown.delay(450).duration(400)} style={styles.brainFactWrap}>
+          {(() => {
+            const q = getDailyQuote();
+            return (
+              <View style={styles.quoteCard}>
+                <Text style={styles.quoteText}>"{q.text}"</Text>
+                <Text style={styles.quoteAuthor}>— {q.author}</Text>
+              </View>
+            );
+          })()}
+        </Animated.View>
+
+        {/* Paywall nudge — bottom of scroll, less aggressive position */}
         {showNudge && (
           <PaywallNudge
             onUpgrade={() => {
@@ -365,58 +693,36 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* ROW 4: Stats row */}
-        <Animated.View entering={FadeInDown.delay(380).duration(400)} style={styles.statsRow}>
-          {/* Days this week */}
-          <View style={[styles.statCard, { flex: 1 }]}>
-            <Text style={[styles.statHero, { color: C.blue }]}>
-              {(() => {
-                const today = new Date();
-                const dayOfWeek = today.getDay();
-                const startOfWeek = new Date(today);
-                startOfWeek.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-                // Estimate from streak vs days elapsed
-                const daysElapsed = Math.min(7, dayOfWeek === 0 ? 7 : dayOfWeek);
-                const sessionsThisWeek = Math.min(daysElapsed, streak, 7);
-                return `${sessionsThisWeek}/7`;
-              })()}
-            </Text>
-            <Text style={styles.statLabel}>days this week</Text>
-          </View>
-
-          {/* Best streak */}
-          <View style={[styles.statCard, { flex: 1.2 }]}>
-            <Text style={[styles.statHero, { color: C.amber }]}>{longestStreak}</Text>
-            <Text style={styles.statLabel}>best streak</Text>
-          </View>
-
-          {/* Level + XP */}
-          <View style={[styles.statCard, { flex: 1 }]}>
-            <Text style={[styles.statHero, { color: C.green }]}>Lv {level}</Text>
-            <Text style={styles.statLabel}>{xpProgress.xpNeeded - xpProgress.xpIntoLevel} XP to next</Text>
-          </View>
-        </Animated.View>
-
-        {/* AI Coach insight (after 3+ sessions) */}
-        {totalSessions >= 3 && coachBriefing && (
-          <CoachInsightCard insight={coachBriefing.insight} delay={400} />
-        )}
-
-        {/* Brain Pulse insight (after 3+ sessions) */}
-        {totalSessions >= 3 && (
-          <TopInsightCard
-            pulse={pulse}
-            topInsight={allInsights[0] ?? null}
-            delay={450}
-          />
-        )}
-
-        <View style={{ height: 32 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       <Celebration type="particles_hearts" trigger={heartsTrigger} origin={{ x: width / 2, y: 220 }} />
 
       <PaywallFull visible={showPaywall} onClose={() => setShowPaywall(false)} />
+
+      {/* Kova evolution animation */}
+      {pendingEvolution != null && (
+        <KovaEvolutionAnimation
+          fromStage={kovaStage - 1}
+          toStage={pendingEvolution}
+          isDeEvolution={false}
+          onComplete={clearPendingEvolution}
+        />
+      )}
+      {pendingDeEvolution != null && (
+        <KovaEvolutionAnimation
+          fromStage={kovaStage + 1}
+          toStage={pendingDeEvolution}
+          isDeEvolution
+          onComplete={clearPendingEvolution}
+        />
+      )}
+
+      {/* Reward chest overlay */}
+      <RewardChest
+        visible={showRewardChest}
+        onDismiss={() => setShowRewardChest(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -424,27 +730,48 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
   },
+
+  // ── Coin balance (floating top-left) ───────────────────────────────
+  // `top` is set dynamically from useSafeAreaInsets() — see HomeScreenInner.
   coinRow: {
     position: 'absolute',
-    top: 8,
     left: 16,
     zIndex: 30,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
+  coinPillBg: {
+    position: 'absolute',
+    top: -6,
+    left: -10,
+    right: -10,
+    bottom: -6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(10,12,20,0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(240,181,66,0.12)',
+  },
   coinIcon: {
     width: 18,
     height: 18,
     borderRadius: 9,
     backgroundColor: C.amber,
+    shadowColor: '#F0B542',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
   },
   coinBalance: {
     fontFamily: fonts.bodyBold,
     fontSize: 14,
     color: C.amber,
+    textShadowColor: 'rgba(240,181,66,0.4)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
   coinFloat: {
     position: 'absolute',
@@ -454,192 +781,406 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: C.amber,
   },
-  weekBanner: {
-    marginTop: 10,
-    marginHorizontal: 4,
-  },
-  weekBannerInner: {
-    backgroundColor: C.bg3,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 0.5,
-    borderColor: 'rgba(107,168,224,0.35)',
-  },
-  weekBannerTitle: {
-    fontFamily: fonts.bodyBold,
-    color: C.blue,
-    fontSize: 16,
-  },
-  weekBannerSub: {
-    fontFamily: fonts.body,
-    color: C.t3,
-    fontSize: 13,
-    marginTop: 4,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 36,
-    paddingBottom: 110,
-  },
 
-  // Header
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  headerLeft: {
-    flex: 1,
-    gap: 2,
-  },
-  greetingSub: {
-    fontFamily: fonts.body,
-    color: C.t3,
-    fontSize: 14,
-  },
-  greetingName: {
-    fontFamily: fonts.heading,
-    color: C.t1,
-    fontSize: 24,
-    letterSpacing: -0.3,
-  },
-
-  // Streak
-  streakColumn: {
-    alignItems: 'center',
-    gap: 0,
-    paddingTop: 4,
-  },
-  streakFlameRow: {
+  // ── F12 Energy hearts (floating top-right) ─────────────────────────
+  // `top` is set dynamically from useSafeAreaInsets() — see HomeScreenInner.
+  heartsRow: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 30,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
+  heartsPillBg: {
+    position: 'absolute',
+    top: -6,
+    left: -10,
+    right: -10,
+    bottom: -6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(10,12,20,0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,112,126,0.12)',
+  },
+  heartIcon: {
+    fontSize: 18,
+    color: C.coral,
+    textShadowColor: 'rgba(232,112,126,0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
+  heartIconSpent: {
+    color: C.t4,
+    textShadowColor: 'transparent',
+  },
+
+  // ── Scroll container ──────────────────────────────────────────────
+  scrollContent: {
+    // No horizontal padding here — children apply their own asymmetric padding.
+    paddingTop: 36,
+    paddingBottom: 110,
+  },
+
+  // ── Row 1: Header (asymmetric) ────────────────────────────────────
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingLeft: asymmetry.greetingLeft,
+    paddingRight: asymmetry.streakRight,
+    marginBottom: space.lg,
+  },
+  headerLeft: {
+    flex: 1,
+    marginTop: space.sm,
+    gap: 2,
+  },
+  greetingSub: {
+    ...t.microLabel,
+    color: C.t3,
+  },
+  greetingName: {
+    ...t.pageTitle,
+    color: C.t1,
+    marginTop: 2,
+  },
+  weatherHeadline: {
+    fontFamily: fonts.kova,
+    fontSize: 16,
+    color: C.t2,
+    marginTop: 4,
+    lineHeight: 20,
+    maxWidth: 240,
+  },
+
+  // Streak — right-aligned, dropped 8px below the greeting line.
+  streakColumn: {
+    alignItems: 'flex-end',
+    marginTop: asymmetry.streakDrop + space.sm,
+    position: 'relative',
+  },
+  streakGlowBg: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    right: -10,
+    top: -10,
+    backgroundColor: 'rgba(240,181,66,0.08)',
+    shadowColor: '#F0B542',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 30,
+    elevation: 4,
+  },
+  streakFlameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   flameEmoji: {
-    fontSize: 28,
+    fontSize: 26,
   },
   streakNumber: {
-    fontFamily: fonts.bodyBold,
+    ...t.heroNumber,
+    fontSize: 52,
     color: C.amber,
-    fontSize: 48,
-    lineHeight: 52,
-    letterSpacing: -1,
-    textShadowColor: 'rgba(240,181,66,0.3)',
+    textShadowColor: 'rgba(240,181,66,0.6)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 12,
+    textShadowRadius: 22,
   },
   streakLabel: {
-    fontFamily: fonts.body,
+    ...t.microLabel,
     color: C.t3,
-    fontSize: 11,
-    letterSpacing: 1.5,
     marginTop: -2,
   },
 
-  // Kova
+  // ── Row 2: Kova zone — generous breathing room ────────────────────
   kovaZone: {
     alignItems: 'center',
-    paddingTop: 0,
-    paddingBottom: 0,
-    marginBottom: -24,
+    marginTop: space.xs,
+    marginBottom: space.huge - space.xl,
     zIndex: 10,
   },
+  kovaGlow: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    top: -60,
+    alignSelf: 'center',
+  },
+  kovaGlowGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 140,
+  },
 
-  // Urgency
+  // ── Urgency banner ────────────────────────────────────────────────
   urgencyBanner: {
-    backgroundColor: C.coralTint,
-    borderWidth: 0.5,
-    borderColor: 'rgba(232,112,126,0.25)',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 32,
-    marginBottom: 8,
+    backgroundColor: 'rgba(232,112,126,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(232,112,126,0.3)',
+    borderRadius: radii.md,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginHorizontal: asymmetry.pagePadding,
+    marginTop: space.xxl,
+    marginBottom: space.xs,
+    shadowColor: '#E8707E',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
   },
   urgencyText: {
     fontFamily: fonts.bodySemi,
     color: C.coral,
     fontSize: 13,
     textAlign: 'center',
+    lineHeight: 19,
   },
 
-  // Session card
+  // ── Story badge ───────────────────────────────────────────────────
+  // ── Row 3: Session card (off-center left for asymmetry) ───────────
+  sessionCardOffset: {
+    marginLeft: asymmetry.sessionMarginLeft,
+    marginRight: asymmetry.sessionMarginRight,
+  },
   sessionCard: {
-    borderRadius: 20,
-    backgroundColor: C.bg3,
-    borderWidth: 0.5,
-    borderColor: C.border,
-    padding: 24,
-    gap: 8,
+    borderRadius: radii.lg,
+    backgroundColor: 'rgba(19,24,41,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(110,207,154,0.18)',
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg + 4,
+    paddingBottom: space.xl,
+    gap: space.xs,
+    overflow: 'hidden',
+    ...shadows.hero,
+    shadowColor: '#6ECF9A',
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+  },
+  sessionTopGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  sessionAccentLine: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: 'rgba(110,207,154,0.35)',
+    shadowColor: '#6ECF9A',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sessionCardDone: {
-    borderRadius: 20,
-    backgroundColor: C.bg3,
-    borderWidth: 0.5,
-    borderColor: C.border,
-    padding: 24,
-    gap: 10,
+    borderRadius: radii.lg,
+    backgroundColor: 'rgba(19,24,41,0.90)',
+    borderWidth: 1,
+    borderColor: 'rgba(240,181,66,0.15)',
+    padding: space.xl,
+    gap: space.sm,
     alignItems: 'center',
+    ...shadows.soft,
+    shadowColor: '#F0B542',
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
   },
   sessionLabelMicro: {
-    fontFamily: fonts.bodySemi,
+    ...t.sectionHeader,
     color: C.t3,
-    fontSize: 11,
-    letterSpacing: 1.5,
+  },
+  sessionPitch: {
+    fontFamily: fonts.kova,
+    fontSize: 19,
+    lineHeight: 26,
+    color: C.t1,
+    marginTop: 2,
   },
   gameNamesText: {
     fontFamily: fonts.body,
-    color: C.t2,
-    fontSize: 14,
+    color: C.t3,
+    fontSize: 13,
+    marginTop: 2,
   },
   coachRec: {
     fontFamily: fonts.body,
-    color: C.purple,
+    color: C.t2,
     fontSize: 13,
-    textAlign: 'center',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
-  sessionTime: {
+  lowEnergyNote: {
+    fontFamily: fonts.body,
+    color: C.coral,
+    fontSize: 12,
+    marginTop: 6,
+    lineHeight: 17,
+  },
+
+  // ── F6 Session length selector ────────────────────────────────────
+  lengthRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: space.sm,
+  },
+  lengthPill: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: C.border,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  lengthPillActive: {
+    backgroundColor: 'rgba(110,207,154,0.12)',
+    borderColor: 'rgba(110,207,154,0.5)',
+    shadowColor: '#6ECF9A',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  lengthPillLocked: {
+    opacity: 0.55,
+  },
+  lengthPillText: {
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
+    fontSize: 11,
+    letterSpacing: 0.2,
+  },
+  lengthPillTextActive: {
+    color: C.green,
+  },
+  lengthPillTextLocked: {
+    color: C.t3,
+  },
+  lengthPillLockBadge: {
+    fontFamily: fonts.bodyBold,
+    color: C.amber,
+    fontSize: 8,
+    letterSpacing: 0.5,
+  },
+  lengthMeta: {
     fontFamily: fonts.body,
     color: C.t3,
-    fontSize: 13,
+    fontSize: 11,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+
+  // ── F3 Quick Hit card ─────────────────────────────────────────────
+  quickHitCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    backgroundColor: 'rgba(240,181,66,0.08)',
+    borderRadius: radii.lg,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    borderWidth: 1,
+    borderColor: 'rgba(240,181,66,0.35)',
+    shadowColor: '#F0B542',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  quickHitCardDisabled: {
+    opacity: 0.55,
+  },
+  quickHitBolt: {
+    fontSize: 26,
+    textShadowColor: 'rgba(240,181,66,0.6)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
+  quickHitTitle: {
+    fontFamily: fonts.bodyBold,
+    color: C.amber,
+    fontSize: 14,
+    letterSpacing: 0.1,
+  },
+  quickHitSub: {
+    fontFamily: fonts.body,
+    color: C.t3,
+    fontSize: 12,
+    marginTop: 1,
+  },
+  quickHitArrow: {
+    fontFamily: fonts.body,
+    color: C.amber,
+    fontSize: 22,
+    lineHeight: 22,
+  },
+  ctaWrap: {
+    marginTop: space.md,
   },
   ctaButton: {
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: C.green,
+    height: pillButton.height,
+    borderRadius: pillButton.borderRadius,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
-    ...glow(C.green),
+    paddingHorizontal: pillButton.paddingHorizontal,
+    overflow: 'hidden',
+    shadowColor: '#6ECF9A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.55,
+    shadowRadius: 24,
+    elevation: 12,
   },
   ctaText: {
     fontFamily: fonts.bodyBold,
     color: C.bg1,
-    fontSize: 16,
+    fontSize: 17,
+    letterSpacing: 0.2,
   },
 
   // Done state
   doneEmoji: { fontSize: 32, marginBottom: 4 },
   doneTitle: {
-    fontFamily: fonts.heading,
-    color: C.green,
-    fontSize: 20,
+    ...t.pageTitle,
+    fontSize: 22,
+    color: C.t1,
   },
   doneSubtitle: {
     fontFamily: fonts.body,
     color: C.t3,
     fontSize: 14,
     textAlign: 'center',
+    lineHeight: 20,
   },
   bonusBtn: {
-    backgroundColor: C.amberTint,
-    borderRadius: 999,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(240,181,66,0.3)',
-    marginTop: 8,
+    backgroundColor: 'rgba(240,181,66,0.14)',
+    borderRadius: radii.full,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(240,181,66,0.45)',
+    marginTop: space.md,
+    shadowColor: '#F0B542',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 6,
   },
   bonusBtnText: {
     fontFamily: fonts.bodyBold,
@@ -647,47 +1188,127 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 28,
+  // ── Daily quote ────────────────────────────────────────────────
+  quoteCard: {
+    backgroundColor: 'rgba(19,24,41,0.88)',
+    borderRadius: radii.md,
+    padding: space.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(155,114,224,0.18)',
+    borderLeftWidth: 4,
+    borderLeftColor: C.purple,
+    shadowColor: '#9B72E0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 18,
+    elevation: 6,
   },
-  statCard: {
-    borderRadius: 14,
-    backgroundColor: C.bg3,
-    padding: 14,
-    minHeight: 90,
-    justifyContent: 'flex-end',
-    gap: 4,
+  quoteText: {
+    fontFamily: fonts.kova,
+    color: C.t1,
+    fontSize: 16,
+    lineHeight: 24,
+    fontStyle: 'italic',
   },
-  statHero: {
-    fontFamily: fonts.bodyBold,
-    fontSize: 28,
-    letterSpacing: -1,
-    lineHeight: 30,
-  },
-  statLabel: {
-    fontFamily: fonts.body,
-    color: C.t3,
-    fontSize: 12,
-  },
-
-  // Story
-  storyBadge: {
-    alignSelf: 'center',
-    backgroundColor: C.purpleTint,
-    borderWidth: 0.5,
-    borderColor: 'rgba(155,114,224,0.25)',
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    marginTop: 8,
-  },
-  storyBadgeText: {
+  quoteAuthor: {
     fontFamily: fonts.bodySemi,
     color: C.purple,
     fontSize: 12,
+    marginTop: 8,
     letterSpacing: 0.3,
   },
+
+  // ── Compact stats (inline row) ──────────────────────────────────
+  // XP progress bar
+  xpBarWrap: {
+    paddingHorizontal: asymmetry.pagePadding,
+    marginTop: space.md,
+    gap: 4,
+  },
+  xpBarTrack: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(155,114,224,0.12)',
+    overflow: 'hidden',
+  },
+  xpBarFill: {
+    height: '100%',
+    borderRadius: 2,
+    shadowColor: '#9B72E0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  xpBarText: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: C.t3,
+    letterSpacing: 0.3,
+    textAlign: 'center',
+  },
+
+  // Individual stat cards
+  compactStatsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: asymmetry.pagePadding,
+    marginTop: space.md,
+  },
+  compactStatCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: space.sm + 2,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(19,24,41,0.85)',
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  compactStatValue: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 20,
+    letterSpacing: -0.5,
+  },
+  compactStatUnit: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  compactStatLabel: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    color: C.t4,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginTop: 1,
+  },
+
+  // ── Daily challenges ──────────────────────────────────────────────
+  challengeSection: {
+    paddingHorizontal: asymmetry.pagePadding,
+    marginTop: space.md,
+    marginBottom: space.sm,
+  },
+
+  // ── Brain fact ────────────────────────────────────────────────────
+  brainFactWrap: {
+    paddingHorizontal: asymmetry.pagePadding,
+    marginTop: space.lg,
+  },
+
+  // ── Weekly challenge / game unlock ────────────────────────────────
+  weeklyChallengeWrap: {
+    paddingHorizontal: asymmetry.pagePadding,
+    marginTop: space.lg,
+  },
 });
+
+export default function HomeScreen() {
+  return (
+    <ErrorBoundary scope="Home tab">
+      <HomeScreenInner />
+    </ErrorBoundary>
+  );
+}

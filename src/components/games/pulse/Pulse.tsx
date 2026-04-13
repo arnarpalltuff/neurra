@@ -13,6 +13,8 @@ import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { tapMedium, success, error as hapticError, warning as hapticWarning } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import GameIntro from '../shared/GameIntro';
 
 const { width, height } = Dimensions.get('window');
 
@@ -184,6 +186,7 @@ function LifeOrb({ alive, index }: { alive: boolean; index: number }) {
 // ─────────────────────────────────────────────────────────────
 export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = false }: PulseProps) {
   const [score, setScore] = useState(0);
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [currentShape, setCurrentShape] = useState<{ color: ShapeColor; type: ShapeType; id: number } | null>(null);
   const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [rule, setRule] = useState<'tap_green' | 'tap_red'>('tap_green');
@@ -317,8 +320,10 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
       }, intervalMs);
     }, delay);
 
+
     return () => {
       cancelledRef.current = true;
+
       clearTimeout(start);
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (shapeTimeoutRef.current) clearTimeout(shapeTimeoutRef.current);
@@ -357,7 +362,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
       );
       success();
       tapMedium();
-      burstCorrect({ x: width / 2, y: height / 2 });
+      playCorrect(); burstCorrect({ x: width / 2, y: height / 2 });
       updateDifficulty('pulse', true);
     } else {
       setPerfectStreak(0);
@@ -374,7 +379,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
         withTiming(0, { duration: 50 }),
       );
       hapticError();
-      burstWrong({ x: width / 2, y: height / 2 });
+      playWrong(); burstWrong({ x: width / 2, y: height / 2 });
       updateDifficulty('pulse', false);
       livesRef.current -= 1;
       setLives(livesRef.current);
@@ -570,6 +575,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
             </Text>
           )}
         </View>
+      {!_introShown && <GameIntro name="Pulse" subtitle="Tap green · resist red" accentColor={C.blue} onDone={() => _setIntroShown(true)} />}
       </Animated.View>
     </Pressable>
   );
@@ -599,6 +605,7 @@ function FloatScore({ points }: { points: number }) {
     <Animated.Text style={[styles.floatScore, style]} pointerEvents="none">
       +{points}
     </Animated.Text>
+
   );
 }
 
@@ -663,7 +670,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
-    shadowRadius: 6,
+    shadowRadius: 10,
   },
   rulePillLabel: {
     color: C.t3,
@@ -706,7 +713,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 6,
+    shadowRadius: 10,
     elevation: 6,
   },
   scoreText: {

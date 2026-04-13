@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { success as hapticSuccess, tapHeavy } from '../../utils/haptics';
 import { playSuccess, playStreakMilestone, playCoinEarned, playPerfectScore, playCoinCascade } from '../../utils/sound';
 import { C } from '../../constants/colors';
-import { fonts } from '../../constants/typography';
+import { fonts, type as t } from '../../constants/typography';
+import { space, radii, shadows, accentGlow, motion, summaryStagger, pillButton } from '../../constants/design';
 import { glow } from '../../utils/glow';
 import { GameId, gameConfigs } from '../../constants/gameConfigs';
 import Kova from '../../components/kova/Kova';
@@ -19,9 +21,12 @@ import Celebration from '../../components/ui/Celebration';
 import RatePromptCard from '../../components/ui/RatePromptCard';
 import { getPostSessionMessage } from '../../constants/kovaDialogue';
 import { getFramingText } from '../../constants/framingText';
+import { AREA_LABELS, AREA_ACCENT, BrainArea } from '../../constants/gameConfigs';
+import { getRandomQuote } from '../../constants/quotes';
 import PaywallFull from '../../components/paywall/PaywallFull';
 import { useProStore } from '../../stores/proStore';
 import CoachInsightCard from '../../components/insights/CoachInsightCard';
+import JournalPrompt from '../../components/journal/JournalPrompt';
 import { useDailyBriefing } from '../../hooks/useDailyBriefing';
 import ShareCard, { SessionShareData } from '../../components/ui/ShareCard';
 import { captureAndShare } from '../../utils/shareCapture';
@@ -106,11 +111,27 @@ export default function PostSession({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const kovaMessage = getPostSessionMessage(avgAccuracy, mood);
+  const kovaMessage = isFirstSession
+    ? "Your first session! I felt that. This is just the beginning."
+    : getPostSessionMessage(avgAccuracy, mood);
 
   const bestResult = results.length > 0
     ? results.reduce((best, r) => r.score > best.score ? r : best, results[0])
     : null;
+
+  // Session headline based on performance
+  const headline = isPerfect
+    ? 'Flawless Session'
+    : avgAccuracy >= 0.8
+    ? 'Great Session'
+    : avgAccuracy >= 0.6
+    ? 'Solid Session'
+    : 'Session Complete';
+
+  // Brain areas trained in this session (unique)
+  const areasTrained = [...new Set(
+    results.map(r => gameConfigs[r.gameId]?.brainArea).filter(Boolean)
+  )] as BrainArea[];
 
   const shareData: SessionShareData = {
     type: 'session',
@@ -141,8 +162,16 @@ export default function PostSession({
         />
       )}
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Session headline */}
+        <Animated.View entering={FadeIn.delay(50).duration(400)} style={styles.headlineArea}>
+          <Text style={styles.headlineText}>{headline}</Text>
+          <View style={styles.accuracyPill}>
+            <Text style={styles.accuracyPillText}>{Math.round(avgAccuracy * 100)}% accuracy</Text>
+          </View>
+        </Animated.View>
+
         {/* 1. Kova */}
-        <Animated.View entering={FadeIn.delay(100).duration(400)} style={styles.kovaArea}>
+        <Animated.View entering={FadeIn.delay(100).duration(500)} style={styles.kovaArea}>
           <Kova
             size={100}
             emotion={kovaEmotion}
@@ -151,54 +180,72 @@ export default function PostSession({
           />
         </Animated.View>
 
-        {/* 2. XP Earned */}
-        <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.xpArea}>
-          <CountUpText
-            value={xpEarned}
-            prefix="+"
-            duration={1200}
-            delay={300}
-            style={styles.xpValue}
-          />
-          <Text style={styles.xpLabel}>XP</Text>
+        {/* 2. XP Earned — hero number, animated count-up */}
+        <Animated.View entering={FadeInDown.delay(200).duration(500)} style={styles.xpArea}>
+          <View style={styles.xpNumberRow}>
+            <Text style={styles.xpPlus}>+</Text>
+            <CountUpText
+              value={xpEarned}
+              duration={2000}
+              delay={300}
+              style={styles.xpValue}
+            />
+          </View>
+          <Text style={styles.xpLabel}>XP EARNED</Text>
         </Animated.View>
 
-        {/* 3. Streak */}
-        <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.streakArea}>
+        {/* 3. Streak + brain areas */}
+        <Animated.View entering={FadeInDown.delay(320).duration(400)} style={styles.streakArea}>
           <Text style={styles.streakText}>🔥 Day {newStreak}</Text>
+          {areasTrained.length > 0 && (
+            <View style={styles.areasRow}>
+              {areasTrained.map(area => (
+                <View key={area} style={[styles.areaPill, { backgroundColor: `${AREA_ACCENT[area]}18` }]}>
+                  <Text style={[styles.areaPillText, { color: AREA_ACCENT[area] }]}>
+                    {AREA_LABELS[area]}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </Animated.View>
 
-        {/* 4. Game result cards */}
-        <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.gamesSection}>
+        {/* 4. Game result cards — staggered indents, single accent border per card */}
+        <View style={styles.gamesSection}>
           {results.map((r, i) => {
             const config = gameConfigs[r.gameId];
             if (!config) return null;
             const accPct = Math.round(r.accuracy * 100);
-            const barColor = accPct >= 85 ? C.green : accPct >= 60 ? C.blue : C.coral;
+            const accentColor = config.color; // brain area color
             const framingText = getFramingText({ gameId: r.gameId, score: r.score, accuracy: r.accuracy });
+            // Stagger margins — scattered paper feel.
+            const indent = summaryStagger[i % summaryStagger.length];
 
             return (
               <Animated.View
-                entering={FadeInDown.delay(450 + i * 100).duration(400)}
+                entering={FadeInDown.delay(500 + i * 200).duration(500)}
                 key={r.gameId}
-                style={styles.gameCard}
+                style={[
+                  styles.gameCard,
+                  { marginLeft: indent, borderLeftColor: accentColor },
+                ]}
               >
                 <View style={styles.gameCardHeader}>
                   <Text style={styles.gameCardName}>{config.name}</Text>
-                  <Text style={[styles.gameCardAccuracy, { color: barColor }]}>{accPct}%</Text>
+                  <Text style={styles.gameCardAccuracy}>{accPct}%</Text>
                 </View>
                 <View style={styles.accuracyBar}>
-                  <View style={[styles.accuracyBarFill, { width: `${accPct}%`, backgroundColor: barColor }]} />
+                  <View style={[styles.accuracyBarFill, { width: `${accPct}%`, backgroundColor: accentColor }]} />
                 </View>
                 <Text style={styles.framingText}>{framingText}</Text>
               </Animated.View>
             );
           })}
-        </Animated.View>
+        </View>
 
         {/* Coin rewards */}
         {coinRewards && coinRewards.total > 0 && (
-          <Animated.View entering={FadeInDown.delay(650).duration(400)} style={styles.coinCard}>
+          <Animated.View entering={FadeInDown.delay(900).duration(400)} style={styles.coinCard}>
             <Text style={styles.coinTotal}>🪙 +{coinRewards.total}</Text>
             {coinRewards.details.map((d, i) => (
               <Text key={i} style={styles.coinDetail}>{d}</Text>
@@ -208,14 +255,36 @@ export default function PostSession({
 
         {/* Coach encouragement */}
         {coachBriefing?.encouragement && totalSessions >= 3 && (
-          <CoachInsightCard insight={coachBriefing.encouragement} delay={700} />
+          <View style={styles.coachWrap}>
+            <CoachInsightCard insight={coachBriefing.encouragement} delay={950} />
+          </View>
         )}
 
-        {/* 5. Done button */}
-        <Animated.View entering={FadeInDown.delay(750).duration(400)} style={styles.actions}>
+        {/* Journal prompt — "How did that feel?" */}
+        <JournalPrompt
+          delay={1000}
+          topScore={bestResult?.score}
+          bestGameName={bestResult ? gameConfigs[bestResult.gameId]?.name : undefined}
+        />
+
+        {/* Post-session quote — a thought from a brilliant mind */}
+        <Animated.View entering={FadeInDown.delay(1050).duration(400)} style={styles.quoteCard}>
+          {(() => {
+            const q = getRandomQuote();
+            return (
+              <>
+                <Text style={styles.quoteText}>"{q.text}"</Text>
+                <Text style={styles.quoteAuthor}>— {q.author}</Text>
+              </>
+            );
+          })()}
+        </Animated.View>
+
+        {/* 5. Done button — at the very bottom with breathing room */}
+        <Animated.View entering={FadeInDown.delay(1050).duration(400)} style={styles.actions}>
           {bonusAvailable && onBonusRound && (
             <Pressable style={styles.bonusBtn} onPress={onBonusRound}>
-              <Text style={styles.bonusBtnText}>Bonus Round (2x XP)</Text>
+              <Text style={styles.bonusBtnText}>Bonus Round · 2× XP</Text>
             </Pressable>
           )}
           <View style={styles.primaryRow}>
@@ -230,7 +299,7 @@ export default function PostSession({
                 }
               }}
             >
-              <Text style={styles.doneBtnText}>Done for today ✓</Text>
+              <Text style={styles.doneBtnText}>Done</Text>
             </Pressable>
             <Pressable style={styles.shareBtn} onPress={handleShare} disabled={isSharing}>
               <Text style={styles.shareBtnText}>↗</Text>
@@ -267,59 +336,123 @@ export default function PostSession({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
   },
   container: {
-    padding: 24,
-    gap: 20,
-    paddingBottom: 40,
-  },
-  kovaArea: {
-    alignItems: 'center',
-  },
-
-  // XP
-  xpArea: {
-    alignItems: 'center',
+    paddingHorizontal: space.xl,
+    paddingTop: space.lg,
+    paddingBottom: space.xxxl,
     gap: 0,
   },
-  xpValue: {
-    fontFamily: fonts.bodyBold,
-    color: C.amber,
-    fontSize: 48,
-    letterSpacing: -1,
+
+  // ── Session headline ─────────────────────────────────────────────
+  headlineArea: {
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: space.sm,
   },
-  xpLabel: {
+  headlineText: {
+    fontFamily: fonts.heading,
+    color: C.t1,
+    fontSize: 24,
+    letterSpacing: -0.5,
+  },
+  accuracyPill: {
+    backgroundColor: 'rgba(110,207,154,0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  accuracyPillText: {
     fontFamily: fonts.bodySemi,
-    color: C.t3,
-    fontSize: 13,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginTop: -4,
+    color: C.green,
+    fontSize: 12,
+    letterSpacing: 0.3,
   },
 
-  // Streak
+  // ── Kova ─────────────────────────────────────────────────────────
+  kovaArea: {
+    alignItems: 'center',
+    marginBottom: space.lg,
+  },
+
+  // ── XP hero ──────────────────────────────────────────────────────
+  xpArea: {
+    alignItems: 'center',
+    marginBottom: space.xs,
+  },
+  xpNumberRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  xpPlus: {
+    fontFamily: fonts.heading,
+    color: C.amber,
+    fontSize: 28,
+    lineHeight: 36,
+    marginRight: 2,
+    marginTop: 6,
+  },
+  xpValue: {
+    fontFamily: fonts.heading,
+    color: C.amber,
+    fontSize: 52,
+    lineHeight: 56,
+    letterSpacing: -1.5,
+    textShadowColor: 'rgba(240,181,66,0.45)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+  xpLabel: {
+    ...t.microLabel,
+    color: C.t3,
+    marginTop: 2,
+  },
+
+  // ── Streak ───────────────────────────────────────────────────────
   streakArea: {
     alignItems: 'center',
+    marginBottom: space.xxxl, // 40px gap to first game card
   },
   streakText: {
     fontFamily: fonts.bodyBold,
     color: C.amber,
-    fontSize: 24,
-    ...glow(C.amber, 12, 0.3),
+    fontSize: 18,
+    letterSpacing: 0.3,
+    ...glow(C.amber, 10, 0.25),
+  },
+  areasRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+  },
+  areaPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  areaPillText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
 
-  // Games
+  // ── Game result cards ────────────────────────────────────────────
   gamesSection: {
-    gap: 12,
+    gap: space.md,
   },
   gameCard: {
-    borderRadius: 16,
-    backgroundColor: C.bg3,
-    borderWidth: 0.5,
+    borderRadius: radii.lg,
+    backgroundColor: 'rgba(19,24,41,0.85)',
+    borderWidth: 1,
     borderColor: C.border,
-    padding: 16,
-    gap: 8,
+    borderLeftWidth: 3,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md + 2,
+    paddingLeft: space.md - 1, // tighter on accent-bar side
+    gap: space.xs + 2,
+    // Asymmetric margin set per-card via style prop (summaryStagger).
+    ...shadows.subtle,
   },
   gameCardHeader: {
     flexDirection: 'row',
@@ -329,14 +462,17 @@ const styles = StyleSheet.create({
   gameCardName: {
     fontFamily: fonts.headingMed,
     color: C.t1,
-    fontSize: 16,
+    fontSize: 17,
+    letterSpacing: -0.2,
   },
   gameCardAccuracy: {
     fontFamily: fonts.bodyBold,
-    fontSize: 16,
+    color: C.t2,
+    fontSize: 15,
+    letterSpacing: 0.2,
   },
   accuracyBar: {
-    height: 4,
+    height: 3,
     backgroundColor: C.surface,
     borderRadius: 2,
     overflow: 'hidden',
@@ -346,26 +482,28 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   framingText: {
-    fontFamily: fonts.body,
-    color: C.t1,
+    fontFamily: fonts.kova,
+    color: C.t2,
     fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 22,
+    marginTop: 2,
   },
 
-  // Coins
+  // ── Coins ────────────────────────────────────────────────────────
   coinCard: {
-    borderRadius: 16,
-    backgroundColor: C.bg3,
-    borderWidth: 0.5,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(19,24,41,0.85)',
+    borderWidth: 1,
     borderColor: C.border,
-    padding: 16,
+    padding: space.md,
     gap: 4,
+    marginTop: space.xl,
   },
   coinTotal: {
     fontFamily: fonts.bodyBold,
     color: C.peach,
-    fontSize: 20,
-    marginBottom: 4,
+    fontSize: 18,
+    marginBottom: 2,
   },
   coinDetail: {
     fontFamily: fonts.body,
@@ -373,34 +511,67 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  // Actions
+  // ── Quote card ───────────────────────────────────────────────────
+  quoteCard: {
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(19,24,41,0.85)',
+    borderWidth: 1,
+    borderColor: C.border,
+    borderLeftWidth: 3,
+    borderLeftColor: C.purple,
+    padding: space.md,
+    marginTop: space.lg,
+  },
+  quoteText: {
+    fontFamily: fonts.kova,
+    color: C.t1,
+    fontSize: 15,
+    lineHeight: 22,
+    fontStyle: 'italic',
+  },
+  quoteAuthor: {
+    fontFamily: fonts.bodySemi,
+    color: C.purple,
+    fontSize: 11,
+    marginTop: 8,
+    letterSpacing: 0.3,
+  },
+
+  // ── Coach insight wrap ───────────────────────────────────────────
+  coachWrap: {
+    marginTop: space.lg,
+  },
+
+  // ── Actions ──────────────────────────────────────────────────────
   actions: {
-    gap: 12,
-    marginTop: 4,
+    gap: space.sm,
+    marginTop: space.xxl,
   },
   primaryRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: space.sm,
     alignItems: 'center',
   },
   doneBtn: {
     flex: 1,
-    height: 52,
-    borderRadius: 26,
+    height: pillButton.height,
+    borderRadius: pillButton.borderRadius,
     borderWidth: 1.5,
     borderColor: C.green,
     alignItems: 'center',
     justifyContent: 'center',
+    ...accentGlow(C.green, 14, 0.25),
   },
   doneBtnText: {
     fontFamily: fonts.bodyBold,
     color: C.green,
-    fontSize: 16,
+    fontSize: 17,
+    letterSpacing: 0.3,
   },
   shareBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: pillButton.height,
+    height: pillButton.height,
+    borderRadius: pillButton.borderRadius,
     borderWidth: 1.5,
     borderColor: C.border,
     alignItems: 'center',
@@ -418,15 +589,16 @@ const styles = StyleSheet.create({
   },
   bonusBtn: {
     backgroundColor: C.amberTint,
-    borderRadius: 999,
-    paddingVertical: 16,
+    borderRadius: radii.full,
+    paddingVertical: 14,
     alignItems: 'center',
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: 'rgba(240,181,66,0.3)',
   },
   bonusBtnText: {
     fontFamily: fonts.bodyBold,
     color: C.amber,
-    fontSize: 15,
+    fontSize: 14,
+    letterSpacing: 0.3,
   },
 });

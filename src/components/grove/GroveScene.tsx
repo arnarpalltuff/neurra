@@ -403,10 +403,10 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   kovaModalCard: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 20,
     padding: 22,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   kovaModalText: {

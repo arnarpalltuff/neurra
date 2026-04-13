@@ -30,7 +30,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
     alignItems: 'center',
     justifyContent: 'center',
   },

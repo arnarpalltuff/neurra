@@ -117,6 +117,6 @@ const styles = StyleSheet.create({
   divider: {
     width: 2,
     height: 4,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
   },
 });

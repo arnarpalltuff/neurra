@@ -7,12 +7,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { success as hapticSuccess, tapMedium, error as hapticError, selection } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { updateDifficulty, getDifficulty, chainReactionParams } from '../../../utils/difficultyEngine';
 import { pickRandom } from '../../../utils/arrayUtils';
+import GameIntro from '../shared/GameIntro';
 
 const { width: W, height: H } = Dimensions.get('window');
 const PLAY_W = W - 40;
@@ -101,6 +103,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
   const params = useMemo(() => chainParams(level), [level]);
 
   const [orbs, setOrbs] = useState<Orb[]>([]);
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [sequence, setSequence] = useState<OrbColor[]>([]);
   const [seqIndex, setSeqIndex] = useState(0);
   const [chainCount, setChainCount] = useState(0);
@@ -130,8 +133,10 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
   }, []);
 
   useEffect(() => {
+
     return () => { pendingTimers.current.forEach(clearTimeout); };
   }, []);
+
 
   useEffect(() => {
     const newOrbs = generateOrbs(params.numOrbs, params.colorPool, params.driftSpeed);
@@ -187,7 +192,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
 
     if (orb.color === expectedColor) {
       const tapPos = { x: orb.x, y: orb.y + 140 };
-      burstCorrect(tapPos);
+      playCorrect(); burstCorrect(tapPos);
       const nextIdx = seqIndex + 1;
       const pts = 30;
       scoreRef.current += pts;
@@ -267,7 +272,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
       noMissRef.current = 0;
       setFeedback('wrong');
       updateDifficulty('chain-reaction', false);
-      burstWrong({ x: orb.x, y: orb.y + 140 });
+      playWrong(); burstWrong({ x: orb.x, y: orb.y + 140 });
       hapticError();
       rootShake.value = withSequence(
         withTiming(-5, { duration: 50 }),
@@ -419,7 +424,9 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
           <Text style={styles.chainBannerText}>⚡ CHAIN COMPLETE</Text>
         </Animated.View>
       )}
+      {!_introShown && <GameIntro name="Chain Reaction" subtitle="Tap the color sequence" accentColor={C.amber} onDone={() => _setIntroShown(true)} />}
     </Animated.View>
+
   );
 }
 

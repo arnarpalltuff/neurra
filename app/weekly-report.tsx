@@ -117,7 +117,7 @@ export default function WeeklyReportScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg2 },
+  safe: { flex: 1, backgroundColor: C.bg1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -129,11 +129,11 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.heading, color: C.t1, fontSize: 18 },
   scroll: { padding: 16, paddingBottom: 40 },
   card: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 16,
     padding: 20,
     marginBottom: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   focusCard: { borderColor: 'rgba(107,168,224,0.35)' },

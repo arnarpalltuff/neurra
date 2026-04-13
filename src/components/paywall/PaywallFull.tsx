@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, Pressable, ScrollView,
-  SafeAreaView, ActivityIndicator, Alert, Linking,
+  ActivityIndicator, Alert, Linking,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
@@ -182,7 +183,7 @@ export default function PaywallFull({ visible, onClose }: PaywallFullProps) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
   },
   scroll: {
     padding: 24,
@@ -226,11 +227,11 @@ const styles = StyleSheet.create({
 
   // Features
   features: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 20,
     padding: 20,
     gap: 18,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   featureRow: {

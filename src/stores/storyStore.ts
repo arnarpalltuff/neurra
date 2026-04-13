@@ -21,7 +21,7 @@ interface StoryState {
 export const useStoryStore = create<StoryState>()(
   persist(
     (set, get) => ({
-      storyEnabled: true,
+      storyEnabled: false, // Disabled by default for v1 — re-enable post-launch once core loop is solid
       currentDay: 1,
       unlockedBeacons: [],
       companions: [],

@@ -29,7 +29,10 @@ interface SettingsState {
   quietHoursEnd: string;   // "HH:MM"
 
   // Session preferences
-  sessionLength: 3 | 5;
+  // NOTE: F6 session length lives on `userStore.sessionLength` (quick/standard/deep).
+  // The previous `sessionLength: 3 | 5` field on this store was dead code with
+  // no readers; removed to avoid name collision. Existing persisted values are
+  // harmless (Zustand will simply ignore the extra key).
   relaxedMode: boolean;
   focusAreas: Record<BrainArea, boolean>;
   difficultyPref: DifficultyPref;
@@ -66,7 +69,6 @@ interface SettingsState {
   setLeagueUpdates: (v: boolean) => void;
   setFriendActivityNotif: (v: boolean) => void;
   setQuietHours: (start: string, end: string) => void;
-  setSessionLength: (v: 3 | 5) => void;
   setRelaxedMode: (v: boolean) => void;
   setFocusArea: (area: BrainArea, enabled: boolean) => void;
   setDifficultyPref: (v: DifficultyPref) => void;
@@ -104,7 +106,6 @@ export const useSettingsStore = create<SettingsState>()(
       quietHoursStart: '22:00',
       quietHoursEnd: '07:00',
 
-      sessionLength: 3,
       relaxedMode: false,
       focusAreas: {
         memory: true,
@@ -144,7 +145,6 @@ export const useSettingsStore = create<SettingsState>()(
       setLeagueUpdates: (leagueUpdates) => set({ leagueUpdates }),
       setFriendActivityNotif: (friendActivity) => set({ friendActivity }),
       setQuietHours: (quietHoursStart, quietHoursEnd) => set({ quietHoursStart, quietHoursEnd }),
-      setSessionLength: (sessionLength) => set({ sessionLength }),
       setRelaxedMode: (relaxedMode) => set({ relaxedMode }),
       setFocusArea: (area, enabled) =>
         set((s) => ({

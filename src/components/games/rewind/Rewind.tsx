@@ -12,6 +12,8 @@ import FloatingParticles from '../../ui/FloatingParticles';
 import { updateDifficulty, getDifficulty, rewindParams as rewindParamsEngine } from '../../../utils/difficultyEngine';
 import { shuffle, pickRandom } from '../../../utils/arrayUtils';
 import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import GameIntro from '../shared/GameIntro';
 
 const { width: W } = Dimensions.get('window');
 
@@ -194,6 +196,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
   const params = useMemo(() => rewindParamsEngine(level), [level]);
 
   const [phase, setPhase] = useState<Phase>('study');
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [sceneItems, setSceneItems] = useState<SceneItem[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [qIndex, setQIndex] = useState(0);
@@ -248,8 +251,10 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
 
   useEffect(() => {
     startScene();
+
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+
       pendingTimers.current.forEach(clearTimeout);
     };
   }, []);
@@ -280,7 +285,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
       safeTimeout(() => {
         setFloatScores(prev => prev.filter(f => f.id !== fid));
       }, 1200);
-      burstCorrect({ x: W / 2, y: 350 });
+      playCorrect(); burstCorrect({ x: W / 2, y: 350 });
     } else {
       updateDifficulty('rewind', false);
       hapticError();
@@ -291,7 +296,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
         withTiming(3, { duration: 50 }),
         withTiming(0, { duration: 50 }),
       );
-      burstWrong({ x: W / 2, y: 350 });
+      playWrong(); burstWrong({ x: W / 2, y: 350 });
     }
 
     setLastCorrect(isCorrect);
@@ -454,7 +459,9 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
           </View>
         </Animated.View>
       )}
+      {!_introShown && <GameIntro name="Rewind" subtitle="Remember what you saw" accentColor={C.green} onDone={() => _setIntroShown(true)} />}
     </Animated.View>
+
   );
 }
 

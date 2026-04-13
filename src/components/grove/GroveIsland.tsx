@@ -13,7 +13,8 @@ import { useProgressStore } from '../../stores/progressStore';
 import { stageFromXP } from '../kova/KovaStates';
 import GrowthZone from './GrowthZone';
 import Kova from '../kova/Kova';
-import type { BrainArea } from '../../constants/gameConfigs';
+import { BrainArea, AREA_ACCENT, AREA_LABELS } from '../../constants/gameConfigs';
+import { fonts } from '../../constants/typography';
 
 const { width: W, height: H } = Dimensions.get('window');
 const ISLAND_W = W * 2.2;
@@ -135,6 +136,7 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
       minimumZoomScale={0.5}
       contentOffset={{ x: (ISLAND_W - W) / 2, y: (ISLAND_H - H) / 4 }}
       decelerationRate="fast"
+      style={{ backgroundColor: skyBottom }}
     >
       {/* Layer 0: Sky gradient */}
       <LinearGradient
@@ -182,10 +184,14 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
         </Svg>
       </View>
 
-      {/* Layer 3-5: Growth zones */}
+      {/* Layer 3-5: Growth zones with labels */}
       {ZONE_CONFIGS.map((zone) => {
         const pos = ZONE_POSITIONS[zone.area];
         const zoneGrowth = zoneGrowths[zone.area];
+        const growthPct = Math.round((zoneGrowth.currentGrowth / 12) * 100);
+        const areaColor = AREA_ACCENT[zone.area] ?? C.green;
+        const isNew = zoneGrowth.currentGrowth < 0.5;
+
         return (
           <TouchableOpacity
             key={zone.area}
@@ -195,7 +201,7 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
             }]}
             onPress={() => onZoneTap(zone)}
             activeOpacity={0.8}
-            accessibilityLabel={`${zone.name} — ${zone.area} zone`}
+            accessibilityLabel={`${zone.name} — ${zone.area} zone — ${growthPct}% growth`}
           >
             <GrowthZone
               zone={zone}
@@ -204,10 +210,28 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
               palette={palette}
               size={ZONE_SIZE}
             />
-            {/* Wilting indicator */}
+
+            {/* Zone label: name + growth % */}
+            <View style={styles.zoneLabel} pointerEvents="none">
+              <Text style={[styles.zoneLabelName, { color: areaColor }]} numberOfLines={1}>
+                {zone.icon} {AREA_LABELS[zone.area] ?? zone.area}
+              </Text>
+              <View style={styles.zoneLabelBarTrack}>
+                <View style={[styles.zoneLabelBarFill, { width: `${growthPct}%`, backgroundColor: areaColor }]} />
+              </View>
+              <Text style={styles.zoneLabelPct}>{growthPct}%</Text>
+            </View>
+
+            {/* Status indicators */}
             {zoneGrowth.isWilting && (
               <View style={styles.wiltBadge}>
                 <Text style={styles.wiltIcon}>💧</Text>
+                <Text style={styles.wiltText}>Needs care</Text>
+              </View>
+            )}
+            {isNew && !zoneGrowth.isWilting && (
+              <View style={styles.seedBadge}>
+                <Text style={styles.seedText}>Tap to grow</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -269,22 +293,84 @@ const styles = StyleSheet.create({
   zoneContainer: {
     position: 'absolute',
     width: ZONE_SIZE,
-    height: ZONE_SIZE,
+    height: ZONE_SIZE + 52, // extra space for label below
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
+
+  // Zone label (name + mini progress bar + percentage)
+  zoneLabel: {
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 2,
+    width: ZONE_SIZE + 20,
+  },
+  zoneLabelName: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 10,
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  zoneLabelBarTrack: {
+    width: 48,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  zoneLabelBarFill: {
+    height: '100%',
+    borderRadius: 1.5,
+  },
+  zoneLabelPct: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 0.5,
+  },
+
+  // Wilting badge
   wiltBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: C.bg4,
+    top: -8,
+    right: -12,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(240,181,66,0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(240,181,66,0.4)',
   },
-  wiltIcon: { fontSize: 12 },
+  wiltIcon: { fontSize: 10 },
+  wiltText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 8,
+    color: C.amber,
+    letterSpacing: 0.3,
+  },
+
+  // Seed badge (new / untrained zone)
+  seedBadge: {
+    position: 'absolute',
+    bottom: 48,
+    backgroundColor: 'rgba(110,207,154,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(110,207,154,0.3)',
+  },
+  seedText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 9,
+    color: C.green,
+    letterSpacing: 0.3,
+  },
   kovaContainer: {
     position: 'absolute',
     alignItems: 'center',

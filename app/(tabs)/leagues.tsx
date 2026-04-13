@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { C } from '../../src/constants/colors';
 import { fonts } from '../../src/constants/typography';
@@ -106,15 +107,15 @@ export default function LeaguesScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg2 },
+  safe: { flex: 1, backgroundColor: C.bg1 },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, gap: 12 },
 
   leagueCard: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 18,
     padding: 18,
     gap: 14,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   leagueBadge: {
@@ -163,12 +164,12 @@ const styles = StyleSheet.create({
 
   playerRow: {
     borderRadius: 16,
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   playerRowUser: {
@@ -218,8 +219,8 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 10,
     borderRadius: 14,
-    borderWidth: 0.5,
-    backgroundColor: C.bg3,
+    borderWidth: 1,
+    backgroundColor: 'rgba(19,24,41,0.85)',
   },
   leaguePipActive: {
     borderWidth: 1.5,

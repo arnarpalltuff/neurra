@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
     gap: 20,
   },
   phase: {
@@ -307,11 +307,11 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   memItem: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   memItemText: {
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   recallItem: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -371,10 +371,10 @@ const styles = StyleSheet.create({
     width: 72,
     height: 52,
     borderRadius: 14,
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   numKeySubmit: {
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.green,
   },
   placedNum: {
@@ -459,11 +459,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   optionBtn: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   optionText: {

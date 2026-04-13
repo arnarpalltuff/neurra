@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     gap: 4,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
   },
   gameTitle: {
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 14,
     padding: 12,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
   },
   barsTitle: {

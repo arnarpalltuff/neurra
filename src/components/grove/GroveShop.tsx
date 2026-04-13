@@ -301,7 +301,7 @@ export default function GroveShop({ visible, onClose, onPlaceDecoration }: Grove
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg2 },
+  container: { flex: 1, backgroundColor: C.bg1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -356,10 +356,10 @@ const styles = StyleSheet.create({
   },
   themeCard: {
     width: '47%',
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 16,
     padding: 10,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   themeCardActive: { borderColor: C.green, borderWidth: 1.5 },
@@ -432,12 +432,12 @@ const styles = StyleSheet.create({
   decoCard: {
     flex: 1,
     maxWidth: '32%',
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 14,
     padding: 10,
     alignItems: 'center',
     gap: 4,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
     marginHorizontal: 2,
   },

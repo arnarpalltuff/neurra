@@ -7,12 +7,14 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line, Circle as SvgCircle } from 'react-native-svg';
 import { success as hapticSuccess, tapMedium, error as hapticError } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { updateDifficulty, getDifficulty, mindDriftParams } from '../../../utils/difficultyEngine';
 import { pickRandom } from '../../../utils/arrayUtils';
+import GameIntro from '../shared/GameIntro';
 
 const { width: W } = Dimensions.get('window');
 const GRID_SIZE = W - 60;
@@ -115,6 +117,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   );
 
   const [phase, setPhase] = useState<Phase>('showing');
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [path, setPath] = useState<HexCell[]>([]);
   const [litIndex, setLitIndex] = useState(-1);
   const [tapped, setTapped] = useState<HexCell[]>([]);
@@ -141,8 +144,10 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   }, []);
 
   useEffect(() => {
+
     return () => { pendingTimers.current.forEach(clearTimeout); };
   }, []);
+
 
   const startRound = useCallback(() => {
     const newPath = generatePath(grid, params.pathLength);
@@ -192,7 +197,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
     const isCorrect = cell.row === expected.row && cell.col === expected.col;
 
     if (isCorrect) {
-      burstCorrect({ x: cell.cx + 30, y: cell.cy + 100 });
+      playCorrect(); burstCorrect({ x: cell.cx + 30, y: cell.cy + 100 });
       tapMedium();
       const newTapped = [...tapped, cell];
       setTapped(newTapped);
@@ -220,7 +225,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
         safeTimeout(() => { setFeedback(null); advanceRound(); }, 800);
       }
     } else {
-      burstWrong({ x: cell.cx + 30, y: cell.cy + 100 });
+      playWrong(); burstWrong({ x: cell.cx + 30, y: cell.cy + 100 });
       hapticError();
       rootShake.value = withSequence(
         withTiming(-5, { duration: 50 }),
@@ -411,7 +416,9 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
           </Animated.Text>
         )}
       </View>
+      {!_introShown && <GameIntro name="Mind Drift" subtitle="Trace the path" accentColor={C.green} onDone={() => _setIntroShown(true)} />}
     </Animated.View>
+
   );
 }
 

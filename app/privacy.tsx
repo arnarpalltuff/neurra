@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { C } from '../src/constants/colors';
 import { fonts } from '../src/constants/typography';
@@ -23,7 +24,10 @@ SUBSCRIPTIONS
 • If you subscribe to Pro, payment is handled by Apple or Google. We do not receive your full card number.
 
 QUESTIONS
-• You can clear local data by deleting the app or using account deletion when available in Settings.`;
+• You can clear local data by deleting the app or using account deletion when available in Settings.
+• For privacy questions, contact us at support@neurra.app
+
+Last updated: April 2026`;
 
 export default function PrivacyScreen() {
   return (
@@ -43,7 +47,7 @@ export default function PrivacyScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg2 },
+  safe: { flex: 1, backgroundColor: C.bg1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

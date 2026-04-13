@@ -12,6 +12,8 @@ import FloatingParticles from '../../ui/FloatingParticles';
 import { updateDifficulty, getDifficulty, splitFocusParams, isRelaxedMode } from '../../../utils/difficultyEngine';
 import { shuffle } from '../../../utils/arrayUtils';
 import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import GameIntro from '../shared/GameIntro';
 
 const { width: W } = Dimensions.get('window');
 
@@ -145,6 +147,7 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
   const relaxed = isRelaxedMode();
 
   const [round, setRound] = useState(1);
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [score, setScore] = useState(0);
 
   const [colorPrompt, setColorPrompt] = useState<ColorPrompt>(() => generateColorPrompt(1));
@@ -194,8 +197,10 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
         setTimeout(() => { if (!cancelledRef.current) setColorFeedback(null); }, 400);
       }
     }, colorTimeMs);
+
     return () => {
       cancelledRef.current = true;
+
       if (colorTimerRef.current) clearTimeout(colorTimerRef.current);
     };
   }, [colorPrompt.id, colorDone, relaxed, colorTimeMs]);
@@ -240,7 +245,7 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
 
     const isCorrect = color === colorPrompt.targetColor;
     const pos = { x: W / 2, y: 200 };
-    isCorrect ? burstCorrect(pos) : burstWrong(pos);
+    if (isCorrect) { playCorrect(); burstCorrect(pos); } else { playWrong(); burstWrong(pos); }
 
     attemptsRef.current++;
 
@@ -278,7 +283,7 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
 
     const isCorrect = value === nextExpected;
     const pos = { x, y };
-    isCorrect ? burstCorrect(pos) : burstWrong(pos);
+    if (isCorrect) { playCorrect(); burstCorrect(pos); } else { playWrong(); burstWrong(pos); }
 
     attemptsRef.current++;
 
@@ -442,7 +447,9 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
           </Text>
         </Animated.View>
       )}
+      {!_introShown && <GameIntro name="Split Focus" subtitle="Two tasks · one brain" accentColor={C.purple} onDone={() => _setIntroShown(true)} />}
     </Animated.View>
+
   );
 }
 

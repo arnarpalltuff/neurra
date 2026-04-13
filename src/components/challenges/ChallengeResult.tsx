@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
   },
   card: {
     alignItems: 'center',
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   xpBadge: {
     backgroundColor: 'rgba(240,181,66,0.08)',
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: 'rgba(240,181,66,0.3)',
     borderRadius: 20,
     paddingHorizontal: 16,

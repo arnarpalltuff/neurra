@@ -1,18 +1,34 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { C } from '../../src/constants/colors';
-import { fonts } from '../../src/constants/typography';
+import { fonts, type as t } from '../../src/constants/typography';
+import { space, radii, shadows } from '../../src/constants/design';
 import { AREA_LABELS, AREA_ACCENT } from '../../src/constants/gameConfigs';
 import { useProgressStore } from '../../src/stores/progressStore';
 import { useUserStore } from '../../src/stores/userStore';
 import { generateInsights } from '../../src/utils/insightsEngine';
 import BrainPulseHero from '../../src/components/insights/BrainPulseHero';
 import InsightCard from '../../src/components/insights/InsightCard';
+import JournalTimeline from '../../src/components/journal/JournalTimeline';
 import { useWeeklyReportStore } from '../../src/stores/weeklyReportStore';
+import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function InsightsScreen() {
+/** Crash-safe default pulse. Every field has a valid value. */
+const EMPTY_PULSE: import('../../src/utils/insightsEngine').BrainPulseData = {
+  score: 0,
+  trend: 0,
+  weather: 'foggy',
+  weatherLabel: 'Loading',
+  weatherEmoji: '🌫️',
+  strongestArea: 'memory',
+  weakestArea: 'creativity',
+  streak7DayAvg: 0,
+};
+
+function InsightsScreenInner() {
   const sessions = useProgressStore(s => s.sessions);
   const brainScores = useProgressStore(s => s.brainScores);
   const gameHistory = useProgressStore(s => s.gameHistory);
@@ -25,37 +41,116 @@ export default function InsightsScreen() {
   const mood = useUserStore(s => s.mood);
   const moodHistory = useUserStore(s => s.moodHistory);
 
-  const { pulse, insights } = useMemo(
-    () => generateInsights({
-      sessions, brainScores, gameHistory, personalBests,
-      streak, longestStreak, totalSessions, xp, level,
-      mood, moodHistory,
-    }),
-    [sessions, brainScores, gameHistory, personalBests, streak, longestStreak, totalSessions, xp, level, mood, moodHistory],
-  );
+  // Wrap in try-catch so a data edge case in the insights engine can never
+  // take down the entire screen. Falls back to empty data gracefully.
+  const { pulse, insights } = useMemo(() => {
+    try {
+      return generateInsights({
+        sessions: sessions ?? [],
+        brainScores: brainScores ?? { memory: 0, focus: 0, speed: 0, flexibility: 0, creativity: 0 },
+        gameHistory: gameHistory ?? {},
+        personalBests: personalBests ?? {},
+        streak: streak ?? 0,
+        longestStreak: longestStreak ?? 0,
+        totalSessions: totalSessions ?? 0,
+        xp: xp ?? 0,
+        level: level ?? 1,
+        mood: mood ?? null,
+        moodHistory: moodHistory ?? [],
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[Insights] generateInsights crashed:', e);
+      return { pulse: EMPTY_PULSE, insights: [] };
+    }
+  }, [sessions, brainScores, gameHistory, personalBests, streak, longestStreak, totalSessions, xp, level, mood, moodHistory]);
 
-  const hasData = totalSessions >= 3;
+  const hasData = (totalSessions ?? 0) >= 3;
   const reportEntries = useWeeklyReportStore((s) => s.reports);
   const pastReportIds = useMemo(
     () => Object.keys(reportEntries).sort().reverse(),
     [reportEntries],
   );
 
+  // Personal summary line
+  const summaryLine = useMemo(() => {
+    if (!hasData) return '';
+    const trend = pulse?.trend ?? 0;
+    const strongest = AREA_LABELS[pulse?.strongestArea] ?? 'Memory';
+    const weakest = AREA_LABELS[pulse?.weakestArea] ?? 'Creativity';
+    if (trend > 5) return `Your brain is on an upswing. ${strongest} is leading the charge.`;
+    if (trend > 0) return `Steady improvement this week. ${strongest} is your strongest area.`;
+    if (trend === 0) return `Consistent performance. ${weakest} could use some extra attention.`;
+    if (trend > -5) return `Slight dip this week — totally normal. ${strongest} is still strong.`;
+    return `Rough week for the numbers. But showing up matters more than scores.`;
+  }, [hasData, pulse]);
+
+  // Weakest area recommendation
+  const recommendation = useMemo(() => {
+    if (!hasData) return null;
+    const weakArea = pulse?.weakestArea ?? 'creativity';
+    const weakLabel = AREA_LABELS[weakArea] ?? 'Creativity';
+    const weakColor = AREA_ACCENT[weakArea] ?? C.peach;
+    const weakScore = Math.round(brainScores?.[weakArea] ?? 0);
+    const strongArea = pulse?.strongestArea ?? 'memory';
+    const strongScore = Math.round(brainScores?.[strongArea] ?? 0);
+    const gap = strongScore - weakScore;
+    if (gap < 10) return null; // balanced enough
+    return { area: weakLabel, color: weakColor, score: weakScore, gap };
+  }, [hasData, pulse, brainScores]);
+
+  // Last 7 days activity
+  const weekActivity = useMemo(() => {
+    const today = new Date();
+    const sessionDates = new Set((sessions ?? []).map((s: any) => s.date?.split('T')[0]));
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (6 - i));
+      const dateStr = d.toISOString().split('T')[0];
+      const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
+      return { dateStr, dayLabel, trained: sessionDates.has(dateStr), isToday: i === 6 };
+    });
+  }, [sessions]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeIn.delay(50).duration(400)}>
           <Text style={styles.title}>Insights</Text>
-          <Text style={styles.subtitle}>Your brain, decoded.</Text>
+          <Text style={styles.subtitle}>YOUR BRAIN · DECODED</Text>
         </Animated.View>
+
+        {/* Weekly activity dots */}
+        {hasData && (
+          <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.weekRow}>
+            {weekActivity.map((day) => (
+              <View key={day.dateStr} style={styles.weekDayCol}>
+                <View style={[
+                  styles.weekDot,
+                  day.trained && styles.weekDotActive,
+                  day.isToday && styles.weekDotToday,
+                ]} />
+                <Text style={[styles.weekDayLabel, day.isToday && styles.weekDayLabelToday]}>
+                  {day.dayLabel}
+                </Text>
+              </View>
+            ))}
+          </Animated.View>
+        )}
+
+        {/* Personal summary */}
+        {hasData && summaryLine ? (
+          <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.summaryCard}>
+            <Text style={styles.summaryText}>{summaryLine}</Text>
+          </Animated.View>
+        ) : null}
 
         {!hasData ? (
           <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>🧠</Text>
-            <Text style={styles.emptyTitle}>Building your brain profile...</Text>
+            <Text style={styles.emptyTitle}>Still getting to know your brain</Text>
             <Text style={styles.emptyBody}>
-              Complete a few more sessions and your personal insights will appear here.
-              {'\n\n'}We need at least 3 sessions to start detecting patterns.
+              A few more sessions and patterns will start showing up here. Three is the magic number.
             </Text>
             <View style={styles.emptyProgress}>
               <View style={styles.emptyBar}>
@@ -75,19 +170,19 @@ export default function InsightsScreen() {
                 <Text style={styles.areaTitle}>Brain Areas</Text>
                 <View style={styles.areaStrength}>
                   <Text style={styles.areaStrengthLabel}>Strongest:</Text>
-                  <Text style={[styles.areaStrengthValue, { color: AREA_ACCENT[pulse.strongestArea] }]}>
-                    {AREA_LABELS[pulse.strongestArea]}
+                  <Text style={[styles.areaStrengthValue, { color: AREA_ACCENT[pulse?.strongestArea] ?? C.green }]}>
+                    {AREA_LABELS[pulse?.strongestArea] ?? 'Memory'}
                   </Text>
                 </View>
               </View>
               {(['memory', 'focus', 'speed', 'flexibility', 'creativity'] as const).map((area) => {
-                const score = brainScores[area];
-                const color = AREA_ACCENT[area];
+                const score = brainScores?.[area] ?? 0;
+                const color = AREA_ACCENT[area] ?? C.green;
                 return (
                   <View key={area} style={styles.areaRow}>
                     <View style={styles.areaLabelRow}>
                       <View style={[styles.areaDot, { backgroundColor: color }]} />
-                      <Text style={styles.areaLabel}>{AREA_LABELS[area]}</Text>
+                      <Text style={styles.areaLabel}>{AREA_LABELS[area] ?? area}</Text>
                       <Text style={[styles.areaScore, { color }]}>{Math.round(score)}</Text>
                     </View>
                     <View style={styles.areaBar}>
@@ -104,14 +199,14 @@ export default function InsightsScreen() {
               <View style={styles.compareRow}>
                 <View style={styles.compareStat}>
                   <Text style={[styles.compareValue, { color: C.green }]}>
-                    {Math.round(pulse.streak7DayAvg * 100)}%
+                    {Math.round((pulse?.streak7DayAvg ?? 0) * 100)}%
                   </Text>
                   <Text style={styles.compareLabel}>This week avg</Text>
                 </View>
                 <View style={styles.compareDivider} />
                 <View style={styles.compareStat}>
-                  <Text style={[styles.compareValue, { color: pulse.trend >= 0 ? C.green : C.coral }]}>
-                    {pulse.trend > 0 ? '+' : ''}{pulse.trend}%
+                  <Text style={[styles.compareValue, { color: (pulse?.trend ?? 0) >= 0 ? C.green : C.coral }]}>
+                    {(pulse?.trend ?? 0) > 0 ? '+' : ''}{pulse?.trend ?? 0}%
                   </Text>
                   <Text style={styles.compareLabel}>Change</Text>
                 </View>
@@ -125,6 +220,22 @@ export default function InsightsScreen() {
               </View>
             </Animated.View>
 
+            {/* Training recommendation */}
+            {recommendation && (
+              <Animated.View entering={FadeInDown.delay(450).duration(400)} style={[styles.recCard, { borderLeftColor: recommendation.color }]}>
+                <Text style={styles.recLabel}>TRAINING TIP</Text>
+                <Text style={styles.recText}>
+                  Focus on <Text style={{ color: recommendation.color, fontFamily: fonts.bodyBold }}>{recommendation.area}</Text> this week — it's {recommendation.gap} points behind your strongest area.
+                </Text>
+                <Pressable
+                  style={[styles.recBtn, { backgroundColor: `${recommendation.color}18` }]}
+                  onPress={() => router.push('/(tabs)/games' as any)}
+                >
+                  <Text style={[styles.recBtnText, { color: recommendation.color }]}>Browse {recommendation.area} Games →</Text>
+                </Pressable>
+              </Animated.View>
+            )}
+
             {/* Insight Cards */}
             {insights.length > 0 && (
               <View style={styles.insightsSection}>
@@ -134,6 +245,9 @@ export default function InsightsScreen() {
                 ))}
               </View>
             )}
+
+            {/* Brain Journal timeline */}
+            <JournalTimeline />
 
             {pastReportIds.length > 0 && (
               <Animated.View entering={FadeInDown.delay(520).duration(400)} style={styles.reportsSection}>
@@ -159,7 +273,7 @@ export default function InsightsScreen() {
             {/* Footer tip */}
             <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.footerTip}>
               <Text style={styles.footerText}>
-                Insights update after each session. The more you train, the smarter your insights get.
+                The more you train, the smarter these get. Kova's been taking notes.
               </Text>
             </Animated.View>
           </>
@@ -170,7 +284,7 @@ export default function InsightsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg2 },
+  safe: { flex: 1, backgroundColor: C.bg1 },
   content: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -178,26 +292,108 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   title: {
-    fontFamily: fonts.heading,
+    ...t.pageTitle,
     color: C.t1,
-    fontSize: 28,
-    letterSpacing: -0.5,
   },
   subtitle: {
-    fontFamily: fonts.body,
+    ...t.microLabel,
     color: C.t3,
+    marginTop: 6,
+  },
+
+  // Weekly activity
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    paddingVertical: 8,
+  },
+  weekDayCol: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  weekDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: C.bg4,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  weekDotActive: {
+    backgroundColor: C.green,
+    borderColor: C.green,
+  },
+  weekDotToday: {
+    borderColor: C.t2,
+    borderWidth: 2,
+  },
+  weekDayLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 10,
+    color: C.t4,
+  },
+  weekDayLabelToday: {
+    color: C.t1,
+  },
+
+  // Summary
+  summaryCard: {
+    backgroundColor: 'rgba(19,24,41,0.85)',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  summaryText: {
+    fontFamily: fonts.kova,
+    color: C.t2,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+
+  // Training recommendation
+  recCard: {
+    backgroundColor: 'rgba(19,24,41,0.85)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderLeftWidth: 3,
+    gap: 10,
+  },
+  recLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 10,
+    color: C.t3,
+    letterSpacing: 1.5,
+  },
+  recText: {
+    fontFamily: fonts.body,
     fontSize: 14,
-    marginTop: 2,
+    color: C.t1,
+    lineHeight: 21,
+  },
+  recBtn: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  recBtnText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
   },
 
   // Empty state
   emptyState: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 22,
     padding: 32,
     alignItems: 'center',
     gap: 14,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
     marginTop: 20,
   },
@@ -240,11 +436,11 @@ const styles = StyleSheet.create({
 
   // Brain Areas
   areaCard: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 20,
     padding: 20,
     gap: 14,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   areaHeader: {
@@ -276,12 +472,13 @@ const styles = StyleSheet.create({
   areaDot: { width: 8, height: 8, borderRadius: 4 },
   areaLabel: {
     fontFamily: fonts.bodySemi,
-    color: C.t1,
+    color: C.t2,
     fontSize: 13,
     flex: 1,
   },
   areaScore: {
     fontFamily: fonts.bodyBold,
+    color: C.t2,
     fontSize: 13,
   },
   areaBar: {
@@ -297,11 +494,11 @@ const styles = StyleSheet.create({
 
   // Compare
   compareCard: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 20,
     padding: 20,
     gap: 16,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   compareTitle: {
@@ -346,10 +543,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 14,
     padding: 16,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   reportRowText: {
@@ -363,11 +560,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   sectionTitle: {
-    fontFamily: fonts.heading,
-    color: C.t1,
-    fontSize: 22,
-    letterSpacing: -0.3,
-    marginBottom: 4,
+    ...t.sectionHeader,
+    color: C.t3,
+    marginBottom: space.xs + 2,
+    marginTop: space.xs,
   },
 
   // Footer
@@ -383,3 +579,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+export default function InsightsScreen() {
+  return (
+    <ErrorBoundary scope="Insights tab">
+      <InsightsScreenInner />
+    </ErrorBoundary>
+  );
+}

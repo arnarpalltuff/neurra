@@ -138,4 +138,64 @@ export const type: Record<string, TextStyle> = {
     lineHeight: 16,
     color: '#6B7280',
   },
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Anti-AI design overhaul tokens.
+  //
+  // Use these on new and refactored screens. The principle: dramatic type
+  // contrast. The ratio between the biggest text on a screen (heroNumber 52)
+  // and the smallest (microLabel 10) is 5.2:1 — that's what designed type
+  // looks like. AI-generated UIs sit at 2:1 and feel flat.
+  // ─────────────────────────────────────────────────────────────────────
+
+  /** Page titles: "Good morning", "Your Brain", "Settings". */
+  pageTitle: {
+    fontFamily: 'Quicksand_700Bold',
+    fontSize: 28,
+    letterSpacing: -0.8,
+    lineHeight: 32,
+    color: '#EDE9E0',
+  },
+  /** Section headers: "TODAY'S SESSION", "THIS WEEK", "NOTIFICATIONS". */
+  sectionHeader: {
+    fontFamily: 'Nunito_600SemiBold',
+    fontSize: 11,
+    letterSpacing: 2,
+    lineHeight: 14,
+    color: '#5E6272',
+    textTransform: 'uppercase' as const,
+  },
+  /** Hero numbers: streak count, XP earned, level number. */
+  heroNumber: {
+    fontFamily: 'Quicksand_700Bold',
+    fontSize: 52,
+    letterSpacing: -1.5,
+    lineHeight: 56,
+    color: '#EDE9E0',
+  },
+  /** Body text: descriptions, framing, regular paragraphs. */
+  bodyText: {
+    fontFamily: 'Nunito_400Regular',
+    fontSize: 15,
+    letterSpacing: 0,
+    lineHeight: 22,
+    color: '#EDE9E0',
+  },
+  /** Kova speech — handwritten, slightly larger than body. */
+  kovaText: {
+    fontFamily: 'Caveat_400Regular',
+    fontSize: 19,
+    letterSpacing: 0.3,
+    lineHeight: 26,
+    color: '#EDE9E0',
+  },
+  /** Micro labels: "TAP TO CONTINUE", timestamps, metadata. */
+  microLabel: {
+    fontFamily: 'Nunito_600SemiBold',
+    fontSize: 10,
+    letterSpacing: 1.5,
+    lineHeight: 14,
+    color: '#3A3F52',
+    textTransform: 'uppercase' as const,
+  },
 };

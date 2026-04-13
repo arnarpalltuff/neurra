@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { C } from '../src/constants/colors';
@@ -9,7 +10,6 @@ import { useProgressStore } from '../src/stores/progressStore';
 import { useProStore } from '../src/stores/proStore';
 import { getPerformanceOverview } from '../src/utils/performanceAnalytics';
 import { gameConfigs, AREA_LABELS, AREA_COLORS } from '../src/constants/gameConfigs';
-import PaywallWeekly from '../src/components/paywall/PaywallWeekly';
 import PaywallFull from '../src/components/paywall/PaywallFull';
 
 const TREND_ICONS = { improving: '↗', declining: '↘', flat: '→' };
@@ -148,18 +148,17 @@ export default function StatsScreen() {
           </Card>
         </Animated.View>
 
-        {/* Weekly paywall nudge */}
-        {showWeekly && (
-          <PaywallWeekly
-            onUpgrade={() => {
+        {/* Pro nudge — consolidated to PaywallFull trigger */}
+        {showWeekly && !showPaywall && (
+          <Pressable
+            style={styles.proNudge}
+            onPress={() => {
               recordWeeklyPaywall();
               setShowPaywall(true);
             }}
-            onDismiss={() => {
-              recordWeeklyPaywall();
-              setWeeklyDismissed(true);
-            }}
-          />
+          >
+            <Text style={styles.proNudgeText}>Unlock full brain history with Pro →</Text>
+          </Pressable>
         )}
 
         {/* Game progressions */}
@@ -221,7 +220,7 @@ export default function StatsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg2 },
+  safe: { flex: 1, backgroundColor: C.bg1 },
   content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 100, gap: 12 },
   header: {
     flexDirection: 'row',
@@ -400,4 +399,19 @@ const styles = StyleSheet.create({
   },
   miniChart: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 36 },
   miniBar: { flex: 1, borderRadius: 999, minHeight: 3 },
+  proNudge: {
+    backgroundColor: C.purpleTint,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(155,114,224,0.3)',
+    alignItems: 'center',
+    marginHorizontal: 20,
+  },
+  proNudgeText: {
+    fontFamily: fonts.bodySemi,
+    color: C.purple,
+    fontSize: 13,
+  },
 });

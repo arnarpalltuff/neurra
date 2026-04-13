@@ -5,6 +5,8 @@ import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import Kova from '../../components/kova/Kova';
 import Button from '../../components/ui/Button';
+import { LinearGradient } from 'expo-linear-gradient';
+import FloatingParticles from '../../components/ui/FloatingParticles';
 
 interface NameInputProps {
   onNext: (name: string) => void;
@@ -63,7 +65,7 @@ export default function NameInput({ onNext }: NameInputProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
     padding: 28,
     justifyContent: 'center',
     gap: 36,
@@ -88,7 +90,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   input: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 999,
     paddingHorizontal: 24,
     paddingVertical: 16,

@@ -7,7 +7,6 @@ import Animated, {
 import Svg, { Circle } from 'react-native-svg';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
-import { glow } from '../../utils/glow';
 import type { BrainPulseData } from '../../utils/insightsEngine';
 
 const SIZE = 180;

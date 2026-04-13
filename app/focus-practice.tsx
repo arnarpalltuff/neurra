@@ -4,21 +4,28 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { C } from '../src/constants/colors';
 import GameWrapper from '../src/screens/session/GameWrapper';
 import PostSession from '../src/screens/session/PostSession';
+import RewardChest from '../src/components/rewards/RewardChest';
 import { GameId, gameConfigs } from '../src/constants/gameConfigs';
 import { useProgressStore } from '../src/stores/progressStore';
 import { useCoinStore } from '../src/stores/coinStore';
+import { useKovaStore } from '../src/stores/kovaStore';
+import { useDailyChallengeStore } from '../src/stores/dailyChallengeStore';
 import { calcSessionCoinRewards, CoinRewardBreakdown } from '../src/utils/coinRewards';
 import { SessionGameResult, calcSessionXP } from '../src/utils/sessionUtils';
 
 export default function FocusPracticeScreen() {
-  const params = useLocalSearchParams<{ games?: string }>();
+  const params = useLocalSearchParams<{ games?: string; challengeId?: string }>();
   const gameIds = (params.games?.split(',') ?? []) as GameId[];
+  const challengeId = params.challengeId ?? null;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<SessionGameResult[]>([]);
   const [sessionXP, setSessionXP] = useState(0);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [coinRewards, setCoinRewards] = useState<CoinRewardBreakdown | null>(null);
+  const [showChest, setShowChest] = useState(false);
+  const completeChallenge = useDailyChallengeStore(s => s.completeChallenge);
+  const recordKovaChallenge = useKovaStore(s => s.recordChallengeCompletion);
 
   const addXP = useProgressStore(s => s.addXP);
   const addSession = useProgressStore(s => s.addSession);
@@ -29,6 +36,7 @@ export default function FocusPracticeScreen() {
   const personalBests = useProgressStore(s => s.personalBests);
   const gameHistory = useProgressStore(s => s.gameHistory);
   const isSessionDoneToday = useProgressStore(s => s.isSessionDoneToday);
+  const streak = useProgressStore(s => s.streak);
 
   const handleGameComplete = useCallback((score: number, accuracy: number) => {
     const gameId = gameIds[currentIndex];
@@ -87,7 +95,17 @@ export default function FocusPracticeScreen() {
 
       if (rewards.total > 0) earnCoins(rewards.total, 'Focus practice rewards');
       setCoinRewards(rewards);
+
+      // Mark daily challenge as completed if this was a challenge
+      if (challengeId) {
+        const totalScore = newResults.reduce((sum, r) => sum + r.score, 0);
+        completeChallenge(challengeId, totalScore);
+        recordKovaChallenge();
+      }
+
       setSessionComplete(true);
+      // Show reward chest after a brief delay
+      setTimeout(() => setShowChest(true), 800);
     } else {
       setCurrentIndex(i => i + 1);
     }
@@ -105,14 +123,23 @@ export default function FocusPracticeScreen() {
 
   if (sessionComplete) {
     return (
-      <PostSession
-        results={results}
-        xpEarned={sessionXP}
-        newStreak={useProgressStore.getState().streak}
-        onDone={handleDone}
-        bonusAvailable={false}
-        coinRewards={coinRewards}
-      />
+      <View style={{ flex: 1 }}>
+        <PostSession
+          results={results}
+          xpEarned={sessionXP}
+          newStreak={streak}
+          onDone={handleDone}
+          bonusAvailable={false}
+          coinRewards={coinRewards}
+        />
+        <RewardChest
+          visible={showChest}
+          onDismiss={() => {
+            setShowChest(false);
+            handleDone();
+          }}
+        />
+      </View>
     );
   }
 
@@ -131,6 +158,6 @@ export default function FocusPracticeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
   },
 });

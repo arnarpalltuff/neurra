@@ -127,6 +127,8 @@ export interface ZoneGrowth {
   peakGrowth: number;     // highest ever
   isWilting: boolean;
   lastTrainedDate: string | null;
+  /** F7: consecutive days this area was trained. Resets if a full calendar day passes without training. */
+  streakCount: number;
 }
 
 // ── Zone Config ────────────────────────────────────────
@@ -196,8 +198,12 @@ interface GroveState {
   storeDecoration: (index: number) => void;
   sellDecoration: (index: number) => void;
   updateZoneGrowth: (area: BrainArea, brainScore: number) => void;
-  markAreaTrained: (area: BrainArea) => void;
+  markAreaTrained: (area: BrainArea) => { newStreak: number; reachedSeven: boolean };
+  /** F7: brain areas that currently hold a 7+ day streak ("Specialist" badge). */
+  activeSpecialists: BrainArea[];
   recalcAllZones: (brainScores: Record<BrainArea, number>) => void;
+  /** F7: walk all zones and zero out streaks where the last trained day is more than 1 day ago. */
+  recalcAreaStreaks: () => void;
   addGiftFlower: (fromName: string, x: number, y: number) => void;
   updateVisitors: (streak: number, level: number, focusScore: number, streamGrowth: number) => void;
   clearRevivedSparkle: () => void;
@@ -209,6 +215,7 @@ const defaultZoneGrowth = (area: BrainArea): ZoneGrowth => ({
   peakGrowth: 0,
   isWilting: false,
   lastTrainedDate: null,
+  streakCount: 0,
 });
 
 export const useGroveStore = create<GroveState>()(
@@ -228,6 +235,7 @@ export const useGroveStore = create<GroveState>()(
       giftFlowers: [],
       unlockedVisitors: ['fireflies'],
       revivedSparkleArea: null,
+      activeSpecialists: [],
 
       clearRevivedSparkle: () => set({ revivedSparkleArea: null }),
 
@@ -311,20 +319,75 @@ export const useGroveStore = create<GroveState>()(
           };
         }),
 
-      markAreaTrained: (area) =>
-        set((s) => {
-          const wasWilting = s.zoneGrowths[area]?.isWilting ?? false;
-          return {
-            revivedSparkleArea: wasWilting ? area : s.revivedSparkleArea,
-            zoneGrowths: {
-              ...s.zoneGrowths,
-              [area]: {
-                ...s.zoneGrowths[area],
-                lastTrainedDate: new Date().toISOString().split('T')[0],
-                isWilting: false,
-              },
+      markAreaTrained: (area) => {
+        const s = get();
+        const zone = s.zoneGrowths[area];
+        const wasWilting = zone?.isWilting ?? false;
+        const today = new Date().toISOString().split('T')[0];
+
+        // F7: advance per-area streak. yesterday → +1, today → no change, gap → reset to 1.
+        let newStreak = zone?.streakCount ?? 0;
+        if (zone?.lastTrainedDate === today) {
+          // already trained today, streak unchanged
+          newStreak = zone.streakCount;
+        } else {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yStr = yesterday.toISOString().split('T')[0];
+          if (zone?.lastTrainedDate === yStr) {
+            newStreak = (zone.streakCount ?? 0) + 1;
+          } else {
+            newStreak = 1;
+          }
+        }
+
+        const reachedSeven = newStreak === 7 && (zone?.streakCount ?? 0) < 7;
+
+        const specialists = new Set(s.activeSpecialists);
+        if (newStreak >= 7) specialists.add(area);
+
+        set({
+          revivedSparkleArea: wasWilting ? area : s.revivedSparkleArea,
+          zoneGrowths: {
+            ...s.zoneGrowths,
+            [area]: {
+              ...zone,
+              lastTrainedDate: today,
+              isWilting: false,
+              streakCount: newStreak,
             },
-          };
+          },
+          activeSpecialists: Array.from(specialists),
+        });
+
+        return { newStreak, reachedSeven };
+      },
+
+      recalcAreaStreaks: () =>
+        set((s) => {
+          const today = new Date();
+          const yesterday = new Date();
+          yesterday.setDate(today.getDate() - 1);
+          const todayStr = today.toISOString().split('T')[0];
+          const yStr = yesterday.toISOString().split('T')[0];
+
+          const areas: BrainArea[] = ['memory', 'focus', 'speed', 'flexibility', 'creativity'];
+          const newGrowths = { ...s.zoneGrowths };
+          const specialists = new Set(s.activeSpecialists);
+          let changed = false;
+
+          for (const area of areas) {
+            const zone = newGrowths[area];
+            if (!zone || zone.streakCount === 0) continue;
+            if (zone.lastTrainedDate === todayStr || zone.lastTrainedDate === yStr) continue;
+            // Streak is stale.
+            newGrowths[area] = { ...zone, streakCount: 0 };
+            specialists.delete(area);
+            changed = true;
+          }
+
+          if (!changed) return {};
+          return { zoneGrowths: newGrowths, activeSpecialists: Array.from(specialists) };
         }),
 
       recalcAllZones: (brainScores) =>
@@ -378,6 +441,43 @@ export const useGroveStore = create<GroveState>()(
     {
       name: 'neurra-grove',
       storage: createJSONStorage(() => AsyncStorage),
+      // F7: bumped to v2 when streakCount + activeSpecialists were added.
+      // Existing persisted state from v1 (or unversioned) doesn't have those
+      // fields; backfill them so reads can't trip on undefined.
+      version: 2,
+      migrate: (persistedState: unknown, version: number) => {
+        const state = (persistedState ?? {}) as Partial<GroveState> & {
+          zoneGrowths?: Partial<Record<BrainArea, Partial<ZoneGrowth>>>;
+        };
+        if (version < 2) {
+          const areas: BrainArea[] = ['memory', 'focus', 'speed', 'flexibility', 'creativity'];
+          const fixedZones: Record<BrainArea, ZoneGrowth> = {
+            memory: defaultZoneGrowth('memory'),
+            focus: defaultZoneGrowth('focus'),
+            speed: defaultZoneGrowth('speed'),
+            flexibility: defaultZoneGrowth('flexibility'),
+            creativity: defaultZoneGrowth('creativity'),
+          };
+          for (const area of areas) {
+            const oldZone = state.zoneGrowths?.[area];
+            if (oldZone) {
+              fixedZones[area] = {
+                area,
+                currentGrowth: oldZone.currentGrowth ?? 0,
+                peakGrowth: oldZone.peakGrowth ?? 0,
+                isWilting: oldZone.isWilting ?? false,
+                lastTrainedDate: oldZone.lastTrainedDate ?? null,
+                streakCount: oldZone.streakCount ?? 0,
+              };
+            }
+          }
+          state.zoneGrowths = fixedZones;
+          if (!Array.isArray(state.activeSpecialists)) {
+            state.activeSpecialists = [];
+          }
+        }
+        return state;
+      },
     }
   )
 );

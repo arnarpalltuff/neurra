@@ -13,6 +13,8 @@ import { C } from '../../../constants/colors';
 import { updateDifficulty, getDifficulty, facePlaceParams } from '../../../utils/difficultyEngine';
 import { shuffle } from '../../../utils/arrayUtils';
 import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import GameIntro from '../shared/GameIntro';
 
 const { width } = Dimensions.get('window');
 
@@ -200,6 +202,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
   const params = useMemo(() => facePlaceParams(level), [level]);
 
   const [phase, setPhase] = useState<Phase>('study');
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [faces, setFaces] = useState<FaceItem[]>([]);
   const [studyIndex, setStudyIndex] = useState(0);
   const [recallOrder, setRecallOrder] = useState<FaceItem[]>([]);
@@ -227,8 +230,10 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
     setFaces(selected);
     setRecallOrder(shuffle([...selected]));
     startTimeRef.current = Date.now();
+
     return () => { cancelledRef.current = true; };
   }, [params.numFaces]);
+
 
   useEffect(() => {
     if (phase !== 'study' || faces.length === 0) return;
@@ -300,7 +305,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
           setFloatScores(prev => prev.filter(f => f.id !== fid));
         }
       }, 1200);
-      burstCorrect({ x: width / 2, y: 300 });
+      playCorrect(); burstCorrect({ x: width / 2, y: 300 });
     } else {
       hapticError();
       rootShake.value = withSequence(
@@ -310,7 +315,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
         withTiming(3, { duration: 50 }),
         withTiming(0, { duration: 50 }),
       );
-      burstWrong({ x: width / 2, y: 300 });
+      playWrong(); burstWrong({ x: width / 2, y: 300 });
     }
 
     setFeedback({ correct: isCorrect, answer: currentFace.name });
@@ -465,7 +470,9 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
           )}
         </Animated.View>
       )}
+      {!_introShown && <GameIntro name="Face Place" subtitle="Match faces to names" accentColor={C.green} onDone={() => _setIntroShown(true)} />}
     </Animated.View>
+
   );
 }
 

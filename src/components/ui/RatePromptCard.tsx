@@ -72,10 +72,10 @@ export default function RatePromptCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 18,
     padding: 16,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
     gap: 12,
   },

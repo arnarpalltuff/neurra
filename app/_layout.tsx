@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import {
@@ -21,11 +22,17 @@ import {
 import * as SplashScreen from 'expo-splash-screen';
 import ErrorBoundary from '../src/components/ui/ErrorBoundary';
 import NoiseOverlay from '../src/components/ui/NoiseOverlay';
+import BrainSnapshotOverlay from '../src/components/ui/BrainSnapshotOverlay';
 import { preloadAllSounds } from '../src/utils/sound';
+import { useKovaStore } from '../src/stores/kovaStore';
+import { useDailyChallengeStore } from '../src/stores/dailyChallengeStore';
 import { C } from '../src/constants/colors';
 import { initializePurchases, addCustomerInfoListener } from '../src/utils/purchaseSdk';
 import { useProStore } from '../src/stores/proStore';
 import { useWeeklyReportStore } from '../src/stores/weeklyReportStore';
+import { usePersonalityStore } from '../src/stores/personalityStore';
+import { useGameUnlockStore } from '../src/stores/gameUnlockStore';
+import { useWeeklyChallengeStore } from '../src/stores/weeklyChallengeStore';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -45,6 +52,17 @@ export default function RootLayout() {
     preloadAllSounds();
     initializePurchases();
     useWeeklyReportStore.getState().generateIfNeeded();
+    // Recompute Kova's personality from training pattern (only runs if 7+
+    // days since last recalc; cheap when cached).
+    usePersonalityStore.getState().recalcIfNeeded();
+    // Refresh the progressive unlock state from joinDate every cold start.
+    useGameUnlockStore.getState().refresh();
+    // Roll the weekly challenge over if a new week began since last open.
+    useWeeklyChallengeStore.getState().refreshWeek();
+    // Evaluate Kova streak state on cold start.
+    useKovaStore.getState().evaluateOnOpen();
+    // Refresh daily challenges if new day.
+    useDailyChallengeStore.getState().refreshIfNeeded(useKovaStore.getState().currentStage);
 
     const unsubscribe = addCustomerInfoListener((info) => {
       useProStore.getState().syncFromRevenueCat(info);
@@ -62,6 +80,7 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
+    <SafeAreaProvider>
     <GestureHandlerRootView style={styles.root}>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
@@ -104,6 +123,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="focus-timer"
+          options={{
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }}
+        />
+        <Stack.Screen
           name="stats"
           options={{
             presentation: 'modal',
@@ -131,11 +157,22 @@ export default function RootLayout() {
             animation: 'slide_from_bottom',
           }}
         />
+        <Stack.Screen
+          name="quick-hit"
+          options={{
+            presentation: 'fullScreenModal',
+            animation: 'slide_from_bottom',
+          }}
+        />
       </Stack>
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <NoiseOverlay />
       </View>
+      {/* Daily Brain Snapshot — gates itself to once per day, only renders
+          after at least one session has been completed. */}
+      <BrainSnapshotOverlay />
     </GestureHandlerRootView>
+    </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

@@ -6,11 +6,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tapLight } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
+import GameIntro from '../shared/GameIntro';
 
 const { width: W } = Dimensions.get('window');
 const CIRCLE_SIZE = W * 0.55;
@@ -122,6 +124,7 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
   const focusDuration = 30;
 
   const [phase, setPhase] = useState<Phase>('breathing');
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [breathCount, setBreathCount] = useState(0);
   const [breathLabel, setBreathLabel] = useState('Breathe in');
   const [focusTimer, setFocusTimer] = useState(focusDuration);
@@ -184,8 +187,10 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
     };
 
     runCycle();
+
     return () => { cancelled = true; };
   }, [phase]);
+
 
   useEffect(() => {
     if (phase !== 'focus') return;
@@ -260,7 +265,7 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
     setTimeout(() => {
       setFloatScores(prev => prev.filter(f => f.id !== fid));
     }, 1200);
-    burstCorrect({ x: targetPos.x + 25, y: targetPos.y + 100 });
+    playCorrect(); burstCorrect({ x: targetPos.x + 25, y: targetPos.y + 100 });
   }, [burstCorrect, targetPos]);
 
   const scorePulseStyle = useAnimatedStyle(() => ({
@@ -354,7 +359,9 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
           </View>
         </View>
       )}
+      {!_introShown && <GameIntro name="Zen Flow" subtitle="Breathe · focus · restore" accentColor={C.blue} onDone={() => _setIntroShown(true)} />}
     </View>
+
   );
 }
 

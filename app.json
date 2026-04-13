@@ -14,7 +14,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.neurra.app"
+      "bundleIdentifier": "com.neurra.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSUserTrackingUsageDescription": "Neurra does not track you across other apps. This prompt is required by iOS.",
+        "UIBackgroundModes": []
+      }
     },
     "android": {
       "adaptiveIcon": {

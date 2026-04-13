@@ -36,6 +36,17 @@ function AncestorTree({ growth, palette, size, isWilting }: Omit<GrowthZoneProps
           <Stop offset="100%" stopColor={leafColor} stopOpacity={0} />
         </RadialGradient>
       </Defs>
+      {/* Soil mound — always visible, gives the zone visual grounding */}
+      <Ellipse cx={cx} cy={s - 3} rx={18 + stage * 2} ry={5} fill={trunkColor} opacity={0.4} />
+      {/* Seed — visible at stage 0, fades as tree grows */}
+      {stage === 0 && (
+        <G opacity={0.7}>
+          <Ellipse cx={cx} cy={s - 10} rx={5} ry={4} fill={trunkColor} />
+          <Circle cx={cx} cy={s - 14} r={3} fill={leafColor} opacity={0.5} />
+          {/* Subtle glow to hint this is alive */}
+          <Circle cx={cx} cy={s - 12} r={12} fill={leafColor} opacity={0.08} />
+        </G>
+      )}
       {/* Trunk */}
       <Rect
         x={cx - trunkW / 2} y={s - trunkH - 5}
@@ -126,8 +137,15 @@ function CrystalSpire({ growth, palette, size, isWilting }: Omit<GrowthZoneProps
       {stage >= 4 && (
         <Ellipse cx={cx} cy={s - crystalH / 2 - 5} rx={crystalW + 12} ry={crystalH / 2 + 8} fill="url(#crystalGlow)" />
       )}
-      {/* Base rock */}
+      {/* Base rock — always visible */}
       <Ellipse cx={cx} cy={s - 4} rx={crystalW + 8} ry={6} fill="#3A3A40" opacity={0.8} />
+      {/* Crystal shard seed — visible at stage 0 */}
+      {stage === 0 && (
+        <G opacity={0.6}>
+          <Path d={`M${cx} ${s - 18} L${cx + 4} ${s - 6} L${cx - 4} ${s - 6} Z`} fill={palette.crystalColor} opacity={0.7} />
+          <Circle cx={cx} cy={s - 14} r={10} fill={palette.crystalGlow} opacity={0.1} />
+        </G>
+      )}
       {/* Main crystal */}
       <Path
         d={`M${cx} ${s - crystalH - 5} L${cx + crystalW / 2} ${s - 5} L${cx - crystalW / 2} ${s - 5} Z`}
@@ -171,10 +189,26 @@ function LivingStream({ growth, palette, size, isWilting }: Omit<GrowthZoneProps
 
   return (
     <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
-      {/* Stream bed */}
+      {/* Dry riverbed — always visible, gives shape even at stage 0 */}
       <Path
         d={`M5 ${s * 0.3} Q${s * 0.3} ${s * 0.5} ${s * 0.5} ${s * 0.45} Q${s * 0.7} ${s * 0.4} ${s - 5} ${s * 0.55}`}
-        stroke={stage >= 1 ? palette.waterColor : '#3A3A40'}
+        stroke="#3A3A40"
+        strokeWidth={4}
+        fill="none" opacity={0.4}
+        strokeLinecap="round"
+        strokeDasharray={stage === 0 ? '6,4' : undefined}
+      />
+      {/* Small puddle at stage 0 */}
+      {stage === 0 && (
+        <G opacity={0.5}>
+          <Ellipse cx={s * 0.5} cy={s * 0.46} rx={8} ry={4} fill={palette.waterColor} />
+          <Circle cx={s * 0.5} cy={s * 0.46} r={14} fill={palette.waterGlow} opacity={0.1} />
+        </G>
+      )}
+      {/* Flowing water — stage 1+ */}
+      <Path
+        d={`M5 ${s * 0.3} Q${s * 0.3} ${s * 0.5} ${s * 0.5} ${s * 0.45} Q${s * 0.7} ${s * 0.4} ${s - 5} ${s * 0.55}`}
+        stroke={stage >= 1 ? palette.waterColor : 'transparent'}
         strokeWidth={streamWidth}
         fill="none" opacity={wiltOp * 0.9}
         strokeLinecap="round"
@@ -228,8 +262,20 @@ function WindingGarden({ growth, palette, size, isWilting }: Omit<GrowthZoneProp
 
   return (
     <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
-      {/* Soil */}
+      {/* Soil — always visible */}
       <Rect x={5} y={s - 10} width={s - 10} height={8} rx={4} fill="#3A2818" opacity={0.6} />
+      {/* Single sprout at stage 0 */}
+      {stage === 0 && (
+        <G opacity={0.65}>
+          {/* Tiny stem */}
+          <Rect x={s / 2 - 1} y={s - 20} width={2} height={10} rx={1} fill="#4A7C59" />
+          {/* Two small leaves */}
+          <Ellipse cx={s / 2 - 4} cy={s - 20} rx={4} ry={2} fill={palette.gardenFlower} opacity={0.7} />
+          <Ellipse cx={s / 2 + 4} cy={s - 21} rx={3.5} ry={1.8} fill={palette.treeLeaf} opacity={0.6} />
+          {/* Glow */}
+          <Circle cx={s / 2} cy={s - 18} r={12} fill={palette.gardenFlower} opacity={0.08} />
+        </G>
+      )}
       {/* Grass patches */}
       {stage >= 2 && Array.from({ length: Math.min(stage * 2, 10) }).map((_, i) => (
         <Rect
@@ -281,6 +327,14 @@ function MyceliumNetwork({ growth, palette, size, isWilting }: Omit<GrowthZonePr
 
   return (
     <Svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
+      {/* Spore at stage 0 — a single glowing cap emerging from the ground */}
+      {stage === 0 && (
+        <G opacity={0.6}>
+          <Rect x={s / 2 - 1.5} y={s - 12} width={3} height={8} rx={1} fill="#D4C4A8" opacity={0.7} />
+          <Ellipse cx={s / 2} cy={s - 12} rx={6} ry={3.5} fill={palette.mushroomCap} opacity={0.7} />
+          <Circle cx={s / 2} cy={s - 10} r={12} fill={palette.mushroomGlow} opacity={0.1} />
+        </G>
+      )}
       {/* Underground mycelium veins (stage 6+) */}
       {stage >= 6 && (
         <G opacity={wiltOp * 0.2}>

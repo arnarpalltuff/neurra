@@ -7,6 +7,8 @@ import { glow } from '../../utils/glow';
 import Kova from '../../components/kova/Kova';
 import { KovaEmotion } from '../../components/kova/KovaStates';
 import Button from '../../components/ui/Button';
+import { LinearGradient } from 'expo-linear-gradient';
+import FloatingParticles from '../../components/ui/FloatingParticles';
 
 interface WarmResultProps {
   accuracy: number;
@@ -15,16 +17,30 @@ interface WarmResultProps {
 
 export default function WarmResult({ accuracy, onNext }: WarmResultProps) {
   const pct = Math.round(accuracy * 100);
-  const message = pct >= 80
-    ? "You're a natural! Your brain is already sharp."
-    : pct >= 50
-    ? "Great start! You've got solid instincts."
-    : "Every expert was once a beginner. You're on your way.";
 
-  const emotion = pct >= 80 ? 'proud' : pct >= 50 ? 'happy' : 'encouraging';
+  let message: string;
+  let emotion: KovaEmotion;
+  if (pct >= 90) {
+    message = `${pct}% on your first try? That's rare. Your reflexes are seriously fast.`;
+    emotion = 'proud';
+  } else if (pct >= 75) {
+    message = "Sharp instincts. Most people score lower on their first round. You're ahead of the curve.";
+    emotion = 'proud';
+  } else if (pct >= 60) {
+    message = "Solid start. Your brain picked up the pattern quickly — that's a good sign.";
+    emotion = 'happy';
+  } else if (pct >= 40) {
+    message = "Not bad at all. This game gets easier as your brain learns the rhythm. You'll surprise yourself.";
+    emotion = 'happy';
+  } else {
+    message = "That was just the warm-up. The real training starts now — and your brain will get faster every day.";
+    emotion = 'encouraging';
+  }
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={[C.bg1, '#0A0E1A', C.bg1]} style={StyleSheet.absoluteFillObject} />
+      <FloatingParticles count={6} color="rgba(110,207,154,0.12)" />
       <Animated.View entering={FadeIn.delay(100).duration(400)} style={styles.kovaArea}>
         <Kova stage={1} emotion={emotion as KovaEmotion} size={120} showSpeechBubble={false} />
       </Animated.View>
@@ -54,7 +70,7 @@ export default function WarmResult({ accuracy, onNext }: WarmResultProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
@@ -86,11 +102,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   bubble: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 20,
     paddingHorizontal: 22,
     paddingVertical: 16,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   bubbleText: {

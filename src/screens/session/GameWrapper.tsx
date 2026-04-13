@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   FadeIn, FadeOut, FadeInDown,
 } from 'react-native-reanimated';
@@ -24,6 +25,7 @@ import SplitFocus from '../../components/games/split-focus/SplitFocus';
 import Kova from '../../components/kova/Kova';
 import { useProgressStore } from '../../stores/progressStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { applySessionWarmup, primeSessionDifficulty } from '../../utils/difficultyEngine';
 import Button from '../../components/ui/Button';
 import AccuracyRing from '../../components/ui/AccuracyRing';
 import CountUpText from '../../components/ui/CountUpText';
@@ -32,6 +34,8 @@ import ShootingStar from '../../components/ui/ShootingStar';
 import { pickRandom } from '../../utils/arrayUtils';
 import { getFramingText } from '../../constants/framingText';
 import ErrorBoundary from '../../components/ui/ErrorBoundary';
+import { AREA_LABELS, AREA_ACCENT } from '../../constants/gameConfigs';
+import { getRandomQuote } from '../../constants/quotes';
 
 // Per-game background gradients
 const gameBg: Partial<Record<GameId, [string, string]>> = {
@@ -53,23 +57,73 @@ interface GameWrapperProps {
   gameIndex: number;
   totalGames: number;
   onGameComplete: (score: number, accuracy: number) => void;
+  /** Running average accuracy from previous games in this session (0-1). */
+  sessionAccuracy?: number;
+  /** Running total score from previous games. */
+  sessionScore?: number;
 }
 
 type WrapperState = 'intro' | 'playing' | 'result';
 
-const TRANSITION_MESSAGES = [
-  "Ready? Let's go.",
-  "Nice one. Next up: something different.",
+// Context-aware transition messages. Each slot has multiple variants
+// so the session feels different every time.
+const FIRST_GAME_MESSAGES = [
+  "Let's warm up.",
+  "First one. Easy does it.",
+  "Here we go.",
+  "Starting with something good.",
+];
+const MID_GAME_MESSAGES = [
+  "Nice. Keep that momentum.",
+  "Next up: something different.",
+  "Switching gears. Stay sharp.",
+  "You're in the zone. Keep going.",
+  "Mixing it up now.",
+];
+const LAST_GAME_MESSAGES = [
   "One more. Finish strong.",
+  "Final push. Make it count.",
+  "Last one. You've got this.",
+  "Almost done. End on a high note.",
+];
+const DOING_GREAT = [
+  "You're crushing it.",
+  "Seriously impressive.",
+  "Kova's watching. Kova's proud.",
+];
+const KEEP_GOING = [
+  "Every session counts.",
+  "It's about showing up.",
+  "You're here. That's what matters.",
 ];
 
-export default function GameWrapper({ gameId, gameIndex, totalGames, onGameComplete }: GameWrapperProps) {
+function getTransitionMessage(gameIndex: number, totalGames: number, avgAccuracy: number): string {
+  if (gameIndex === 0) return pickRandom(FIRST_GAME_MESSAGES);
+  if (gameIndex >= totalGames - 1) return pickRandom(LAST_GAME_MESSAGES);
+  const base = pickRandom(MID_GAME_MESSAGES);
+  // Add an encouraging kicker based on how the session is going
+  if (avgAccuracy >= 0.85) return `${base} ${pickRandom(DOING_GREAT)}`;
+  if (avgAccuracy < 0.5 && gameIndex > 0) return `${base} ${pickRandom(KEEP_GOING)}`;
+  return base;
+}
+
+function getIntroEmotion(gameIndex: number, avgAccuracy: number): 'curious' | 'excited' | 'encouraging' | 'happy' {
+  if (gameIndex === 0) return 'curious';
+  if (avgAccuracy >= 0.85) return 'excited';
+  if (avgAccuracy < 0.5) return 'encouraging';
+  return 'happy';
+}
+
+export default function GameWrapper({ gameId, gameIndex, totalGames, onGameComplete, sessionAccuracy = 0, sessionScore = 0 }: GameWrapperProps) {
   const [state, setState] = useState<WrapperState>('intro');
   const [finalScore, setFinalScore] = useState(0);
   const [finalAccuracy, setFinalAccuracy] = useState(0);
   const config = gameConfigs[gameId];
   const levels = useProgressStore(s => s.gameLevels);
-  const level = levels[gameId] ?? 1;
+  const baseLevel = levels[gameId] ?? 1;
+  // Smart difficulty warmup: first game in session is 15% easier (easy win),
+  // last game is 10% harder (stretch goal). Middle games stay at base level.
+  const level = applySessionWarmup(baseLevel, gameIndex, totalGames);
   const relaxedMode = useSettingsStore(s => s.relaxedMode);
   const personalBests = useProgressStore(s => s.personalBests);
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
@@ -77,6 +131,20 @@ export default function GameWrapper({ gameId, gameIndex, totalGames, onGameCompl
   useEffect(() => {
     if (!config) onGameComplete(0, 0);
   }, [config, onGameComplete]);
+
+  // Seed the session difficulty cache ONCE per game mount with the warmup
+  // level. After this, the in-game difficulty engine evolves the cache
+  // freely — we must NOT re-prime when the persisted level changes mid-game,
+  // because doing so would clobber the engine's accumulated rollingAccuracy /
+  // streak counters every time it adjusted level. Read fresh state inside
+  // the effect (not from the closure) and depend only on `gameId`.
+  useEffect(() => {
+    if (!config) return;
+    const startBase = useProgressStore.getState().gameLevels[gameId] ?? 1;
+    const startLevel = applySessionWarmup(startBase, gameIndex, totalGames);
+    primeSessionDifficulty(gameId, startLevel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId]);
 
   if (!config) return null;
 
@@ -110,41 +178,70 @@ export default function GameWrapper({ gameId, gameIndex, totalGames, onGameCompl
     <SafeAreaView style={styles.safe}>
       <LinearGradient colors={bg} style={StyleSheet.absoluteFillObject} />
 
-      {state === 'intro' && (
-        <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={styles.introContainer}>
-          <View style={styles.introBadge}>
-            <Text style={styles.gameNumber}>{gameIndex + 1} of {totalGames}</Text>
-          </View>
-          <View style={[styles.gameIconContainer, { backgroundColor: `${config.color}15` }]}>
-            <Text style={styles.gameIcon}>{config.icon}</Text>
-          </View>
-          <Text style={styles.gameName}>{config.name}</Text>
-          <Text style={styles.gameDesc}>{config.description}</Text>
-          {relaxedMode && (
-            <View style={styles.relaxedBadge}>
-              <Text style={styles.relaxedBadgeText}>Relaxed Mode</Text>
+      {state === 'intro' && (() => {
+        const brainArea = config.brainArea;
+        const areaColor = AREA_ACCENT[brainArea] ?? C.green;
+        const areaLabel = AREA_LABELS[brainArea] ?? brainArea;
+        const emotion = getIntroEmotion(gameIndex, sessionAccuracy);
+        const msg = getTransitionMessage(gameIndex, totalGames, sessionAccuracy);
+
+        return (
+          <Animated.View entering={FadeIn.duration(300)} exiting={FadeOut.duration(200)} style={styles.introContainer}>
+            <View style={styles.introBadge}>
+              <Text style={styles.gameNumber}>{gameIndex + 1} of {totalGames}</Text>
             </View>
-          )}
-          <Kova
-            size={80}
-            emotion="curious"
-            showSpeechBubble={false}
-            dialogueContext="newGame"
-          />
-          <Text style={styles.transMsg}>{TRANSITION_MESSAGES[gameIndex] ?? "Let's go!"}</Text>
-          <Button
-            label="Start"
-            onPress={() => setState('playing')}
-            size="lg"
-            style={styles.startBtn}
-          />
-        </Animated.View>
-      )}
+            <View style={[styles.gameIconContainer, { backgroundColor: `${config.color}20` }]}>
+              <Text style={styles.gameIcon}>{config.icon}</Text>
+            </View>
+            <Text style={styles.gameName}>{config.name}</Text>
+            {/* Brain area badge */}
+            <View style={[styles.areaPill, { backgroundColor: `${areaColor}18` }]}>
+              <Text style={[styles.areaPillText, { color: areaColor }]}>
+                {areaLabel.toUpperCase()}
+              </Text>
+            </View>
+            {relaxedMode && (
+              <View style={styles.relaxedBadge}>
+                <Text style={styles.relaxedBadgeText}>Relaxed Mode</Text>
+              </View>
+            )}
+            <Kova
+              size={80}
+              emotion={emotion}
+              showSpeechBubble={false}
+              dialogueContext="newGame"
+            />
+            <Text style={styles.transMsg}>{msg}</Text>
+            {/* Session momentum — show running score after first game */}
+            {gameIndex > 0 && sessionScore > 0 && (
+              <Text style={styles.momentumText}>
+                Session score: {sessionScore}
+              </Text>
+            )}
+            {/* A thought between games */}
+            {gameIndex > 0 && (() => {
+              const q = getRandomQuote();
+              return (
+                <View style={styles.miniQuote}>
+                  <Text style={styles.miniQuoteText}>"{q.text}"</Text>
+                  <Text style={styles.miniQuoteAuthor}>— {q.author}</Text>
+                </View>
+              );
+            })()}
+            <Button
+              label="Start"
+              onPress={() => setState('playing')}
+              size="lg"
+              style={styles.startBtn}
+            />
+          </Animated.View>
+        );
+      })()}
 
       {state === 'playing' && (
         <View style={styles.gameContainer}>
-          {/* Session progress bar */}
-          <View style={styles.progressHeader}>
+          {/* Floating session progress pill — translucent so the game owns the screen */}
+          <View style={styles.floatingProgress} pointerEvents="none">
             <SessionProgressBar
               currentIndex={gameIndex}
               totalGames={totalGames}
@@ -255,7 +352,7 @@ function renderGame(gameId: GameId, onComplete: (score: number, accuracy: number
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
   },
 
   // Intro
@@ -284,7 +381,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   gameIcon: {
@@ -302,11 +399,49 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlign: 'center',
   },
+  areaPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginTop: 2,
+  },
+  areaPillText: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 10,
+    letterSpacing: 1.2,
+  },
   transMsg: {
     fontFamily: fonts.kova,
     color: C.t2,
     fontSize: 18,
     textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 16,
+  },
+  momentumText: {
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  miniQuote: {
+    paddingHorizontal: 20,
+    marginTop: 8,
+  },
+  miniQuoteText: {
+    fontFamily: fonts.kova,
+    color: C.t3,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  miniQuoteAuthor: {
+    fontFamily: fonts.bodySemi,
+    color: C.t4,
+    fontSize: 10,
+    textAlign: 'center',
+    marginTop: 4,
   },
   startBtn: {
     width: '100%',
@@ -317,7 +452,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 5,
     borderRadius: 999,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: 'rgba(107,168,224,0.2)',
   },
   relaxedBadgeText: {
@@ -330,10 +465,18 @@ const styles = StyleSheet.create({
   gameContainer: {
     flex: 1,
   },
-  progressHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 4,
+  floatingProgress: {
+    position: 'absolute',
+    top: 14,
+    left: 24,
+    right: 24,
+    zIndex: 50,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   gameArea: { flex: 1 },
 
@@ -366,9 +509,9 @@ const styles = StyleSheet.create({
   resultStats: {
     borderRadius: 22,
     width: '100%',
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     overflow: 'hidden',
   },
   resultStatsInner: {
@@ -427,11 +570,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   gameErrorBtn: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 999,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   gameErrorBtnText: {

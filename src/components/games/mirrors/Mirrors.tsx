@@ -6,12 +6,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tapMedium, success, error as hapticError, warning as hapticWarning } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { updateDifficulty, getDifficulty, mirrorsParams as mirrorsParamsEngine } from '../../../utils/difficultyEngine';
 import { pickRandom, shuffle } from '../../../utils/arrayUtils';
+import GameIntro from '../shared/GameIntro';
 
 const { width: W } = Dimensions.get('window');
 
@@ -193,6 +195,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
   const activeRules = useMemo(() => RULES.slice(0, params.numRules), [params.numRules]);
 
   const [trial, setTrial] = useState(0);
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [rule, setRule] = useState<Rule>(activeRules[0]);
   const [stimulus, setStimulus] = useState<Stimulus>(generateStimulus());
   const [options, setOptions] = useState<string[]>([]);
@@ -274,8 +277,10 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
 
   useEffect(() => {
     nextTrial(0, activeRules[0]);
+
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+
       pendingTimers.current.forEach(clearTimeout);
     };
   }, []);
@@ -305,7 +310,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
       safeTimeout(() => {
         setFloatScores(prev => prev.filter(f => f.id !== fid));
       }, 1200);
-      burstCorrect({ x: W / 2, y: 400 });
+      playCorrect(); burstCorrect({ x: W / 2, y: 400 });
       setFeedback('correct');
     } else {
       updateDifficulty('mirrors', false);
@@ -317,7 +322,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
         withTiming(3, { duration: 50 }),
         withTiming(0, { duration: 50 }),
       );
-      burstWrong({ x: W / 2, y: 400 });
+      playWrong(); burstWrong({ x: W / 2, y: 400 });
       setFeedback('wrong');
     }
 
@@ -434,7 +439,9 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
           <Animated.Text entering={FadeIn} exiting={FadeOut} style={styles.wrongFeedback}>Too slow!</Animated.Text>
         )}
       </View>
+      {!_introShown && <GameIntro name="Mirrors" subtitle="Follow the rule — adapt fast" accentColor={C.purple} onDone={() => _setIntroShown(true)} />}
     </Animated.View>
+
   );
 }
 

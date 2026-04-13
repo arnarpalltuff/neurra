@@ -178,10 +178,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 8,
-    backgroundColor: C.bg2 + 'DD',
+    backgroundColor: C.bg1 + 'DD',
   },
   shopBtn: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
 
   placementHint: {
     alignSelf: 'center',
-    backgroundColor: C.bg3 + 'EE',
+    backgroundColor: 'rgba(19,24,41,0.93)',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
 
   actionBar: {
     alignSelf: 'center',
-    backgroundColor: C.bg3 + 'EE',
+    backgroundColor: 'rgba(19,24,41,0.93)',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 14,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
 
   infoBar: {
     alignSelf: 'center',
-    backgroundColor: C.bg2 + 'CC',
+    backgroundColor: C.bg1 + 'CC',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 10,

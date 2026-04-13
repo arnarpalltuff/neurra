@@ -52,16 +52,17 @@ export default function Awakening({ onNext }: AwakeningProps) {
       true
     );
 
-    // Show text after 2 pulses
+    // Show text quickly — don't make users wait. The orb is beautiful but
+    // impatient users will tap away before they see it.
     setTimeout(() => {
-      textOpacity.value = withTiming(1, { duration: 1000 });
-      rootOpacity.value = withTiming(1, { duration: 1400 });
-      ringOpacity.value = withTiming(0.15, { duration: 1200 });
-    }, 2400);
+      textOpacity.value = withTiming(1, { duration: 800 });
+      rootOpacity.value = withTiming(1, { duration: 1000 });
+      ringOpacity.value = withTiming(0.15, { duration: 800 });
+    }, 800);
 
     setTimeout(() => {
-      tapTextOpacity.value = withTiming(1, { duration: 800 });
-    }, 3800);
+      tapTextOpacity.value = withTiming(1, { duration: 600 });
+    }, 1500);
   }, []);
 
   const handleTap = () => {

@@ -15,6 +15,8 @@ import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
+import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import GameIntro from '../shared/GameIntro';
 
 const { width } = Dimensions.get('window');
 
@@ -182,6 +184,7 @@ function FloatScore({ points }: { points: number }) {
 
 export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboarding = false }: GhostKitchenProps) {
   const [phase, setPhase] = useState<Phase>('showing');
+  const [_introShown, _setIntroShown] = React.useState(false);
   const [order, setOrder] = useState<typeof INGREDIENTS>([]);
   const [tray, setTray] = useState<typeof INGREDIENTS>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -241,8 +244,10 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
   useEffect(() => {
     cancelledRef.current = false;
     generateRound(round);
+
     return () => {
       cancelledRef.current = true;
+
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
@@ -492,7 +497,9 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
           )}
         </Animated.View>
       )}
+      {!_introShown && <GameIntro name="Ghost Kitchen" subtitle="Remember the orders" accentColor={C.peach} onDone={() => _setIntroShown(true)} />}
     </Animated.View>
+
   );
 }
 

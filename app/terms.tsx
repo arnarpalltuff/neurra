@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { C } from '../src/constants/colors';
 import { fonts } from '../src/constants/typography';
@@ -18,7 +19,12 @@ CHANGES
 • We may update these terms; continued use after an update means you accept the new terms.
 
 DISCLAIMERS
-• Results vary. Neurra does not guarantee specific cognitive outcomes.`;
+• Results vary. Neurra does not guarantee specific cognitive outcomes.
+
+CONTACT
+• For questions about these terms, contact us at support@neurra.app
+
+Last updated: April 2026`;
 
 export default function TermsScreen() {
   return (
@@ -38,7 +44,7 @@ export default function TermsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: C.bg2 },
+  safe: { flex: 1, backgroundColor: C.bg1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

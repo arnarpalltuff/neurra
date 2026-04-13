@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Modal, Pressable, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import FloatingParticles from '../../src/components/ui/FloatingParticles';
 import { router } from 'expo-router';
 import { C } from '../../src/constants/colors';
 import { fonts } from '../../src/constants/typography';
 import { gameConfigs, BrainArea } from '../../src/constants/gameConfigs';
+import { getTimeOfDaySky } from '../../src/constants/groveThemes';
+
+const W = Dimensions.get('window').width;
 import { useProgressStore } from '../../src/stores/progressStore';
 import { useGroveStore, ZoneConfig, ZONE_CONFIGS } from '../../src/stores/groveStore';
 import GroveIsland from '../../src/components/grove/GroveIsland';
-import GroveScene, { KovaGroveDialogueModal, pickGroveLine } from '../../src/components/grove/GroveScene';
+import { KovaGroveDialogueModal, pickGroveLine } from '../../src/components/grove/GroveScene';
 import GroveShop from '../../src/components/grove/GroveShop';
 import GroveEditMode from '../../src/components/grove/GroveEditMode';
 import { startGroveAmbient, stopAmbient } from '../../src/utils/sound';
 import { captureAndShare } from '../../src/utils/shareCapture';
+import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
 
 function formatDate(iso: string | null): string {
   if (!iso) return 'Never';
@@ -47,6 +53,44 @@ interface ZoneSheetProps {
   onClose: () => void;
 }
 
+const AREA_DESCRIPTIONS: Record<BrainArea, string> = {
+  memory: 'How well you hold and recall information. The same skill you use when remembering names, lists, and where you parked.',
+  focus: 'How well you sustain attention and filter distractions. The skill behind deep work, reading, and staying present in conversations.',
+  speed: 'How fast your brain processes information. This is reaction time, quick decisions, and thinking on your feet.',
+  flexibility: 'How well you switch between tasks and adapt to new rules. This is the skill behind multitasking and creative problem-solving.',
+  creativity: 'How well you form new connections and think laterally. This is the skill behind writing, brainstorming, and seeing patterns others miss.',
+};
+
+const AREA_TIPS: Record<BrainArea, string[]> = {
+  memory: [
+    'Try recalling your meals at the end of each day — free memory training.',
+    'Look at a photo for 30 seconds, close it, then list everything you saw.',
+    'Before checking your calendar, try to remember tomorrow\'s first meeting.',
+  ],
+  focus: [
+    'Try one meal today with no screens. Notice the flavors.',
+    'Pick a 10-minute task and put your phone in another room.',
+    'In your next conversation, count how many times someone says "um".',
+  ],
+  speed: [
+    'Try mental math instead of the calculator for your next 3 purchases.',
+    'When you see a license plate, memorize the numbers before it drives away.',
+    'Challenge yourself to type a reply 20% faster than usual, then proofread.',
+  ],
+  flexibility: [
+    'Take a different route to work or school tomorrow.',
+    'Brush your teeth with your non-dominant hand for a week.',
+    'When someone gives you a bad idea, find three ways to make it work.',
+  ],
+  creativity: [
+    'Pick two random objects and invent a product that combines them.',
+    'Write 3 different endings to a movie you just watched.',
+    'Describe your day to someone using only metaphors.',
+  ],
+};
+
+import { AREA_LABELS, AREA_ACCENT } from '../../src/constants/gameConfigs';
+
 function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
   const zoneGrowths = useGroveStore(s => s.zoneGrowths);
   const brainScores = useProgressStore(s => s.brainScores);
@@ -56,6 +100,9 @@ function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
   const zg = zoneGrowths[zone.area];
   const score = Math.round(brainScores[zone.area] ?? 0);
   const games = gamesForArea(zone.area);
+  const areaColor = AREA_ACCENT[zone.area] ?? C.green;
+  const growthPct = Math.round((zg.currentGrowth / 12) * 100);
+  const tip = AREA_TIPS[zone.area]?.[Math.floor(Date.now() / 86400000) % (AREA_TIPS[zone.area]?.length ?? 1)] ?? '';
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -64,77 +111,102 @@ function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
           <Animated.View entering={FadeInDown.duration(200)}>
             <View style={styles.sheetHandle} />
 
+            {/* Header */}
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetIcon}>{zone.icon}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.sheetTitle}>{zone.name}</Text>
-                <Text style={styles.sheetSubtitle}>{zone.area} zone</Text>
+                <Text style={[styles.sheetSubtitle, { color: areaColor }]}>
+                  {AREA_LABELS[zone.area]} · {growthLabel(zg.currentGrowth)}
+                </Text>
               </View>
               {zg.isWilting && (
                 <View style={styles.wiltTag}>
-                  <Text style={styles.wiltTagText}>Wilting</Text>
+                  <Text style={styles.wiltTagText}>Needs water</Text>
                 </View>
               )}
             </View>
 
+            {/* What this zone measures */}
+            <Text style={styles.descText}>{AREA_DESCRIPTIONS[zone.area]}</Text>
+
             {/* Growth bar */}
             <View style={styles.growthSection}>
               <View style={styles.growthBarRow}>
-                <Text style={styles.growthLabel}>{growthLabel(zg.currentGrowth)}</Text>
+                <Text style={[styles.growthLabel, { color: areaColor }]}>{growthPct}% grown</Text>
                 <Text style={styles.growthValue}>
                   Stage {Math.min(12, Math.max(0, Math.round(zg.currentGrowth)))} of 12
                 </Text>
               </View>
               <View style={styles.growthBar}>
-                <View style={[styles.growthFill, { width: `${(zg.currentGrowth / 12) * 100}%` }]} />
+                <View style={[styles.growthFill, { width: `${growthPct}%`, backgroundColor: areaColor }]} />
                 {zg.peakGrowth > zg.currentGrowth && (
                   <View style={[styles.peakMark, { left: `${(zg.peakGrowth / 12) * 100}%` }]} />
                 )}
               </View>
             </View>
 
-            {/* Stats */}
+            {/* Stats row */}
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{score}</Text>
-                <Text style={styles.statLabel}>Brain Score</Text>
+                <Text style={[styles.statValue, { color: areaColor }]}>{score}</Text>
+                <Text style={styles.statLabel}>Score</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{zg.peakGrowth.toFixed(1)}</Text>
-                <Text style={styles.statLabel}>Peak Growth</Text>
+                <Text style={styles.statLabel}>Peak</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{formatDate(zg.lastTrainedDate)}</Text>
-                <Text style={styles.statLabel}>Last Trained</Text>
+                <Text style={styles.statLabel}>Trained</Text>
               </View>
             </View>
 
-            {/* Games */}
+            {/* Wilting hint */}
+            {zg.isWilting && (
+              <View style={styles.wiltHintBox}>
+                <Text style={styles.wiltHintEmoji}>🌱</Text>
+                <Text style={styles.wiltHint}>
+                  This zone hasn't been trained recently. Play a {zone.area} game to restore it — it'll bounce back fast.
+                </Text>
+              </View>
+            )}
+
+            {/* Real-world tip */}
+            {tip ? (
+              <View style={styles.tipBox}>
+                <Text style={styles.tipLabel}>TRAIN OUTSIDE THE APP</Text>
+                <Text style={styles.tipText}>{tip}</Text>
+              </View>
+            ) : null}
+
+            {/* Games that feed this zone */}
             <Text style={styles.gamesTitle}>Games that grow this zone</Text>
             <View style={styles.gamesList}>
               {games.map((g) => (
                 <Pressable
                   key={g.name}
-                  style={styles.gameChip}
+                  style={[styles.gameChip, { borderColor: `${areaColor}40` }]}
                   onPress={() => {
                     onClose();
                     router.push('/session');
                   }}
                 >
                   <Text style={styles.gameChipIcon}>{g.icon}</Text>
-                  <Text style={styles.gameChipName}>{g.name}</Text>
+                  <Text style={[styles.gameChipName, { color: areaColor }]}>{g.name}</Text>
                 </Pressable>
               ))}
             </View>
 
-            {zg.isWilting && (
-              <Text style={styles.wiltHint}>
-                This zone hasn't been trained recently. Play a {zone.area} game to restore it!
-              </Text>
-            )}
-
-            <Pressable style={styles.closeBtn} onPress={onClose}>
-              <Text style={styles.closeBtnText}>Close</Text>
+            {/* CTA or close */}
+            <Pressable
+              style={[styles.closeBtn, { backgroundColor: `${areaColor}20`, borderColor: `${areaColor}40` }]}
+              onPress={() => {
+                onClose();
+                router.push('/session');
+              }}
+            >
+              <Text style={[styles.closeBtnText, { color: areaColor }]}>Train {AREA_LABELS[zone.area]}</Text>
             </Pressable>
           </Animated.View>
         </Pressable>
@@ -143,7 +215,7 @@ function ZoneInfoSheet({ zone, visible, onClose }: ZoneSheetProps) {
   );
 }
 
-export default function GroveScreen() {
+function GroveScreenInner() {
   const brainScores = useProgressStore(s => s.brainScores);
   const streak = useProgressStore(s => s.streak);
   const level = useProgressStore(s => s.level);
@@ -186,18 +258,29 @@ export default function GroveScreen() {
   }, []);
 
   const handlePlaceDecoration = useCallback((defId: string) => {
-    setPendingPlacement(defId);
+    // Auto-place near the center of the island with slight randomness so
+    // multiple decorations don't stack. The user can move them in edit mode.
+    const centerX = W * 2.2 * 0.45 + (Math.random() - 0.5) * 80;
+    const centerY = Dimensions.get('window').height * 1.4 * 0.42 + (Math.random() - 0.5) * 80;
+    useGroveStore.getState().placeDecoration(defId, centerX, centerY);
     setEditMode(true);
   }, []);
 
+  const skyBg = getTimeOfDaySky().bottom;
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: skyBg }]}>
+      <FloatingParticles count={5} color="rgba(110,207,154,0.12)" />
       <View ref={groveRef} style={styles.sceneWrapper} collapsable={false}>
-        {editMode ? (
-          <GroveIsland onZoneTap={handleZoneTap} onKovaTap={handleKovaTap} />
-        ) : (
-          <GroveScene zones={ZONE_CONFIGS} onZonePress={handleZoneTap} onKovaPress={handleKovaTap} />
-        )}
+        {/*
+          Always render the polished GroveIsland (organic island, time-of-day sky,
+          detailed SVG zones via GrowthZone, animal visitors). The legacy
+          GroveScene with placeholder dot/circle shapes was previously used as
+          the default view — that was a half-finished migration. Decoration
+          placement is handled by the separate GroveEditMode overlay below
+          regardless of which scene component is mounted.
+        */}
+        <GroveIsland onZoneTap={handleZoneTap} onKovaTap={handleKovaTap} />
       </View>
 
       <KovaGroveDialogueModal
@@ -257,7 +340,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(11,14,23,0.75)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -273,7 +356,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheetContent: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
@@ -369,7 +452,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: C.bg1,
     borderRadius: 16,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   statItem: { alignItems: 'center', gap: 4 },
@@ -402,7 +485,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   gameChipIcon: { fontSize: 14 },
@@ -412,12 +495,54 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  wiltHint: {
-    fontFamily: fonts.kova,
-    color: C.amber,
-    fontSize: 16,
-    textAlign: 'center',
+  descText: {
+    fontFamily: fonts.body,
+    color: C.t2,
+    fontSize: 13,
+    lineHeight: 20,
     marginBottom: 16,
+  },
+
+  wiltHintBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: C.amberTint,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(240,181,66,0.3)',
+  },
+  wiltHintEmoji: { fontSize: 18, marginTop: 1 },
+  wiltHint: {
+    fontFamily: fonts.body,
+    color: C.amber,
+    fontSize: 13,
+    lineHeight: 19,
+    flex: 1,
+  },
+
+  tipBox: {
+    backgroundColor: C.bg1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: C.border,
+    gap: 6,
+  },
+  tipLabel: {
+    fontFamily: fonts.bodySemi,
+    color: C.t3,
+    fontSize: 9,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  tipText: {
+    fontFamily: fonts.kova,
+    color: C.t1,
+    fontSize: 15,
     lineHeight: 22,
   },
 
@@ -426,7 +551,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
-    borderWidth: 0.5,
+    borderWidth: 1,
     borderColor: C.border,
   },
   closeBtnText: {
@@ -435,3 +560,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
+
+export default function GroveScreen() {
+  return (
+    <ErrorBoundary scope="Grove tab">
+      <GroveScreenInner />
+    </ErrorBoundary>
+  );
+}

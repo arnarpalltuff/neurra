@@ -90,6 +90,40 @@ export function clearSessionDifficulty() {
   Object.keys(sessionDifficulty).forEach((k) => delete sessionDifficulty[k as GameId]);
 }
 
+/**
+ * Smart difficulty warmup.
+ *
+ * The first game in a session is 15% easier than the user's current level so
+ * they always start feeling competent. The last game is 10% harder so they
+ * end pushed. Middle games (if any) sit at the user's exact level.
+ *
+ * Returns a clamped level in [1, 20]. If totalSlots ≤ 1, returns the base
+ * level unchanged.
+ */
+export function applySessionWarmup(baseLevel: number, slotIndex: number, totalSlots: number): number {
+  if (totalSlots <= 1) return baseLevel;
+  let multiplier = 1.0;
+  if (slotIndex === 0) multiplier = 0.85;
+  else if (slotIndex === totalSlots - 1) multiplier = 1.10;
+  const scaled = baseLevel * multiplier;
+  return Math.max(1, Math.min(20, scaled));
+}
+
+/**
+ * Seed the in-memory session difficulty for a game with a specific level.
+ *
+ * Call this before mounting a game to apply a warmup or other one-shot
+ * difficulty override. Games that read difficulty via getDifficulty() will
+ * see this seeded value instead of the persisted level.
+ */
+export function primeSessionDifficulty(gameId: GameId, level: number): void {
+  const clamped = Math.max(1, Math.min(20, level));
+  sessionDifficulty[gameId] = {
+    ...defaultDifficulty,
+    level: clamped,
+  };
+}
+
 // Ghost Kitchen parameters
 export function ghostKitchenParams(level: number) {
   const l = Math.round(level);

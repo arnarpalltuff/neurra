@@ -45,11 +45,16 @@ export default function PlanCard({ plan, selected, onSelect }: PlanCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: C.bg3,
+    backgroundColor: 'rgba(19,24,41,0.85)',
     borderRadius: 18,
     padding: 18,
-    borderWidth: 0.5,
-    borderColor: C.border,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#9B72E0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
   },
   cardSelected: {
     borderColor: C.green,
@@ -80,7 +85,12 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: C.border,
+    borderColor: 'rgba(255,255,255,0.06)',
+    shadowColor: '#9B72E0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },

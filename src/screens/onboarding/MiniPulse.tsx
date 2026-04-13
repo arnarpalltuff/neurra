@@ -4,6 +4,8 @@ import Animated, { FadeIn, useSharedValue, useAnimatedStyle, withSpring } from '
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { tapLight, success as hapticSuccess } from '../../utils/haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import FloatingParticles from '../../components/ui/FloatingParticles';
 
 const CIRCLE_SIZE = 100;
 const TOTAL_ROUNDS = 8;
@@ -64,7 +66,7 @@ export default function MiniPulse({ onComplete }: MiniPulseProps) {
 
     tapTimerRef.current = setTimeout(() => {
       if (mountedRef.current) setRound(r => r + 1);
-    }, 300);
+    }, 150);
   };
 
   const scale = useSharedValue(1);
@@ -76,6 +78,8 @@ export default function MiniPulse({ onComplete }: MiniPulseProps) {
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={[C.bg1, '#0A0E1A', C.bg1]} style={StyleSheet.absoluteFillObject} />
+      <FloatingParticles count={6} color="rgba(110,207,154,0.12)" />
       <Animated.View entering={FadeIn.delay(100).duration(400)}>
         <Text style={styles.title}>Quick! Tap the green circles.</Text>
         <Text style={styles.subtitle}>Ignore the red ones.</Text>
@@ -123,7 +127,7 @@ export default function MiniPulse({ onComplete }: MiniPulseProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg2,
+    backgroundColor: C.bg1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 28,
