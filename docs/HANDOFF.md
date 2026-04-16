@@ -1,5 +1,28 @@
 # Neurra — session handoff
 
+## 2026-04-16 — Games tab premium upgrade (in progress)
+
+**Status:** Phase 0 complete, plan approved. Phases 1–6 executing.
+
+### Approved plan summary
+
+- 649-line flat games tab → thin composer (≤130 lines) + focused sub-components
+- 11 game cards get custom SVG icons (one each) replacing emoji
+- Brain-area accent colors drive everything (memory=green, focus=blue, speed=amber, flexibility=purple, creativity=peach)
+- New structure: Game of the Day hero → BrainAreaFilterBar → FeaturedGamesRow → GameBentoGrid (asymmetric)
+- `gameUnlockStore.isUnlocked()` now wired (fixes bug where Day 0 accounts saw all 11 games)
+- LockedGamesTeaser dropped — dimmed locked cards in grid are the teaser
+- Weakest-area source = `progressStore.brainScores` (matches Insights `calcBrainPulse`)
+- Existing `gameConfigs.description` kept as hook copy (flag individual flat ones at build time)
+- Bento edge case: ≤2 games in filter → center cards with horizontal margin, no asymmetric grid
+
+### Commits so far
+```
+(phase 0) games: inventory and upgrade plan
+```
+
+---
+
 ## 2026-04-16 — Home tab editorial cut (shipped)
 
 **Status:** Complete. 5 phases committed.
