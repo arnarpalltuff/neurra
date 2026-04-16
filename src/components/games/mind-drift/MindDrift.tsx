@@ -8,6 +8,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line, Circle as SvgCircle } from 'react-native-svg';
 import { success as hapticSuccess, tapMedium, error as hapticError } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
@@ -131,6 +133,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   const roundRef = useRef(1);
   const floatIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('mind-drift');
   const roundStartRef = useRef(Date.now());
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -197,7 +200,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
     const isCorrect = cell.row === expected.row && cell.col === expected.col;
 
     if (isCorrect) {
-      playCorrect(); burstCorrect({ x: cell.cx + 30, y: cell.cy + 100 });
+      playCorrect(); neural.onCorrectAnswer(); burstCorrect({ x: cell.cx + 30, y: cell.cy + 100 });
       tapMedium();
       const newTapped = [...tapped, cell];
       setTapped(newTapped);
@@ -225,7 +228,7 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
         safeTimeout(() => { setFeedback(null); advanceRound(); }, 800);
       }
     } else {
-      playWrong(); burstWrong({ x: cell.cx + 30, y: cell.cy + 100 });
+      playWrong(); neural.onWrongAnswer(); burstWrong({ x: cell.cx + 30, y: cell.cy + 100 });
       hapticError();
       rootShake.value = withSequence(
         withTiming(-5, { duration: 50 }),
@@ -293,6 +296,8 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
       <FloatingParticles count={10} color="rgba(155,114,224,0.4)" />
 
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* Header */}
       <View style={styles.header}>

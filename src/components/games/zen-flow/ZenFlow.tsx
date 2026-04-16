@@ -7,6 +7,8 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { tapLight } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
@@ -141,6 +143,7 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
   const targetVisibleRef = useRef(false);
   const floatIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect } = useGameFeedback();
+  const neural = useNeuralMap('zen-flow');
 
   const breathScale = useSharedValue(0.6);
   const breathOpacity = useSharedValue(0.4);
@@ -265,7 +268,7 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
     setTimeout(() => {
       setFloatScores(prev => prev.filter(f => f.id !== fid));
     }, 1200);
-    playCorrect(); burstCorrect({ x: targetPos.x + 25, y: targetPos.y + 100 });
+    playCorrect(); neural.onCorrectAnswer(); burstCorrect({ x: targetPos.x + 25, y: targetPos.y + 100 });
   }, [burstCorrect, targetPos]);
 
   const scorePulseStyle = useAnimatedStyle(() => ({
@@ -286,6 +289,8 @@ export default function ZenFlow({ onComplete, initialLevel = 1 }: ZenFlowProps) 
       <FloatingParticles count={10} color="rgba(156,236,228,0.35)" />
 
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* ── Breathing phase ────────────────────────── */}
       {phase === 'breathing' && (

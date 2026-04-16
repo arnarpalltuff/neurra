@@ -14,6 +14,8 @@ import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { tapMedium, success, error as hapticError, warning as hapticWarning } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import GameIntro from '../shared/GameIntro';
 
 const { width, height } = Dimensions.get('window');
@@ -212,6 +214,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
   const floatIdRef = useRef(0);
 
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('pulse');
 
   const coreBeat = useSharedValue(1);
   const shapeScale = useSharedValue(0);
@@ -362,7 +365,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
       );
       success();
       tapMedium();
-      playCorrect(); burstCorrect({ x: width / 2, y: height / 2 });
+      playCorrect(); neural.onCorrectAnswer(); burstCorrect({ x: width / 2, y: height / 2 });
       updateDifficulty('pulse', true);
     } else {
       setPerfectStreak(0);
@@ -379,7 +382,7 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
         withTiming(0, { duration: 50 }),
       );
       hapticError();
-      playWrong(); burstWrong({ x: width / 2, y: height / 2 });
+      playWrong(); neural.onWrongAnswer(); burstWrong({ x: width / 2, y: height / 2 });
       updateDifficulty('pulse', false);
       livesRef.current -= 1;
       setLives(livesRef.current);
@@ -454,6 +457,8 @@ export default function Pulse({ onComplete, initialLevel = 1, isOnboarding = fal
         />
 
         <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
         {/* ── Rule pill ──────────────────────────────── */}
         <View style={styles.rulePillWrap}>

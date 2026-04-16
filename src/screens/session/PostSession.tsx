@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
@@ -20,12 +20,16 @@ import CelebrationOverlay from '../../components/ui/CelebrationOverlay';
 import Celebration from '../../components/ui/Celebration';
 import RatePromptCard from '../../components/ui/RatePromptCard';
 import { getPostSessionMessage } from '../../constants/kovaDialogue';
+import { generateKovaMessage, KovaContext } from '../../services/kovaAI';
+import { useKovaContext } from '../../hooks/useKovaContext';
 import { getFramingText } from '../../constants/framingText';
 import { AREA_LABELS, AREA_ACCENT, BrainArea } from '../../constants/gameConfigs';
 import { getRandomQuote } from '../../constants/quotes';
 import PaywallFull from '../../components/paywall/PaywallFull';
 import { useProStore } from '../../stores/proStore';
 import CoachInsightCard from '../../components/insights/CoachInsightCard';
+import NeuralMap from '../../components/ui/NeuralMap';
+import { getAreasForGame } from '../../hooks/useNeuralMap';
 import JournalPrompt from '../../components/journal/JournalPrompt';
 import { useDailyBriefing } from '../../hooks/useDailyBriefing';
 import ShareCard, { SessionShareData } from '../../components/ui/ShareCard';
@@ -74,6 +78,15 @@ export default function PostSession({
   const kovaEmotion: KovaEmotion = isPerfect ? 'proud' : avgAccuracy >= 0.7 ? 'happy' : 'encouraging';
   const streakMilestone = newStreak > 0 && [3, 7, 14, 30, 60, 100, 365].includes(newStreak);
 
+  const sessionNeuralAreas = useMemo(
+    () => Array.from(new Set(results.flatMap(r => getAreasForGame(r.gameId)))) as BrainArea[],
+    [results],
+  );
+  const sessionAreaLabels = useMemo(
+    () => sessionNeuralAreas.map(a => a.charAt(0).toUpperCase() + a.slice(1)).join(' · '),
+    [sessionNeuralAreas],
+  );
+
   // Performance-based background gradient
   const bgColors: [string, string] = isPerfect
     ? ['#0A1A10', '#080E08']   // warm green-dark
@@ -111,9 +124,30 @@ export default function PostSession({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const kovaMessage = isFirstSession
-    ? "Your first session! I felt that. This is just the beginning."
-    : getPostSessionMessage(avgAccuracy, mood);
+  const kovaCtx = useKovaContext({
+    justCompletedSession: true,
+    justGotPersonalBest: results.some(r => r.accuracy > 0.9),
+    lastThreeGames: results.map(r => ({
+      name: gameConfigs[r.gameId]?.name ?? r.gameId,
+      score: r.score,
+      accuracy: Math.round(r.accuracy * 100),
+    })),
+  });
+  const [kovaMessage, setKovaMessage] = useState(
+    isFirstSession
+      ? "Your first session! I felt that. This is just the beginning."
+      : getPostSessionMessage(avgAccuracy, mood),
+  );
+  useEffect(() => {
+    let mounted = true;
+    const mode = results.some(r => r.accuracy > 0.9) ? 'celebration'
+      : avgAccuracy < 0.6 ? 'encouragement'
+      : 'post_session';
+    generateKovaMessage(mode, kovaCtx).then(msg => {
+      if (mounted) setKovaMessage(msg);
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const bestResult = results.length > 0
     ? results.reduce((best, r) => r.score > best.score ? r : best, results[0])
@@ -193,6 +227,13 @@ export default function PostSession({
           </View>
           <Text style={styles.xpLabel}>XP EARNED</Text>
         </Animated.View>
+
+        {sessionNeuralAreas.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.neuralMapWrap}>
+            <NeuralMap activeAreas={sessionNeuralAreas} intensity={0.7} size={140} />
+            <Text style={styles.neuralMapLabel}>{sessionAreaLabels} trained</Text>
+          </Animated.View>
+        )}
 
         {/* 3. Streak + brain areas */}
         <Animated.View entering={FadeInDown.delay(320).duration(400)} style={styles.streakArea}>
@@ -407,6 +448,20 @@ const styles = StyleSheet.create({
     ...t.microLabel,
     color: C.t3,
     marginTop: 2,
+  },
+
+  // ── Neural Map (session summary) ─────────────────────────────────
+  neuralMapWrap: {
+    alignItems: 'center',
+    marginVertical: space.lg,
+    gap: space.sm,
+  },
+  neuralMapLabel: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: C.t3,
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
 
   // ── Streak ───────────────────────────────────────────────────────

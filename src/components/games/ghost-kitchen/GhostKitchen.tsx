@@ -16,6 +16,8 @@ import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import GameIntro from '../shared/GameIntro';
 
 const { width } = Dimensions.get('window');
@@ -206,6 +208,7 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
   const totalAttemptsRef = useRef(0);
   const floatIdRef = useRef(0);
   const { feedback, fireCorrect, fireWrong } = useGameFeedback();
+  const neural = useNeuralMap('ghost-kitchen');
   const lastTapPos = useRef({ x: width / 2, y: 300 });
 
   // Animation primitives
@@ -261,8 +264,10 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
     const pos = { x: tapX ?? lastTapPos.current.x, y: tapY ?? lastTapPos.current.y };
     lastTapPos.current = pos;
     if (isCorrect) {
+      neural.onCorrectAnswer();
       fireCorrect(pos);
     } else {
+      neural.onWrongAnswer();
       fireWrong(pos);
     }
     setLastCorrect(isCorrect);
@@ -365,6 +370,8 @@ export default function GhostKitchen({ onComplete, initialLevel = 1, isOnboardin
       <FloatingParticles count={6} color="rgba(240,181,66,0.3)" />
 
       <FeedbackBurst {...feedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* ── Header ─────────────────────────────────── */}
       <Animated.View style={[styles.header, headerScaleStyle]}>

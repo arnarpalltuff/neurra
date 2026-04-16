@@ -89,6 +89,14 @@ export default function SettingsScreen() {
   const setHapticsEnabled = useSettingsStore(s => s.setHapticsEnabled);
   const setDailyReminder = useSettingsStore(s => s.setDailyReminder);
 
+  const aiKovaEnabled = useSettingsStore(s => s.aiKovaEnabled);
+  const setAiKovaEnabled = useSettingsStore(s => s.setAiKovaEnabled);
+  const anthropicApiKey = useSettingsStore(s => s.anthropicApiKey);
+  const setAnthropicApiKey = useSettingsStore(s => s.setAnthropicApiKey);
+  const [apiKeyInput, setApiKeyInput] = useState(anthropicApiKey);
+  const neuralMapEnabled = useSettingsStore(s => s.neuralMapEnabled);
+  const setNeuralMapEnabled = useSettingsStore(s => s.setNeuralMapEnabled);
+
   // Subscription
   const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
   const debugSimulatePro = useProStore(s => s.debugSimulatePro);
@@ -171,6 +179,40 @@ export default function SettingsScreen() {
             onChange={setDailyReminder}
             hint="A short nudge at your usual training time"
           />
+        </View>
+
+        {/* AI KOVA */}
+        <SectionHeader title="AI KOVA" />
+        <View style={styles.card}>
+          <ToggleRow label="AI-powered Kova" value={aiKovaEnabled} onChange={setAiKovaEnabled} />
+          <Divider />
+          <View style={styles.apiKeyRow}>
+            <Text style={styles.apiKeyLabel}>Anthropic API Key</Text>
+            <TextInput
+              style={styles.apiKeyInput}
+              value={apiKeyInput}
+              onChangeText={setApiKeyInput}
+              onBlur={() => setAnthropicApiKey(apiKeyInput)}
+              placeholder="sk-ant-..."
+              placeholderTextColor="rgba(255,255,255,0.2)"
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+
+        {/* APPEARANCE */}
+        <SectionHeader title="APPEARANCE" />
+        <View style={styles.card}>
+          <ToggleRow
+            label="Neural Map in games"
+            value={neuralMapEnabled}
+            onChange={setNeuralMapEnabled}
+          />
+          <Text style={styles.toggleDescription}>
+            Shows brain activity visualization during gameplay
+          </Text>
         </View>
 
         {/* SOUND & HAPTICS */}
@@ -305,6 +347,37 @@ const styles = StyleSheet.create({
     marginTop: space.xxl,
     marginBottom: space.sm,
     paddingLeft: 4,
+  },
+
+  toggleDescription: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: C.t3,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
+    marginTop: -6,
+    lineHeight: 16,
+  },
+
+  apiKeyRow: {
+    paddingVertical: 12,
+    gap: 6,
+  },
+  apiKeyLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: C.t2,
+  },
+  apiKeyInput: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: C.t1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
 
   card: {

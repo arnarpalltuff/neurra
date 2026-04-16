@@ -13,6 +13,7 @@ import {
   useGroveStore,
   GROVE_THEMES,
   DECORATION_DEFS,
+  decorationById,
   DecorationDef,
   DecorationCategory,
   GroveThemeId,
@@ -278,7 +279,7 @@ export default function GroveShop({ visible, onClose, onPlaceDecoration }: Grove
                 numColumns={3}
                 contentContainerStyle={styles.decoGrid}
                 renderItem={({ item: [defId, count] }) => {
-                  const def = DECORATION_DEFS.find((d) => d.id === defId);
+                  const def = decorationById(defId);
                   if (!def) return null;
                   return (
                     <Pressable

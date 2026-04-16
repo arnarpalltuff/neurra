@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { C } from '../../src/constants/colors';
 import Awakening from '../../src/screens/onboarding/Awakening';
@@ -58,12 +59,19 @@ export default function OnboardingScreen() {
           />
         </View>
       )}
-      {step === 'awakening' && <Awakening onNext={() => setStep('intro')} />}
-      {step === 'intro' && <Intro onNext={() => setStep('pulse')} />}
-      {step === 'pulse' && <MiniPulse onComplete={handlePulseComplete} />}
-      {step === 'result' && <WarmResult accuracy={pulseAccuracy} onNext={() => setStep('name')} />}
-      {step === 'name' && <NameInput onNext={handleNameSubmit} />}
-      {step === 'notify' && <NotificationAsk onDone={handleNotifyDone} />}
+      <Animated.View
+        key={step}
+        entering={FadeIn.duration(420)}
+        exiting={FadeOut.duration(260)}
+        style={StyleSheet.absoluteFill}
+      >
+        {step === 'awakening' && <Awakening onNext={() => setStep('intro')} />}
+        {step === 'intro' && <Intro onNext={() => setStep('pulse')} />}
+        {step === 'pulse' && <MiniPulse onComplete={handlePulseComplete} />}
+        {step === 'result' && <WarmResult accuracy={pulseAccuracy} onNext={() => setStep('name')} />}
+        {step === 'name' && <NameInput onNext={handleNameSubmit} />}
+        {step === 'notify' && <NotificationAsk onDone={handleNotifyDone} />}
+      </Animated.View>
     </View>
   );
 }

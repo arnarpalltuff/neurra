@@ -8,6 +8,8 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { success as hapticSuccess, tapMedium, error as hapticError, selection } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
@@ -118,6 +120,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
   const animRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
   const scoreRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('chain-reaction');
   const chainCountRef = useRef(0);
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const floatIdRef = useRef(0);
@@ -192,7 +195,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
 
     if (orb.color === expectedColor) {
       const tapPos = { x: orb.x, y: orb.y + 140 };
-      playCorrect(); burstCorrect(tapPos);
+      playCorrect(); neural.onCorrectAnswer(); burstCorrect(tapPos);
       const nextIdx = seqIndex + 1;
       const pts = 30;
       scoreRef.current += pts;
@@ -272,7 +275,7 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
       noMissRef.current = 0;
       setFeedback('wrong');
       updateDifficulty('chain-reaction', false);
-      playWrong(); burstWrong({ x: orb.x, y: orb.y + 140 });
+      playWrong(); neural.onWrongAnswer(); burstWrong({ x: orb.x, y: orb.y + 140 });
       hapticError();
       rootShake.value = withSequence(
         withTiming(-5, { duration: 50 }),
@@ -313,6 +316,8 @@ export default function ChainReaction({ onComplete, initialLevel = 1 }: ChainRea
       />
 
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* Header */}
       <View style={styles.header}>

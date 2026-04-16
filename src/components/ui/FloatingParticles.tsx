@@ -77,7 +77,7 @@ function FloatingDot({ index, color }: { index: number; color: string }) {
   );
 }
 
-export default function FloatingParticles({ count = 8, color = '#7DD3A840' }: FloatingParticlesProps) {
+function FloatingParticles({ count = 8, color = '#7DD3A840' }: FloatingParticlesProps) {
   const dots = useMemo(() => Array.from({ length: count }, (_, i) => i), [count]);
 
   return (
@@ -88,3 +88,5 @@ export default function FloatingParticles({ count = 8, color = '#7DD3A840' }: Fl
     </>
   );
 }
+
+export default React.memo(FloatingParticles);

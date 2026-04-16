@@ -1,109 +1,146 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableWithoutFeedback, Dimensions } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withRepeat, withSequence,
-  withTiming, Easing,
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+  withSequence,
+  withTiming,
+  withSpring,
+  Easing,
 } from 'react-native-reanimated';
-import { tapMedium } from '../../utils/haptics';
+import { tapLight, tapMedium } from '../../utils/haptics';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
-
-const { width, height } = Dimensions.get('window');
+import PulseRing from '../../components/onboarding/PulseRing';
 
 interface AwakeningProps {
   onNext: () => void;
 }
 
+// Cinematic window — long enough to land, short enough to respect the user.
+const AUTO_ADVANCE_MS = 4200;
+
+const DARK = '#050810';
+
 export default function Awakening({ onNext }: AwakeningProps) {
-  const glowScale = useSharedValue(1);
-  const glowOpacity = useSharedValue(0.2);
+  const advancedRef = useRef(false);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dotScale = useSharedValue(0);
+  const dotOpacity = useSharedValue(0);
+  const haloOpacity = useSharedValue(0);
+  const haloScale = useSharedValue(0.4);
   const textOpacity = useSharedValue(0);
-  const rootOpacity = useSharedValue(0);
-  const tapTextOpacity = useSharedValue(0);
-  const ringScale = useSharedValue(0.8);
-  const ringOpacity = useSharedValue(0);
+  const textSpacing = useSharedValue(10);
+  const tapOpacity = useSharedValue(0);
+  const particleY = useSharedValue(0);
+  const particleOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Core pulse
-    glowScale.value = withRepeat(
+    // 500ms — single tiny dot fades in.
+    dotScale.value = withDelay(500, withSpring(1, { damping: 14, stiffness: 120 }));
+    dotOpacity.value = withDelay(500, withTiming(0.6, { duration: 400, easing: Easing.out(Easing.ease) }));
+
+    // 1000ms — first pulse ping. Haptic matches the visible ping.
+    const pulse1 = setTimeout(() => {
+      tapLight();
+    }, 1000);
+
+    // 1600ms — dot brightens.
+    dotOpacity.value = withDelay(1600, withTiming(1, { duration: 500 }));
+
+    // 2000ms — halo (radial bloom) grows.
+    haloOpacity.value = withDelay(2000, withTiming(0.55, { duration: 900, easing: Easing.out(Easing.cubic) }));
+    haloScale.value = withDelay(2000, withSpring(1, { damping: 16, stiffness: 70 }));
+
+    // 2200ms — "NEURRA" text reveals, letter-spacing tightens.
+    textOpacity.value = withDelay(2200, withTiming(0.9, { duration: 700, easing: Easing.out(Easing.cubic) }));
+    textSpacing.value = withDelay(2200, withTiming(0.5, { duration: 800, easing: Easing.out(Easing.cubic) }));
+
+    // 2800ms — subtle "tap to continue" prompt (not required — auto-advance fires).
+    tapOpacity.value = withDelay(2800, withTiming(0.5, { duration: 600 }));
+
+    // 2500ms — a single particle drifts up.
+    particleOpacity.value = withDelay(
+      2500,
       withSequence(
-        withTiming(1.5, { duration: 1200, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.sin) })
+        withTiming(0.5, { duration: 600 }),
+        withTiming(0, { duration: 2200 }),
       ),
-      -1,
-      true
     );
-    glowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.7, { duration: 1200 }),
-        withTiming(0.2, { duration: 1200 })
-      ),
-      -1,
-      true
+    particleY.value = withDelay(
+      2500,
+      withTiming(-140, { duration: 2800, easing: Easing.out(Easing.cubic) }),
     );
 
-    // Outer ring pulse (offset timing for depth)
-    ringScale.value = withRepeat(
-      withSequence(
-        withTiming(1.8, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1.2, { duration: 1600, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      true
-    );
+    navTimerRef.current = setTimeout(() => {
+      if (!advancedRef.current) {
+        advancedRef.current = true;
+        onNext();
+      }
+    }, AUTO_ADVANCE_MS);
 
-    // Show text quickly — don't make users wait. The orb is beautiful but
-    // impatient users will tap away before they see it.
-    setTimeout(() => {
-      textOpacity.value = withTiming(1, { duration: 800 });
-      rootOpacity.value = withTiming(1, { duration: 1000 });
-      ringOpacity.value = withTiming(0.15, { duration: 800 });
-    }, 800);
-
-    setTimeout(() => {
-      tapTextOpacity.value = withTiming(1, { duration: 600 });
-    }, 1500);
+    return () => {
+      clearTimeout(pulse1);
+      if (navTimerRef.current) clearTimeout(navTimerRef.current);
+    };
+    // onNext identity shouldn't re-trigger the cinematic
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTap = () => {
+    if (advancedRef.current) return;
+    advancedRef.current = true;
     tapMedium();
+    if (navTimerRef.current) clearTimeout(navTimerRef.current);
     onNext();
   };
 
-  const glowStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: glowScale.value }],
-    opacity: glowOpacity.value,
+  const dotStyle = useAnimatedStyle(() => ({
+    opacity: dotOpacity.value,
+    transform: [{ scale: dotScale.value }],
   }));
-  const ringStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: ringScale.value }],
-    opacity: ringOpacity.value,
+  const haloStyle = useAnimatedStyle(() => ({
+    opacity: haloOpacity.value,
+    transform: [{ scale: haloScale.value }],
   }));
-  const textStyle = useAnimatedStyle(() => ({ opacity: textOpacity.value }));
-  const tapStyle = useAnimatedStyle(() => ({ opacity: tapTextOpacity.value }));
-  const rootStyle = useAnimatedStyle(() => ({ opacity: rootOpacity.value }));
+  const textStyle = useAnimatedStyle(() => ({
+    opacity: textOpacity.value,
+    letterSpacing: textSpacing.value,
+  }));
+  const tapStyle = useAnimatedStyle(() => ({ opacity: tapOpacity.value }));
+  const particleStyle = useAnimatedStyle(() => ({
+    opacity: particleOpacity.value,
+    transform: [{ translateY: particleY.value }],
+  }));
 
   return (
     <TouchableWithoutFeedback onPress={handleTap} accessible={false}>
       <View style={styles.container}>
-        {/* Center glow */}
         <View style={styles.center}>
-          <Animated.View style={[styles.glowRing, ringStyle]} />
-          <Animated.View style={[styles.glowOuter, glowStyle]} />
-          <View style={styles.glowCore} />
-          {/* Root lines */}
-          <Animated.View style={[styles.roots, rootStyle]}>
-            <View style={[styles.root, { transform: [{ rotate: '-30deg' }] }]} />
-            <View style={[styles.root, { transform: [{ rotate: '0deg' }] }]} />
-            <View style={[styles.root, { transform: [{ rotate: '30deg' }] }]} />
-          </Animated.View>
+          {/* Radial bloom halo — soft shadow-based glow */}
+          <Animated.View style={[styles.halo, haloStyle]} />
+
+          {/* Expanding pulse rings — two rings, staggered */}
+          <PulseRing color={C.green} size={30} from={1} to={8} duration={1800} delay={1000} peakOpacity={0.55} />
+          <PulseRing color={C.green} size={30} from={1} to={7} duration={2000} delay={1600} peakOpacity={0.4} />
+
+          {/* The dot itself — the "seed of light" */}
+          <Animated.View style={[styles.dot, dotStyle]} />
+
+          {/* Drifting particle */}
+          <Animated.View style={[styles.particle, particleStyle]} />
         </View>
 
-        <Animated.View style={[styles.textContainer, textStyle]}>
-          <Text style={styles.mainText}>Something is growing.</Text>
-        </Animated.View>
+        <View style={styles.textWrap}>
+          <Animated.Text style={[styles.mainText, textStyle]}>
+            NEURRA
+          </Animated.Text>
+        </View>
 
-        <Animated.View style={[styles.tapContainer, tapStyle]}>
-          <Text style={styles.tapText}>Tap to wake it up.</Text>
+        <Animated.View style={[styles.tapWrap, tapStyle]}>
+          <Text style={styles.tapText}>tap to continue</Text>
         </Animated.View>
       </View>
     </TouchableWithoutFeedback>
@@ -113,73 +150,69 @@ export default function Awakening({ onNext }: AwakeningProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: C.bg1,
+    backgroundColor: DARK,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 40,
+    gap: 60,
   },
   center: {
+    width: 180,
+    height: 180,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-    width: 140,
-    height: 140,
   },
-  glowRing: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 1,
-    borderColor: C.green,
-  },
-  glowOuter: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: C.green,
-  },
-  glowCore: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  // The seed dot — tiny, bright.
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: C.t1,
     shadowColor: C.green,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 16,
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    elevation: 10,
   },
-  roots: {
+  // Shadow-based radial bloom — no filters, Expo Go safe.
+  halo: {
     position: 'absolute',
-    bottom: 0,
-    alignItems: 'center',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(110,207,154,0.12)',
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 60,
+    elevation: 20,
   },
-  root: {
+  particle: {
     position: 'absolute',
-    width: 1.5,
-    height: 32,
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
     backgroundColor: C.green,
-    top: 14,
-    borderRadius: 1,
-    opacity: 0.6,
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
-  textContainer: {
+  textWrap: {
     alignItems: 'center',
   },
   mainText: {
-    fontFamily: fonts.headingMed,
+    fontFamily: fonts.heading,
     color: C.t1,
-    fontSize: 22,
-    letterSpacing: 0.5,
+    fontSize: 24,
   },
-  tapContainer: {
-    alignItems: 'center',
+  tapWrap: {
+    position: 'absolute',
+    bottom: 70,
   },
   tapText: {
     fontFamily: fonts.kova,
-    color: C.t2,
-    fontSize: 20,
-    letterSpacing: 0.3,
+    color: C.t3,
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
 });

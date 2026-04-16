@@ -1,20 +1,32 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { C } from '../../src/constants/colors';
 import { fonts, type as t } from '../../src/constants/typography';
-import { space, radii, shadows } from '../../src/constants/design';
+import { space, radii, accentGlow } from '../../src/constants/design';
 import { AREA_LABELS, AREA_ACCENT } from '../../src/constants/gameConfigs';
 import { useProgressStore } from '../../src/stores/progressStore';
 import { useUserStore } from '../../src/stores/userStore';
-import { generateInsights } from '../../src/utils/insightsEngine';
+import { useBrainHistoryStore } from '../../src/stores/brainHistoryStore';
+import { generateInsights, getBrainTrend } from '../../src/utils/insightsEngine';
+import { selection } from '../../src/utils/haptics';
+import { localDateStr } from '../../src/utils/timeUtils';
 import BrainPulseHero from '../../src/components/insights/BrainPulseHero';
 import InsightCard from '../../src/components/insights/InsightCard';
+import KovaBrainCoach from '../../src/components/insights/KovaBrainCoach';
+import PersonalBests from '../../src/components/insights/PersonalBests';
+import BrainTrend from '../../src/components/insights/BrainTrend';
+import ActivityCalendar from '../../src/components/insights/ActivityCalendar';
+import PressableScale from '../../src/components/ui/PressableScale';
 import JournalTimeline from '../../src/components/journal/JournalTimeline';
 import { useWeeklyReportStore } from '../../src/stores/weeklyReportStore';
 import ErrorBoundary from '../../src/components/ui/ErrorBoundary';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+// Spacing rhythm — related sections hug tighter, distinct groups breathe
+const RELATED = 16;
+const DISTINCT = 28;
 
 /** Crash-safe default pulse. Every field has a valid value. */
 const EMPTY_PULSE: import('../../src/utils/insightsEngine').BrainPulseData = {
@@ -36,13 +48,12 @@ function InsightsScreenInner() {
   const streak = useProgressStore(s => s.streak);
   const longestStreak = useProgressStore(s => s.longestStreak);
   const totalSessions = useProgressStore(s => s.totalSessions);
-  const xp = useProgressStore(s => s.xp);
-  const level = useProgressStore(s => s.level);
   const mood = useUserStore(s => s.mood);
   const moodHistory = useUserStore(s => s.moodHistory);
+  const snapshots = useBrainHistoryStore(s => s.snapshots);
 
-  // Wrap in try-catch so a data edge case in the insights engine can never
-  // take down the entire screen. Falls back to empty data gracefully.
+  // Try-catch so a data edge case in the insights engine can never take down
+  // the entire screen. Falls back to empty data gracefully.
   const { pulse, insights } = useMemo(() => {
     try {
       return generateInsights({
@@ -53,8 +64,6 @@ function InsightsScreenInner() {
         streak: streak ?? 0,
         longestStreak: longestStreak ?? 0,
         totalSessions: totalSessions ?? 0,
-        xp: xp ?? 0,
-        level: level ?? 1,
         mood: mood ?? null,
         moodHistory: moodHistory ?? [],
       });
@@ -63,7 +72,10 @@ function InsightsScreenInner() {
       console.error('[Insights] generateInsights crashed:', e);
       return { pulse: EMPTY_PULSE, insights: [] };
     }
-  }, [sessions, brainScores, gameHistory, personalBests, streak, longestStreak, totalSessions, xp, level, mood, moodHistory]);
+  }, [sessions, brainScores, gameHistory, personalBests, streak, longestStreak, totalSessions, mood, moodHistory]);
+
+  // Single 30-day trend computation shared with KovaBrainCoach + BrainTrend.
+  const trend = useMemo(() => getBrainTrend(snapshots, 30), [snapshots]);
 
   const hasData = (totalSessions ?? 0) >= 3;
   const reportEntries = useWeeklyReportStore((s) => s.reports);
@@ -72,7 +84,6 @@ function InsightsScreenInner() {
     [reportEntries],
   );
 
-  // Personal summary line
   const summaryLine = useMemo(() => {
     if (!hasData) return '';
     const trend = pulse?.trend ?? 0;
@@ -85,7 +96,6 @@ function InsightsScreenInner() {
     return `Rough week for the numbers. But showing up matters more than scores.`;
   }, [hasData, pulse]);
 
-  // Weakest area recommendation
   const recommendation = useMemo(() => {
     if (!hasData) return null;
     const weakArea = pulse?.weakestArea ?? 'creativity';
@@ -95,22 +105,39 @@ function InsightsScreenInner() {
     const strongArea = pulse?.strongestArea ?? 'memory';
     const strongScore = Math.round(brainScores?.[strongArea] ?? 0);
     const gap = strongScore - weakScore;
-    if (gap < 10) return null; // balanced enough
+    if (gap < 10) return null;
     return { area: weakLabel, color: weakColor, score: weakScore, gap };
   }, [hasData, pulse, brainScores]);
 
-  // Last 7 days activity
   const weekActivity = useMemo(() => {
     const today = new Date();
-    const sessionDates = new Set((sessions ?? []).map((s: any) => s.date?.split('T')[0]));
+    // Use device-local dates so "trained" matches what the user sees on the clock.
+    const sessionDates = new Set(
+      (sessions ?? []).map(s => localDateStr(new Date(s.date))),
+    );
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(today);
       d.setDate(d.getDate() - (6 - i));
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = localDateStr(d);
       const dayLabel = d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0);
       return { dateStr, dayLabel, trained: sessionDates.has(dateStr), isToday: i === 6 };
     });
   }, [sessions]);
+
+  const strongestAccent = AREA_ACCENT[pulse?.strongestArea] ?? C.green;
+
+  const handleBrowseGames = () => {
+    selection();
+    router.push('/(tabs)/games' as any);
+  };
+
+  const handleOpenReport = (wid: string) => {
+    selection();
+    router.push({
+      pathname: '/weekly-report',
+      params: { weekId: wid },
+    } as unknown as Parameters<typeof router.push>[0]);
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -122,14 +149,20 @@ function InsightsScreenInner() {
 
         {/* Weekly activity dots */}
         {hasData && (
-          <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.weekRow}>
+          <Animated.View
+            entering={FadeInDown.delay(100).duration(400)}
+            style={[styles.weekRow, { marginTop: DISTINCT }]}
+          >
             {weekActivity.map((day) => (
               <View key={day.dateStr} style={styles.weekDayCol}>
-                <View style={[
-                  styles.weekDot,
-                  day.trained && styles.weekDotActive,
-                  day.isToday && styles.weekDotToday,
-                ]} />
+                <View
+                  style={[
+                    styles.weekDot,
+                    day.trained && styles.weekDotActive,
+                    day.trained && accentGlow(C.green, 8, 0.3),
+                    day.isToday && styles.weekDotToday,
+                  ]}
+                />
                 <Text style={[styles.weekDayLabel, day.isToday && styles.weekDayLabelToday]}>
                   {day.dayLabel}
                 </Text>
@@ -140,13 +173,19 @@ function InsightsScreenInner() {
 
         {/* Personal summary */}
         {hasData && summaryLine ? (
-          <Animated.View entering={FadeInDown.delay(150).duration(400)} style={styles.summaryCard}>
+          <Animated.View
+            entering={FadeInDown.delay(150).duration(400)}
+            style={[styles.summaryCard, accentGlow(C.green, 14, 0.18), { marginTop: RELATED }]}
+          >
             <Text style={styles.summaryText}>{summaryLine}</Text>
           </Animated.View>
         ) : null}
 
         {!hasData ? (
-          <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.emptyState}>
+          <Animated.View
+            entering={FadeInDown.delay(200).duration(400)}
+            style={[styles.emptyState, accentGlow(C.green, 16, 0.18), { marginTop: DISTINCT }]}
+          >
             <Text style={styles.emptyEmoji}>🧠</Text>
             <Text style={styles.emptyTitle}>Still getting to know your brain</Text>
             <Text style={styles.emptyBody}>
@@ -161,16 +200,30 @@ function InsightsScreenInner() {
           </Animated.View>
         ) : (
           <>
-            {/* Brain Pulse Score */}
-            <BrainPulseHero pulse={pulse} />
+            {/* Brain Pulse Score — DISTINCT: opens the data section */}
+            <View style={{ marginTop: DISTINCT }}>
+              <BrainPulseHero pulse={pulse} />
+            </View>
 
-            {/* Brain Area Snapshot */}
-            <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.areaCard}>
+            {/* Kova Brain Coach — RELATED: pulse + commentary */}
+            <View style={{ marginTop: RELATED }}>
+              <KovaBrainCoach trend={trend} />
+            </View>
+
+            {/* Brain Area Snapshot — DISTINCT: voice → data */}
+            <Animated.View
+              entering={FadeInDown.delay(300).duration(400)}
+              style={[
+                styles.areaCard,
+                accentGlow(strongestAccent, 14, 0.18),
+                { marginTop: DISTINCT, borderColor: `${strongestAccent}22` },
+              ]}
+            >
               <View style={styles.areaHeader}>
-                <Text style={styles.areaTitle}>Brain Areas</Text>
+                <Text style={styles.eyebrow}>BRAIN AREAS</Text>
                 <View style={styles.areaStrength}>
                   <Text style={styles.areaStrengthLabel}>Strongest:</Text>
-                  <Text style={[styles.areaStrengthValue, { color: AREA_ACCENT[pulse?.strongestArea] ?? C.green }]}>
+                  <Text style={[styles.areaStrengthValue, { color: strongestAccent }]}>
                     {AREA_LABELS[pulse?.strongestArea] ?? 'Memory'}
                   </Text>
                 </View>
@@ -193,9 +246,17 @@ function InsightsScreenInner() {
               })}
             </Animated.View>
 
-            {/* This Week vs Last Week */}
-            <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.compareCard}>
-              <Text style={styles.compareTitle}>This Week vs Last Week</Text>
+            {/* Personal Bests — RELATED: per-area + per-game */}
+            <View style={{ marginTop: RELATED }}>
+              <PersonalBests />
+            </View>
+
+            {/* This Week vs Last Week — DISTINCT: short-term numbers */}
+            <Animated.View
+              entering={FadeInDown.delay(400).duration(400)}
+              style={[styles.compareCard, accentGlow(C.green, 14, 0.18), { marginTop: DISTINCT }]}
+            >
+              <Text style={styles.eyebrow}>THIS WEEK VS LAST WEEK</Text>
               <View style={styles.compareRow}>
                 <View style={styles.compareStat}>
                   <Text style={[styles.compareValue, { color: C.green }]}>
@@ -205,7 +266,7 @@ function InsightsScreenInner() {
                 </View>
                 <View style={styles.compareDivider} />
                 <View style={styles.compareStat}>
-                  <Text style={[styles.compareValue, { color: (pulse?.trend ?? 0) >= 0 ? C.green : C.coral }]}>
+                  <Text style={[styles.compareValue, { color: (pulse?.trend ?? 0) >= 0 ? C.green : C.amber }]}>
                     {(pulse?.trend ?? 0) > 0 ? '+' : ''}{pulse?.trend ?? 0}%
                   </Text>
                   <Text style={styles.compareLabel}>Change</Text>
@@ -220,58 +281,78 @@ function InsightsScreenInner() {
               </View>
             </Animated.View>
 
-            {/* Training recommendation */}
+            {/* 30-day brain trend — RELATED: time-based with compare above */}
+            <View style={{ marginTop: RELATED }}>
+              <BrainTrend trend={trend} />
+            </View>
+
+            {/* Activity calendar — RELATED: stays with trend */}
+            <View style={{ marginTop: RELATED }}>
+              <ActivityCalendar />
+            </View>
+
+            {/* Training recommendation — DISTINCT: action pivot */}
             {recommendation && (
-              <Animated.View entering={FadeInDown.delay(450).duration(400)} style={[styles.recCard, { borderLeftColor: recommendation.color }]}>
-                <Text style={styles.recLabel}>TRAINING TIP</Text>
+              <Animated.View
+                entering={FadeInDown.delay(450).duration(400)}
+                style={[
+                  styles.recCard,
+                  accentGlow(recommendation.color, 14, 0.18),
+                  { marginTop: DISTINCT, borderLeftColor: recommendation.color, borderColor: `${recommendation.color}22` },
+                ]}
+              >
+                <Text style={[styles.eyebrow, { color: recommendation.color }]}>TRAINING TIP</Text>
                 <Text style={styles.recText}>
                   Focus on <Text style={{ color: recommendation.color, fontFamily: fonts.bodyBold }}>{recommendation.area}</Text> this week — it's {recommendation.gap} points behind your strongest area.
                 </Text>
-                <Pressable
-                  style={[styles.recBtn, { backgroundColor: `${recommendation.color}18` }]}
-                  onPress={() => router.push('/(tabs)/games' as any)}
+                <PressableScale
+                  style={[styles.recBtn, { backgroundColor: `${recommendation.color}18`, borderColor: `${recommendation.color}55` }]}
+                  onPress={handleBrowseGames}
                 >
                   <Text style={[styles.recBtnText, { color: recommendation.color }]}>Browse {recommendation.area} Games →</Text>
-                </Pressable>
+                </PressableScale>
               </Animated.View>
             )}
 
-            {/* Insight Cards */}
+            {/* Insight Cards — DISTINCT: patterns block */}
             {insights.length > 0 && (
-              <View style={styles.insightsSection}>
-                <Text style={styles.sectionTitle}>Your Patterns</Text>
+              <View style={[styles.insightsSection, { marginTop: DISTINCT }]}>
+                <Text style={styles.eyebrow}>YOUR PATTERNS</Text>
                 {insights.map((insight, i) => (
                   <InsightCard key={insight.id} insight={insight} index={i} />
                 ))}
               </View>
             )}
 
-            {/* Brain Journal timeline */}
-            <JournalTimeline />
+            {/* Brain Journal timeline — DISTINCT */}
+            <View style={{ marginTop: DISTINCT }}>
+              <JournalTimeline />
+            </View>
 
             {pastReportIds.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(520).duration(400)} style={styles.reportsSection}>
-                <Text style={styles.sectionTitle}>Past reports</Text>
+              <Animated.View
+                entering={FadeInDown.delay(520).duration(400)}
+                style={[styles.reportsSection, { marginTop: DISTINCT }]}
+              >
+                <Text style={[styles.eyebrow, { marginBottom: space.sm }]}>PAST REPORTS</Text>
                 {pastReportIds.slice(0, 6).map((wid) => (
-                  <Pressable
+                  <PressableScale
                     key={wid}
-                    style={styles.reportRow}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/weekly-report',
-                        params: { weekId: wid },
-                      } as unknown as Parameters<typeof router.push>[0])
-                    }
+                    style={[styles.reportRow, accentGlow(C.purple, 10, 0.12)]}
+                    onPress={() => handleOpenReport(wid)}
                   >
                     <Text style={styles.reportRowText}>{wid.replace('w-', 'Week starting ')}</Text>
                     <Text style={styles.reportRowArrow}>›</Text>
-                  </Pressable>
+                  </PressableScale>
                 ))}
               </Animated.View>
             )}
 
-            {/* Footer tip */}
-            <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.footerTip}>
+            {/* Footer tip — DISTINCT */}
+            <Animated.View
+              entering={FadeInDown.delay(600).duration(400)}
+              style={[styles.footerTip, { marginTop: DISTINCT }]}
+            >
               <Text style={styles.footerText}>
                 The more you train, the smarter these get. Kova's been taking notes.
               </Text>
@@ -289,7 +370,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 110,
-    gap: 24,
   },
   title: {
     ...t.pageTitle,
@@ -299,6 +379,15 @@ const styles = StyleSheet.create({
     ...t.microLabel,
     color: C.t3,
     marginTop: 6,
+  },
+
+  // Canonical eyebrow style — used across every section header
+  eyebrow: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 10,
+    color: C.t3,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
 
   // Weekly activity
@@ -343,7 +432,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: `${C.green}22`,
   },
   summaryText: {
     fontFamily: fonts.kova,
@@ -363,12 +452,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     gap: 10,
   },
-  recLabel: {
-    fontFamily: fonts.bodySemi,
-    fontSize: 10,
-    color: C.t3,
-    letterSpacing: 1.5,
-  },
   recText: {
     fontFamily: fonts.body,
     fontSize: 14,
@@ -380,6 +463,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
+    borderWidth: 1,
   },
   recBtnText: {
     fontFamily: fonts.bodySemi,
@@ -394,8 +478,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     borderWidth: 1,
-    borderColor: C.border,
-    marginTop: 20,
+    borderColor: `${C.green}22`,
   },
   emptyEmoji: { fontSize: 48 },
   emptyTitle: {
@@ -441,17 +524,11 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 14,
     borderWidth: 1,
-    borderColor: C.border,
   },
   areaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  areaTitle: {
-    fontFamily: fonts.headingMed,
-    color: C.t1,
-    fontSize: 17,
   },
   areaStrength: {
     flexDirection: 'row',
@@ -499,12 +576,7 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 16,
     borderWidth: 1,
-    borderColor: C.border,
-  },
-  compareTitle: {
-    fontFamily: fonts.headingMed,
-    color: C.t1,
-    fontSize: 17,
+    borderColor: `${C.green}22`,
   },
   compareRow: {
     flexDirection: 'row',
@@ -537,7 +609,6 @@ const styles = StyleSheet.create({
   },
   reportsSection: {
     gap: 8,
-    marginTop: 8,
   },
   reportRow: {
     flexDirection: 'row',
@@ -547,7 +618,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: C.border,
+    borderColor: `${C.purple}1A`,
   },
   reportRowText: {
     fontFamily: fonts.bodySemi,
@@ -558,12 +629,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     color: C.t3,
     fontSize: 18,
-  },
-  sectionTitle: {
-    ...t.sectionHeader,
-    color: C.t3,
-    marginBottom: space.xs + 2,
-    marginTop: space.xs,
   },
 
   // Footer

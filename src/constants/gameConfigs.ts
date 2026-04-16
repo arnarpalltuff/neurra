@@ -15,6 +15,16 @@ export type GameId =
 
 export type BrainArea = 'memory' | 'focus' | 'speed' | 'flexibility' | 'creativity';
 
+/** Which raw value to surface as a game's personal best. */
+export type PrimaryMetric = 'accuracy' | 'points' | 'duration';
+
+/** Short label shown under a personal-best number. */
+export const METRIC_LABEL: Record<PrimaryMetric, string> = {
+  accuracy: 'accuracy',
+  points: 'pts',
+  duration: 'seconds',
+};
+
 export interface GameConfig {
   id: GameId;
   name: string;
@@ -25,6 +35,8 @@ export interface GameConfig {
   maxLevel: number;
   realWorldFraming: string[];
   available: boolean;
+  /** How this game's best result is surfaced in PersonalBests. */
+  primaryMetric: PrimaryMetric;
 }
 
 export const gameConfigs: Record<GameId, GameConfig> = {
@@ -36,6 +48,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '🍳',
     color: '#E8A87C',
     maxLevel: 20,
+    primaryMetric: 'points',
     realWorldFraming: [
       "You just remembered a 5-item order under pressure. That's like remembering a whole coffee run for the office.",
       "Your working memory is sharper than most. You'd ace a coffee order for 6 people.",
@@ -51,6 +64,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '⭕',
     color: '#7CB8E8',
     maxLevel: 20,
+    primaryMetric: 'accuracy',
     realWorldFraming: [
       "You resisted 23 impulses in a row. That's the same self-control that helps you not check your phone during a meeting.",
       "Your inhibitory control is strong. You'd make a great surgeon. Or at least a great texter who waits for the right moment.",
@@ -66,6 +80,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '✨',
     color: '#7DD3A8',
     maxLevel: 20,
+    primaryMetric: 'points',
     realWorldFraming: [
       "You found 14 words in 60 seconds. Your verbal fluency would impress at any dinner party.",
       "Quick verbal thinking is a superpower. You've got it.",
@@ -81,6 +96,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '👤',
     color: '#A87CE8',
     maxLevel: 20,
+    primaryMetric: 'points',
     realWorldFraming: [
       "You remembered 6 names and faces. Next networking event? You've got this.",
     ],
@@ -94,6 +110,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '👁',
     color: '#4ECDC4',
     maxLevel: 20,
+    primaryMetric: 'accuracy',
     realWorldFraming: [
       "You caught 8 out of 10 subtle changes. Your eye for detail is getting sharper.",
     ],
@@ -107,6 +124,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '⚡',
     color: '#FBBF24',
     maxLevel: 20,
+    primaryMetric: 'points',
     realWorldFraming: [
       "You processed 12 decisions in 8 seconds. That's quick thinking.",
     ],
@@ -120,6 +138,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '🗺',
     color: '#7DD3A8',
     maxLevel: 20,
+    primaryMetric: 'points',
     realWorldFraming: [
       "You traced a 9-step path from memory. That's the same skill that helps you navigate a new city.",
     ],
@@ -133,6 +152,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '🎬',
     color: '#E87C8A',
     maxLevel: 20,
+    primaryMetric: 'points',
     realWorldFraming: [
       "You remembered 5 out of 5 details from a scene. You notice everything.",
     ],
@@ -146,6 +166,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '🔄',
     color: '#A87CE8',
     maxLevel: 20,
+    primaryMetric: 'accuracy',
     realWorldFraming: [
       "You adapted to 6 rule changes without missing a beat. Mental flexibility is rare.",
     ],
@@ -159,6 +180,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '🌊',
     color: '#7CB8E8',
     maxLevel: 1,
+    primaryMetric: 'duration',
     realWorldFraming: [
       "You held your focus for 48 seconds straight. Most people manage 8. Yours is getting stronger.",
     ],
@@ -172,6 +194,7 @@ export const gameConfigs: Record<GameId, GameConfig> = {
     icon: '🔀',
     color: '#E87C8A',
     maxLevel: 20,
+    primaryMetric: 'accuracy',
     realWorldFraming: [
       "You just juggled two tasks simultaneously. That's real-world multitasking at its finest.",
       "Divided attention is one of the hardest cognitive skills. You're getting better at it.",

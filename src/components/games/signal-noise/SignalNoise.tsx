@@ -21,6 +21,8 @@ import {
   playCorrect, playWrong, playComboHit, playRoundStart, playRoundEnd,
   playConfetti, playPerfect, playTap, playStreak,
 } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import { useEnergyStore, maxHeartsFor } from '../../../stores/energyStore';
 import { useProStore } from '../../../stores/proStore';
 
@@ -1147,6 +1149,7 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
   const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number }[]>([]);
   const sparkleIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('signal-noise');
   const { fireBgPulse, bgPulseStyle } = useBgPulse();
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1446,7 +1449,7 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
 
       playCorrect();
       if (streakRef.current >= 3) playComboHit();
-      burstCorrect({ x: tapX + 20, y: tapY + 180 });
+      neural.onCorrectAnswer(); burstCorrect({ x: tapX + 20, y: tapY + 180 });
     } else {
       setFeedback('wrong');
       if (streakRef.current >= 3) streakBrokenRef.current = true;
@@ -1467,7 +1470,7 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
         withTiming(0, { duration: 500, easing: Easing.out(Easing.cubic) }),
       );
       playWrong();
-      burstWrong({ x: tapX + 20, y: tapY + 180 });
+      neural.onWrongAnswer(); burstWrong({ x: tapX + 20, y: tapY + 180 });
       setWrongTap({ tapX, tapY, targetX: pos.x, targetY: pos.y });
       setIsRecovery(false);
       setResultHistory(prev => [...prev.slice(-11), 'wrong']);
@@ -1569,6 +1572,8 @@ export default function SignalNoise({ onComplete, initialLevel = 1 }: SignalNois
       <FloatingParticles count={8} color="rgba(107,168,224,0.3)" />
       <FloatingParticles count={5} color="rgba(92,170,201,0.2)" />
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* Hearts bar */}
       <View style={styles.heartsRow}>

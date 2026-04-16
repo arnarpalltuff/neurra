@@ -13,6 +13,8 @@ import { updateDifficulty, getDifficulty, rewindParams as rewindParamsEngine } f
 import { shuffle, pickRandom } from '../../../utils/arrayUtils';
 import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import GameIntro from '../shared/GameIntro';
 
 const { width: W } = Dimensions.get('window');
@@ -214,6 +216,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const floatIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('rewind');
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const scorePulse = useSharedValue(1);
@@ -285,7 +288,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
       safeTimeout(() => {
         setFloatScores(prev => prev.filter(f => f.id !== fid));
       }, 1200);
-      playCorrect(); burstCorrect({ x: W / 2, y: 350 });
+      playCorrect(); neural.onCorrectAnswer(); burstCorrect({ x: W / 2, y: 350 });
     } else {
       updateDifficulty('rewind', false);
       hapticError();
@@ -296,7 +299,7 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
         withTiming(3, { duration: 50 }),
         withTiming(0, { duration: 50 }),
       );
-      playWrong(); burstWrong({ x: W / 2, y: 350 });
+      playWrong(); neural.onWrongAnswer(); burstWrong({ x: W / 2, y: 350 });
     }
 
     setLastCorrect(isCorrect);
@@ -339,6 +342,8 @@ export default function Rewind({ onComplete, initialLevel = 1 }: RewindProps) {
       <FloatingParticles count={6} color="rgba(126,200,232,0.3)" />
 
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* Header */}
       <View style={styles.header}>

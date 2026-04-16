@@ -1,8 +1,14 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import Animated, {
-  FadeInDown, FadeIn, useSharedValue, useAnimatedStyle,
-  withRepeat, withSequence, withTiming, withSpring, withDelay,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
   Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,34 +17,70 @@ import { fonts } from '../../constants/typography';
 import Kova from '../../components/kova/Kova';
 import Button from '../../components/ui/Button';
 import FloatingParticles from '../../components/ui/FloatingParticles';
-
-const { width } = Dimensions.get('window');
+import { tapLight } from '../../utils/haptics';
+import { useTypewriter } from '../../hooks/useTypewriter';
 
 interface IntroProps {
   onNext: () => void;
 }
 
+const GREETING = "Hey there. I'm Kova.\nI've been waiting to meet you.";
+
 export default function Intro({ onNext }: IntroProps) {
+  const kovaScale = useSharedValue(0.5);
+  const kovaOpacity = useSharedValue(0);
   const kovaGlow = useSharedValue(0);
-  const bubbleScale = useSharedValue(0.9);
+  const kovaWiggle = useSharedValue(1);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Soft haptic every 4th character — felt but not annoying.
+  const handleTick = useCallback((charCount: number) => {
+    if (charCount % 4 === 0) tapLight();
+  }, []);
+  const speech = useTypewriter(GREETING, { startDelayMs: 900, charMs: 42, onTick: handleTick });
 
   useEffect(() => {
-    kovaGlow.value = withDelay(300, withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.4, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-      ), -1, true,
-    ));
-    bubbleScale.value = withDelay(400, withSpring(1, { damping: 10, stiffness: 120 }));
-  }, []);
+    // Kova materializes from the light left behind by Awakening.
+    kovaOpacity.value = withTiming(1, { duration: 700, easing: Easing.out(Easing.cubic) });
+    kovaScale.value = withSpring(1, { damping: 12, stiffness: 80 });
 
+    // Ambient breathing glow around Kova.
+    kovaGlow.value = withDelay(
+      600,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0.4, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1,
+        true,
+      ),
+    );
+  }, [kovaOpacity, kovaScale, kovaGlow]);
+
+  const kovaStyle = useAnimatedStyle(() => ({
+    opacity: kovaOpacity.value,
+    transform: [{ scale: kovaScale.value * kovaWiggle.value }],
+  }));
   const glowStyle = useAnimatedStyle(() => ({
     opacity: kovaGlow.value * 0.6,
     transform: [{ scale: 1 + kovaGlow.value * 0.08 }],
   }));
-  const bubbleStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: bubbleScale.value }],
-  }));
+
+  useEffect(() => {
+    return () => {
+      if (navTimerRef.current) clearTimeout(navTimerRef.current);
+    };
+  }, []);
+
+  const handlePress = () => {
+    // Excited Kova reaction before navigating — makes the transition feel alive.
+    kovaWiggle.value = withSequence(
+      withSpring(1.12, { damping: 10, stiffness: 220 }),
+      withSpring(1, { damping: 12, stiffness: 180 }),
+    );
+    navTimerRef.current = setTimeout(onNext, 260);
+  };
 
   return (
     <View style={styles.container}>
@@ -46,11 +88,10 @@ export default function Intro({ onNext }: IntroProps) {
         colors={[C.bg1, '#0A0E1A', C.bg1]}
         style={StyleSheet.absoluteFillObject}
       />
-      <FloatingParticles count={8} color="rgba(110,207,154,0.15)" />
-      <FloatingParticles count={5} color="rgba(155,114,224,0.12)" />
+      <FloatingParticles count={6} color="rgba(110,207,154,0.18)" />
+      <FloatingParticles count={3} color="rgba(224,155,107,0.14)" />
 
-      {/* Kova with ambient glow */}
-      <Animated.View entering={FadeIn.delay(200).duration(600)} style={styles.kovaArea}>
+      <Animated.View style={[styles.kovaArea, kovaStyle]}>
         <Animated.View style={[styles.kovaGlow, glowStyle]} />
         <Kova
           stage={1}
@@ -60,54 +101,32 @@ export default function Intro({ onNext }: IntroProps) {
         />
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(400).duration(500).springify().damping(14)} style={styles.content}>
-        <Animated.View style={[styles.bubble, bubbleStyle]}>
+      <Animated.View
+        entering={FadeInDown.delay(700).duration(500).springify().damping(14)}
+        style={styles.content}
+      >
+        <View style={styles.bubble}>
           <LinearGradient
             colors={['rgba(19,24,41,0.92)', 'rgba(12,15,26,0.95)']}
             style={[StyleSheet.absoluteFillObject, { borderRadius: 22 }]}
           />
+          {/* Fixed-height container so the button doesn't jump as chars reveal. */}
           <Text style={styles.bubbleText}>
-            Hi. I'm Kova.{'\n'}I'm small now... but I grow when you do.
+            {speech || ' '}
           </Text>
-        </Animated.View>
+        </View>
         <Text style={styles.description}>
-          Kova is your brain training companion.{'\n'}
-          The more you train, the more Kova evolves.
+          Let's see what your brain can do.
         </Text>
       </Animated.View>
 
-      <Animated.View entering={FadeInDown.delay(600).duration(500).springify().damping(16)} style={styles.stepsPreview}>
-        <LinearGradient
-          colors={['rgba(19,24,41,0.92)', 'rgba(12,15,26,0.95)']}
-          style={[StyleSheet.absoluteFillObject, { borderRadius: 20 }]}
-        />
-        <LinearGradient
-          colors={['rgba(110,207,154,0.06)', 'transparent']}
-          style={styles.stepsTopGlow}
-        />
-        <Text style={styles.stepsTitle}>Here's what's next (~2 min)</Text>
-        {[
-          { icon: '🧠', label: 'Quick brain assessment', color: C.blue },
-          { icon: '📊', label: 'Your brain profile', color: C.purple },
-          { icon: '✨', label: 'Personalize your experience', color: C.amber },
-        ].map((item, i) => (
-          <Animated.View
-            key={i}
-            entering={FadeInDown.delay(700 + i * 100).duration(400)}
-            style={styles.stepRow}
-          >
-            <View style={[styles.stepIconWrap, { shadowColor: item.color }]}>
-              <Text style={styles.stepIcon}>{item.icon}</Text>
-            </View>
-            <Text style={styles.stepText}>{item.label}</Text>
-          </Animated.View>
-        ))}
-      </Animated.View>
-
-      <Animated.View entering={FadeInDown.delay(900).duration(400)} style={styles.btnArea}>
+      <Animated.View
+        entering={FadeInDown.delay(2400).duration(500)}
+        style={styles.btnArea}
+      >
         <Button
-          label="Nice to meet you, Kova"
-          onPress={onNext}
+          label="Let's go"
+          onPress={handlePress}
           size="lg"
           style={styles.btn}
         />
@@ -122,42 +141,48 @@ const styles = StyleSheet.create({
     backgroundColor: C.bg1,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 70,
+    paddingVertical: 90,
     paddingHorizontal: 28,
   },
   kovaArea: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 20,
   },
   kovaGlow: {
     position: 'absolute',
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(110,207,154,0.12)',
-    shadowColor: '#6ECF9A',
+    backgroundColor: 'rgba(110,207,154,0.14)',
+    shadowColor: C.green,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 40,
-    elevation: 8,
+    shadowOpacity: 0.45,
+    shadowRadius: 50,
+    elevation: 10,
   },
   content: {
     alignItems: 'center',
-    gap: 18,
+    gap: 14,
+    width: '100%',
   },
   bubble: {
     borderRadius: 22,
     paddingHorizontal: 24,
     paddingVertical: 18,
     borderWidth: 1,
-    borderColor: 'rgba(110,207,154,0.2)',
+    borderColor: 'rgba(110,207,154,0.22)',
     overflow: 'hidden',
-    shadowColor: '#6ECF9A',
+    shadowColor: C.green,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
     elevation: 6,
+    minHeight: 90,
+    minWidth: '85%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bubbleText: {
     fontFamily: fonts.kova,
@@ -169,72 +194,19 @@ const styles = StyleSheet.create({
   description: {
     fontFamily: fonts.body,
     color: C.t2,
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  stepsPreview: {
-    borderRadius: 20,
-    padding: 20,
-    gap: 14,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    overflow: 'hidden',
-    shadowColor: '#9B72E0',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 14,
-    elevation: 4,
-  },
-  stepsTopGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-  },
-  stepsTitle: {
-    fontFamily: fonts.bodySemi,
-    color: C.t3,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 2,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  stepIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  stepIcon: { fontSize: 18 },
-  stepText: {
-    fontFamily: fonts.bodySemi,
-    color: C.t2,
     fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   btnArea: {
     width: '100%',
-    marginTop: 28,
   },
   btn: {
     width: '100%',
-    shadowColor: '#6ECF9A',
+    shadowColor: C.green,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 10,
   },
 });

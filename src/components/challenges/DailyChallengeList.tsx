@@ -7,6 +7,7 @@ import { useDailyChallengeStore } from '../../stores/dailyChallengeStore';
 import { useKovaStore } from '../../stores/kovaStore';
 import DailyChallengeCard from './DailyChallengeCard';
 import ExpirationTimer from './ExpirationTimer';
+import RealLifeSlotCard from './RealLifeSlotCard';
 
 interface DailyChallengeListProps {
   onPlayChallenge: (challengeId: string, gameType: string) => void;
@@ -74,6 +75,9 @@ export default function DailyChallengeList({ onPlayChallenge }: DailyChallengeLi
             onPlay={handlePlay}
           />
         ))}
+
+        {/* Real-life slot — one rotating real-world challenge per day. */}
+        <RealLifeSlotCard index={challenges.length + bonusChallenges.length} />
       </View>
     </Animated.View>
   );

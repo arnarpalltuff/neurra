@@ -1,20 +1,37 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ScrollView } from 'react-native';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withSpring,
+  useSharedValue, useAnimatedStyle, useAnimatedScrollHandler,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Ellipse, Circle, Rect, Path, G, Defs, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Ellipse, Path, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { C } from '../../constants/colors';
 import { GROVE_PALETTES, getTimeOfDaySky } from '../../constants/groveThemes';
 import { useShallow } from 'zustand/react/shallow';
-import { useGroveStore, ZONE_CONFIGS, ZoneConfig, VisitorId } from '../../stores/groveStore';
+import { useGroveStore, ZONE_CONFIGS, ZoneConfig, VisitorId, type ZoneGrowth } from '../../stores/groveStore';
 import { useProgressStore } from '../../stores/progressStore';
 import { stageFromXP } from '../kova/KovaStates';
 import GrowthZone from './GrowthZone';
 import Kova from '../kova/Kova';
 import { BrainArea, AREA_ACCENT, AREA_LABELS } from '../../constants/gameConfigs';
 import { fonts } from '../../constants/typography';
+import ZoneGlow, { type ZoneHealth } from './ZoneGlow';
+import AnimatedVisitor from './AnimatedVisitor';
+import GroveAtmosphere from './GroveAtmosphere';
+import GiftFlowerSparkle from './GiftFlowerSparkle';
+import GroveDecoration from './GroveDecoration';
+
+const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView);
+
+function zoneHealth(growth: ZoneGrowth): ZoneHealth {
+  if (growth.isWilting) return 'wilting';
+  if (!growth.lastTrainedDate) return 'healthy';
+  const days = Math.floor(
+    (Date.now() - new Date(growth.lastTrainedDate).getTime()) / 86400000,
+  );
+  if (days <= 3) return 'thriving';
+  return 'healthy';
+}
 
 const { width: W, height: H } = Dimensions.get('window');
 const ISLAND_W = W * 2.2;
@@ -35,46 +52,6 @@ const ZONE_POSITIONS: Record<BrainArea, { x: number; y: number }> = {
   creativity: { x: 0.8, y: 0.62 },    // SE — mushrooms
 };
 
-function VisitorSprite({ id, x, y }: { id: VisitorId; x: number; y: number }) {
-  const emojis: Record<VisitorId, string> = {
-    fireflies: '✨', butterfly: '🦋', bird: '🐦', fox: '🦊', koi: '🐟',
-    owl: '🦉', deer: '🦌', dragonfly: '🪰', rabbits: '🐰', phoenix: '🔥',
-  };
-  return (
-    <View style={[styles.visitor, { left: x, top: y }]}>
-      <Text style={styles.visitorEmoji}>{emojis[id] || '✨'}</Text>
-    </View>
-  );
-}
-
-function ParticleLayer({ palette }: { palette: typeof GROVE_PALETTES['floating-isle'] }) {
-  // Static decorative particles (fireflies/ambient)
-  const particles = useMemo(() =>
-    Array.from({ length: 10 }).map((_, i) => ({
-      x: 50 + Math.random() * (ISLAND_W - 100),
-      y: 80 + Math.random() * (ISLAND_H - 200),
-      r: 1 + Math.random() * 2,
-      opacity: 0.2 + Math.random() * 0.4,
-    })),
-  []);
-
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {particles.map((p, i) => (
-        <View
-          key={i}
-          style={[styles.particle, {
-            left: p.x, top: p.y,
-            width: p.r * 2, height: p.r * 2,
-            borderRadius: p.r,
-            backgroundColor: palette.particleColor,
-            opacity: p.opacity,
-          }]}
-        />
-      ))}
-    </View>
-  );
-}
 
 export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) {
   const { activeTheme, zoneGrowths, placedDecorations, unlockedVisitors, giftFlowers } = useGroveStore(
@@ -96,6 +73,23 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
   const skyBottom = activeTheme === 'floating-isle' ? timeSky.bottom : palette.skyBottom;
 
   const scrollRef = useRef<ScrollView>(null);
+  const scrollX = useSharedValue(0);
+
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      scrollX.value = e.contentOffset.x;
+    },
+  });
+
+  // Atmosphere layer scrolls at 0.3x — parallax depth without pulling focus.
+  const atmosphereStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: scrollX.value * 0.7 }],
+  }));
+
+  // Visitor layer scrolls at 0.7x — subtle depth separation.
+  const visitorLayerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: scrollX.value * 0.3 }],
+  }));
 
   // Visitor positions (fixed based on zone positions)
   const visitorPositions = useMemo(() => {
@@ -124,8 +118,8 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
   }, [unlockedVisitors]);
 
   return (
-    <ScrollView
-      ref={scrollRef}
+    <AnimatedScrollView
+      ref={scrollRef as any}
       horizontal
       contentContainerStyle={{ width: ISLAND_W, height: ISLAND_H }}
       showsHorizontalScrollIndicator={false}
@@ -136,6 +130,8 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
       minimumZoomScale={0.5}
       contentOffset={{ x: (ISLAND_W - W) / 2, y: (ISLAND_H - H) / 4 }}
       decelerationRate="fast"
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       style={{ backgroundColor: skyBottom }}
     >
       {/* Layer 0: Sky gradient */}
@@ -143,6 +139,14 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
         colors={[skyTop, skyBottom]}
         style={[StyleSheet.absoluteFill, { width: ISLAND_W, height: ISLAND_H }]}
       />
+
+      {/* Layer 0.5: Atmospheric radial glow + noise. Scrolls slower = depth. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[{ position: 'absolute', width: ISLAND_W, height: ISLAND_H }, atmosphereStyle]}
+      >
+        <GroveAtmosphere width={ISLAND_W} height={ISLAND_H} />
+      </Animated.View>
 
       {/* Layer 1: Stars/clouds (night = stars, day = clouds) */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -203,13 +207,19 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
             activeOpacity={0.8}
             accessibilityLabel={`${zone.name} — ${zone.area} zone — ${growthPct}% growth`}
           >
-            <GrowthZone
-              zone={zone}
-              growth={zoneGrowth.currentGrowth}
-              isWilting={zoneGrowth.isWilting}
-              palette={palette}
+            <ZoneGlow
+              accent={areaColor}
+              health={zoneHealth(zoneGrowth)}
               size={ZONE_SIZE}
-            />
+            >
+              <GrowthZone
+                zone={zone}
+                growth={zoneGrowth.currentGrowth}
+                isWilting={zoneGrowth.isWilting}
+                palette={palette}
+                size={ZONE_SIZE}
+              />
+            </ZoneGlow>
 
             {/* Zone label: name + growth % */}
             <View style={styles.zoneLabel} pointerEvents="none">
@@ -248,38 +258,32 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
         </TouchableOpacity>
       </View>
 
-      {/* Placed decorations */}
+      {/* Placed decorations — category-tinted glow + lighting flicker. */}
       {placedDecorations.map((dec, i) => (
-        <View key={`dec-${i}`} style={[styles.decorationItem, { left: dec.x, top: dec.y }]}>
-          <Text style={styles.decorationEmoji}>
-            {/* Look up emoji from DECORATION_DEFS — inline for perf */}
-            {dec.defId === 'paper-lantern' ? '🏮' :
-             dec.defId === 'fairy-lights' ? '✨' :
-             dec.defId === 'flower-pot-rose' ? '🌹' :
-             dec.defId === 'wooden-bench' ? '🪑' :
-             dec.defId === 'fountain' ? '⛲' :
-             dec.defId === 'telescope' ? '🔭' :
-             '🌿'}
-          </Text>
-        </View>
+        <GroveDecoration key={`dec-${i}-${dec.defId}`} placement={dec} index={i} />
       ))}
 
-      {/* Gift flowers */}
+      {/* Gift flowers — sparkle overlay + entrance spring on fresh gifts. */}
       {giftFlowers.map((gift, i) => (
-        <View key={`gift-${i}`} style={[styles.giftFlower, { left: gift.x, top: gift.y }]}>
-          <Text style={styles.giftEmoji}>🌸</Text>
-          <Text style={styles.giftLabel}>From {gift.fromName}</Text>
-        </View>
+        <GiftFlowerSparkle
+          key={`gift-${i}-${gift.placedAt}`}
+          fromName={gift.fromName}
+          x={gift.x}
+          y={gift.y}
+          placedAt={gift.placedAt}
+        />
       ))}
 
-      {/* Visitors */}
-      {visitorPositions.map((v, i) => (
-        <VisitorSprite key={`v-${i}`} id={v.id} x={v.x} y={v.y} />
-      ))}
-
-      {/* Layer 6: Particles */}
-      <ParticleLayer palette={palette} />
-    </ScrollView>
+      {/* Visitors — parallax'd slightly so they feel separate from foreground. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[{ position: 'absolute', width: ISLAND_W, height: ISLAND_H }, visitorLayerStyle]}
+      >
+        {visitorPositions.map((v, i) => (
+          <AnimatedVisitor key={`v-${i}-${v.id}`} id={v.id} x={v.x} y={v.y} />
+        ))}
+      </Animated.View>
+    </AnimatedScrollView>
   );
 }
 
@@ -376,39 +380,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  decorationItem: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  decorationEmoji: { fontSize: 24 },
-  giftFlower: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  giftEmoji: { fontSize: 18 },
-  giftLabel: {
-    color: C.t3,
-    fontSize: 8,
-    fontWeight: '600',
-    backgroundColor: C.bg4 + 'CC',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginTop: 1,
-  },
-  visitor: {
-    position: 'absolute',
-  },
-  visitorEmoji: { fontSize: 18 },
   star: {
     position: 'absolute',
     width: 2,
     height: 2,
     borderRadius: 1,
     backgroundColor: '#FFF',
-  },
-  particle: {
-    position: 'absolute',
   },
 });

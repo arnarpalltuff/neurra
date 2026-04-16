@@ -1,5 +1,17 @@
-import { BrainArea, GameId, gameConfigs, AREA_LABELS } from '../constants/gameConfigs';
+import {
+  BrainArea,
+  GameId,
+  gameConfigs,
+  AREA_LABELS,
+  AREA_ACCENT,
+  METRIC_LABEL,
+  type GameConfig,
+  type PrimaryMetric,
+} from '../constants/gameConfigs';
 import type { SessionRecord, BrainScores, GameResult } from '../stores/progressStore';
+import type { BrainSnapshot } from '../stores/brainHistoryStore';
+import type { DailyChallenge } from '../stores/dailyChallengeStore';
+import { localDateStr } from './timeUtils';
 
 // ── Types ─────────────────────────────────────────────
 
@@ -43,8 +55,6 @@ interface InsightInput {
   streak: number;
   longestStreak: number;
   totalSessions: number;
-  xp: number;
-  level: number;
   mood: string | null;
   moodHistory: Array<{ date: string; mood: string }>;
 }
@@ -466,7 +476,7 @@ function detectGameDiscoveries(input: InsightInput): Insight[] {
 
 function detectMilestones(input: InsightInput): Insight[] {
   const results: Insight[] = [];
-  const { totalSessions, xp, brainScores, level } = input;
+  const { totalSessions, brainScores } = input;
 
   const sessionMilestones = [10, 25, 50, 100, 250, 500, 1000];
   for (const m of sessionMilestones) {
@@ -597,4 +607,375 @@ function avgAccuracy(sessions: SessionRecord[]): number {
     }
   }
   return count > 0 ? total / count : 0;
+}
+
+// ─── v2 additions ─────────────────────────────────────────
+
+export interface PersonalBest {
+  gameId: GameId;
+  gameName: string;
+  brainArea: BrainArea;
+  accent: string;
+  bestValue: number;
+  metric: PrimaryMetric;
+  metricLabel: string;
+  date: string;
+  isRecent: boolean;
+}
+
+/**
+ * Highest result per game, sorted by most recent first. `bestValue` follows
+ * the game's declared `primaryMetric`: accuracy (0–100 %), points (raw score),
+ * or duration (raw score, assumed to be seconds held).
+ */
+export function getPersonalBests(
+  gameHistory: Partial<Record<GameId, GameResult[]>>,
+  configs: Record<GameId, GameConfig> = gameConfigs,
+): PersonalBest[] {
+  const nowMs = Date.now();
+  const recentCutoff = nowMs - 7 * 86400000;
+  const out: PersonalBest[] = [];
+
+  for (const [id, results] of Object.entries(gameHistory) as Array<
+    [GameId, GameResult[] | undefined]
+  >) {
+    if (!results || results.length === 0) continue;
+    const config = configs[id];
+    if (!config) continue;
+
+    const metric = config.primaryMetric;
+    const pick = (r: GameResult): number =>
+      metric === 'accuracy' ? r.accuracy * 100 : r.score;
+
+    let best = results[0];
+    for (const r of results) {
+      if (pick(r) > pick(best)) best = r;
+    }
+
+    const bestMs = new Date(best.date).getTime();
+    out.push({
+      gameId: id,
+      gameName: config.name,
+      brainArea: config.brainArea,
+      accent: AREA_ACCENT[config.brainArea],
+      bestValue: pick(best),
+      metric,
+      metricLabel: METRIC_LABEL[metric],
+      date: best.date,
+      isRecent: bestMs >= recentCutoff,
+    });
+  }
+
+  out.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
+  return out;
+}
+
+export interface BrainTrendPoint {
+  day: number;
+  date: string;
+  avg: number;
+}
+
+export interface AreaTrendDelta {
+  area: BrainArea;
+  label: string;
+  accent: string;
+  start: number;
+  end: number;
+  delta: number;
+}
+
+export interface BrainTrendResult {
+  dataPoints: BrainTrendPoint[];
+  perArea: AreaTrendDelta[];
+  overallDelta: number;
+  trendDirection: 'up' | 'flat' | 'down';
+  hasEnoughData: boolean;
+}
+
+const AREA_ORDER: BrainArea[] = [
+  'memory', 'focus', 'speed', 'flexibility', 'creativity',
+];
+
+/**
+ * Daily average brain score over the last `days` days. Gaps are dropped
+ * (not interpolated) so the chart reveals missing days honestly.
+ */
+export function getBrainTrend(
+  snapshots: BrainSnapshot[],
+  days = 30,
+): BrainTrendResult {
+  const cutoff = Date.now() - days * 86400000;
+  const inRange = snapshots.filter(
+    s => new Date(s.date).getTime() >= cutoff,
+  );
+  inRange.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+  const dataPoints: BrainTrendPoint[] = inRange.map((s, i) => {
+    const avg =
+      AREA_ORDER.reduce((sum, a) => sum + (s.scores?.[a] ?? 0), 0) / AREA_ORDER.length;
+    return { day: i + 1, date: s.date, avg };
+  });
+
+  const hasEnoughData = dataPoints.length >= 7;
+
+  const perArea: AreaTrendDelta[] = AREA_ORDER.map(a => {
+    const start = inRange[0]?.scores?.[a] ?? 0;
+    const end = inRange[inRange.length - 1]?.scores?.[a] ?? 0;
+    return {
+      area: a,
+      label: AREA_LABELS[a],
+      accent: AREA_ACCENT[a],
+      start,
+      end,
+      delta: Math.round(end - start),
+    };
+  });
+
+  const first = dataPoints[0]?.avg ?? 0;
+  const last = dataPoints[dataPoints.length - 1]?.avg ?? 0;
+  const overallDelta = Math.round(last - first);
+
+  const trendDirection: 'up' | 'flat' | 'down' =
+    overallDelta >= 3 ? 'up' : overallDelta <= -3 ? 'down' : 'flat';
+
+  return { dataPoints, perArea, overallDelta, trendDirection, hasEnoughData };
+}
+
+export type ActivityLevel = 0 | 1 | 2 | 3;
+
+export interface ActivityCell {
+  date: string;
+  dayOfWeek: number;
+  level: ActivityLevel;
+  sessionCount: number;
+  challengeCount: number;
+}
+
+export interface ActivityCalendarResult {
+  /** 7 rows × `weeks` columns, row 0 = Sunday. */
+  grid: ActivityCell[][];
+  totalActive: number;
+  totalDays: number;
+  percentage: number;
+  hasEnoughData: boolean;
+}
+
+/**
+ * GitHub-style activity grid for the last `weeks * 7` days, grouped by
+ * day-of-week (row) × week (column, oldest first).
+ */
+export function getActivityCalendar(
+  sessions: SessionRecord[],
+  challenges: DailyChallenge[],
+  weeks = 8,
+): ActivityCalendarResult {
+  const totalDays = weeks * 7;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sessionsByDate = new Map<string, number>();
+  for (const s of sessions) {
+    const key = localDateStr(new Date(s.date));
+    sessionsByDate.set(key, (sessionsByDate.get(key) ?? 0) + 1);
+  }
+
+  const challengesByDate = new Map<string, number>();
+  for (const c of challenges) {
+    if (c.status !== 'completed' || !c.completedAt) continue;
+    const key = localDateStr(new Date(c.completedAt));
+    challengesByDate.set(key, (challengesByDate.get(key) ?? 0) + 1);
+  }
+
+  const rows: ActivityCell[][] = Array.from({ length: 7 }, () => []);
+
+  // Oldest day first so the grid reads left-to-right.
+  const start = new Date(today);
+  start.setDate(today.getDate() - (totalDays - 1));
+
+  let totalActive = 0;
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const key = localDateStr(d);
+    const sessionCount = sessionsByDate.get(key) ?? 0;
+    const challengeCount = challengesByDate.get(key) ?? 0;
+    const activity = sessionCount + challengeCount;
+
+    let level: ActivityLevel = 0;
+    if (activity >= 3 || (sessionCount >= 1 && challengeCount >= 3)) level = 3;
+    else if (activity >= 2) level = 2;
+    else if (activity >= 1) level = 1;
+
+    if (level > 0) totalActive += 1;
+    rows[d.getDay()].push({
+      date: key,
+      dayOfWeek: d.getDay(),
+      level,
+      sessionCount,
+      challengeCount,
+    });
+  }
+
+  const percentage = Math.round((totalActive / totalDays) * 100);
+
+  return {
+    grid: rows,
+    totalActive,
+    totalDays,
+    percentage,
+    hasEnoughData: sessions.length > 0 && totalDays >= 14,
+  };
+}
+
+export interface KovaInsightResult {
+  text: string;
+  basedOn: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+interface KovaInsightInput {
+  brainScores: BrainScores;
+  sessions: SessionRecord[];
+  streak: number;
+  gameHistory: Partial<Record<GameId, GameResult[]>>;
+  trend: BrainTrendResult;
+}
+
+const TIME_BUCKET_LABEL: Record<number, string> = {
+  0: 'late nights',
+  1: 'mornings',
+  2: 'middays',
+  3: 'evenings',
+};
+
+function bucketForHour(h: number): 0 | 1 | 2 | 3 {
+  if (h >= 5 && h < 11) return 1;
+  if (h >= 11 && h < 17) return 2;
+  if (h >= 17 && h < 22) return 3;
+  return 0;
+}
+
+/**
+ * Surfaces the single smartest thing we can say about this user right now.
+ * Picks the first applicable pattern in priority order.
+ */
+export function getKovaInsight(input: KovaInsightInput): KovaInsightResult {
+  const { brainScores, sessions, streak, gameHistory, trend } = input;
+  const sessionCount = sessions.length;
+  const basedOn = `Based on your last ${Math.min(sessionCount, 30)} ${
+    sessionCount === 1 ? 'session' : 'sessions'
+  }`;
+
+  if (sessionCount < 5) {
+    return {
+      text: "I need about a week of training data before I can spot real patterns. Keep going.",
+      basedOn: `Based on ${sessionCount} ${sessionCount === 1 ? 'session' : 'sessions'} so far`,
+      confidence: 'low',
+    };
+  }
+
+  // 1. Time-of-day pattern
+  const bucketAcc: Record<number, { total: number; count: number }> = {
+    0: { total: 0, count: 0 },
+    1: { total: 0, count: 0 },
+    2: { total: 0, count: 0 },
+    3: { total: 0, count: 0 },
+  };
+  for (const s of sessions) {
+    const bucket = bucketForHour(new Date(s.date).getHours());
+    const acc = s.games.reduce((a, g) => a + g.accuracy, 0) /
+      Math.max(s.games.length, 1);
+    bucketAcc[bucket].total += acc;
+    bucketAcc[bucket].count += 1;
+  }
+  const bucketAvgs = Object.entries(bucketAcc)
+    .filter(([, v]) => v.count >= 3)
+    .map(([k, v]) => ({ bucket: Number(k), avg: v.total / v.count }))
+    .sort((a, b) => b.avg - a.avg);
+
+  if (bucketAvgs.length >= 2) {
+    const best = bucketAvgs[0];
+    const worst = bucketAvgs[bucketAvgs.length - 1];
+    const diff = Math.round((best.avg - worst.avg) * 100);
+    if (diff >= 7) {
+      return {
+        text: `Your scores spike on ${TIME_BUCKET_LABEL[best.bucket]}. Try scheduling sessions then — your brain's a ${TIME_BUCKET_LABEL[best.bucket].replace(/s$/, '')} person.`,
+        basedOn,
+        confidence: 'high',
+      };
+    }
+  }
+
+  // 2. Area acceleration
+  const fastest = [...trend.perArea].sort((a, b) => b.delta - a.delta)[0];
+  if (fastest && fastest.delta >= 8) {
+    return {
+      text: `Your ${fastest.label} is on fire — up ${fastest.delta} points in the last 30 days. Fastest-growing skill.`,
+      basedOn,
+      confidence: 'high',
+    };
+  }
+
+  // 3. Weakness opportunity
+  const areas = Object.entries(brainScores) as Array<[BrainArea, number]>;
+  const sorted = [...areas].sort((a, b) => a[1] - b[1]);
+  const weakest = sorted[0];
+  const strongest = sorted[sorted.length - 1];
+  const gap = strongest[1] - weakest[1];
+  if (gap >= 15) {
+    const recommendedGame = Object.values(gameConfigs).find(
+      g => g.brainArea === weakest[0] && g.available,
+    );
+    const gameHint = recommendedGame ? ` A few ${recommendedGame.name} sessions could close the gap.` : '';
+    return {
+      text: `${AREA_LABELS[weakest[0]]} is lagging behind your ${AREA_LABELS[strongest[0]].toLowerCase()}.${gameHint}`,
+      basedOn,
+      confidence: 'high',
+    };
+  }
+
+  // 4. Consistency insight
+  if (streak >= 14) {
+    return {
+      text: `You've trained ${streak} days straight. That consistency is why your scores keep climbing.`,
+      basedOn,
+      confidence: 'high',
+    };
+  }
+
+  // 5. Specialization
+  const totalPlays = Object.values(gameHistory).reduce(
+    (a, r) => a + (r?.length ?? 0), 0,
+  );
+  if (totalPlays >= 10) {
+    const top = (Object.entries(gameHistory) as Array<[GameId, GameResult[] | undefined]>)
+      .map(([id, r]) => ({ id, count: r?.length ?? 0 }))
+      .sort((a, b) => b.count - a.count)[0];
+    if (top && top.count / totalPlays > 0.5) {
+      const name = gameConfigs[top.id]?.name ?? top.id;
+      return {
+        text: `You're leaning heavily on ${name} — over half your plays. Try mixing in a second game this week for broader gains.`,
+        basedOn,
+        confidence: 'medium',
+      };
+    }
+  }
+
+  // 6. Fallback: steady trend
+  if (trend.trendDirection === 'up') {
+    return {
+      text: `Your overall brain score is trending up. Whatever rhythm you've found, it's working.`,
+      basedOn,
+      confidence: 'medium',
+    };
+  }
+
+  return {
+    text: `You're keeping a steady rhythm. Not every week needs a breakthrough — showing up is the work.`,
+    basedOn,
+    confidence: 'low',
+  };
 }

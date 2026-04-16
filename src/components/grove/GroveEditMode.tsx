@@ -3,11 +3,11 @@ import {
   View, Text, StyleSheet, Pressable, Dimensions, Alert,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { tapLight, tapMedium, success as hapticSuccess } from '../../utils/haptics';
+import { tapLight, tapMedium, warning as hapticWarning, success as hapticSuccess } from '../../utils/haptics';
 import { C } from '../../constants/colors';
 import {
   useGroveStore,
-  DECORATION_DEFS,
+  decorationById,
   PlacedDecoration,
 } from '../../stores/groveStore';
 import { useCoinStore } from '../../stores/coinStore';
@@ -72,17 +72,18 @@ export default function GroveEditMode({
 
   const handleStore = useCallback(() => {
     if (selectedIdx === null) return;
+    tapMedium();
     storeDecoration(selectedIdx);
     setSelectedIdx(null);
-    tapLight();
   }, [selectedIdx, storeDecoration]);
 
   const handleSell = useCallback(() => {
     if (selectedIdx === null) return;
     const item = placedDecorations[selectedIdx];
     if (!item) return;
-    const def = DECORATION_DEFS.find((d) => d.id === item.defId);
+    const def = decorationById(item.defId);
     const refund = def ? Math.floor(def.cost * 0.5) : 0;
+    hapticWarning();
 
     Alert.alert(
       'Sell decoration?',
@@ -106,15 +107,16 @@ export default function GroveEditMode({
   if (!visible) return null;
 
   const selected = selectedIdx !== null ? placedDecorations[selectedIdx] : null;
-  const selectedDef = selected
-    ? DECORATION_DEFS.find((d) => d.id === selected.defId)
-    : null;
+  const selectedDef = selected ? decorationById(selected.defId) ?? null : null;
 
   return (
     <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(200)} style={styles.overlay}>
       {/* Top bar */}
       <View style={styles.topBar}>
-        <Pressable style={styles.shopBtn} onPress={onOpenShop}>
+        <Pressable
+          style={styles.shopBtn}
+          onPress={() => { tapLight(); onOpenShop(); }}
+        >
           <Text style={styles.shopBtnText}>🏪 Shop</Text>
         </Pressable>
         <Text style={styles.editTitle}>

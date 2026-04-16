@@ -7,6 +7,8 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { tapMedium, success, error as hapticError, warning as hapticWarning } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
@@ -211,6 +213,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const floatIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('mirrors');
 
   const ruleShake = useSharedValue(0);
   const scorePulse = useSharedValue(1);
@@ -310,7 +313,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
       safeTimeout(() => {
         setFloatScores(prev => prev.filter(f => f.id !== fid));
       }, 1200);
-      playCorrect(); burstCorrect({ x: W / 2, y: 400 });
+      playCorrect(); neural.onCorrectAnswer(); burstCorrect({ x: W / 2, y: 400 });
       setFeedback('correct');
     } else {
       updateDifficulty('mirrors', false);
@@ -322,7 +325,7 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
         withTiming(3, { duration: 50 }),
         withTiming(0, { duration: 50 }),
       );
-      playWrong(); burstWrong({ x: W / 2, y: 400 });
+      playWrong(); neural.onWrongAnswer(); burstWrong({ x: W / 2, y: 400 });
       setFeedback('wrong');
     }
 
@@ -362,6 +365,8 @@ export default function Mirrors({ onComplete, initialLevel = 1 }: MirrorsProps) 
       />
 
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* Header */}
       <View style={styles.header}>

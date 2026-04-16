@@ -21,7 +21,7 @@ import { captureAndShare } from '../../utils/shareCapture';
 
 const { width, height } = Dimensions.get('window');
 
-export type CelebrationKind = 'levelUp' | 'streakMilestone' | 'leaguePromotion';
+export type CelebrationKind = 'levelUp' | 'streakMilestone' | 'leaguePromotion' | 'gameUnlock';
 
 interface CelebrationOverlayProps {
   kind: CelebrationKind;
@@ -62,6 +62,14 @@ const CELEBRATION_CONFIG: Record<CelebrationKind, {
     sound: playStreakMilestone,
     confettiType: 'confetti_rainbow',
   },
+  gameUnlock: {
+    emoji: '🎮',
+    title: 'NEW GAME',
+    subtitle: (v) => `${v} unlocked — find it in Games`,
+    glowColor: '#6ECF9A',
+    sound: playConfetti,
+    confettiType: 'confetti_gold',
+  },
 };
 
 export default function CelebrationOverlay({ kind, value, visible, onDismiss }: CelebrationOverlayProps) {
@@ -75,7 +83,10 @@ export default function CelebrationOverlay({ kind, value, visible, onDismiss }: 
   const shareRef = useRef<View>(null);
 
   const milestoneKind: MilestoneShareData['kind'] =
-    kind === 'levelUp' ? 'level' : kind === 'leaguePromotion' ? 'league' : 'streak';
+    kind === 'levelUp' ? 'level'
+      : kind === 'leaguePromotion' ? 'league'
+      : kind === 'gameUnlock' ? 'level'
+      : 'streak';
 
   const shareData: MilestoneShareData = {
     type: 'milestone',

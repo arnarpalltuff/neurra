@@ -49,6 +49,16 @@ interface SettingsState {
   kovaSize: KovaSize;
   reduceAnimations: boolean;
 
+  // AI Kova
+  aiKovaEnabled: boolean;
+  anthropicApiKey: string;
+  setAiKovaEnabled: (v: boolean) => void;
+  setAnthropicApiKey: (v: string) => void;
+
+  // Neural Map
+  neuralMapEnabled: boolean;
+  setNeuralMapEnabled: (v: boolean) => void;
+
   // Accessibility
   language: Language;
   textSize: TextSize;
@@ -105,6 +115,10 @@ export const useSettingsStore = create<SettingsState>()(
       friendActivity: true,
       quietHoursStart: '22:00',
       quietHoursEnd: '07:00',
+
+      aiKovaEnabled: true,
+      anthropicApiKey: '',
+      neuralMapEnabled: true,
 
       relaxedMode: false,
       focusAreas: {
@@ -166,6 +180,9 @@ export const useSettingsStore = create<SettingsState>()(
       setReduceMotion: (reduceMotion) => set({ reduceMotion }),
       setColorBlindMode: (colorBlindMode) => set({ colorBlindMode }),
       setTapTargetSize: (tapTargetSize) => set({ tapTargetSize }),
+      setAiKovaEnabled: (aiKovaEnabled) => set({ aiKovaEnabled }),
+      setAnthropicApiKey: (anthropicApiKey) => set({ anthropicApiKey }),
+      setNeuralMapEnabled: (neuralMapEnabled) => set({ neuralMapEnabled }),
     }),
     {
       name: 'neurra-settings',

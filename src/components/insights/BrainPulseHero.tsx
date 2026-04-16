@@ -42,12 +42,20 @@ export default function BrainPulseHero({ pulse }: BrainPulseHeroProps) {
     C.coral;
 
   const trendText = safeTrend > 0 ? `+${safeTrend}` : `${safeTrend}`;
-  const trendColor = safeTrend > 0 ? C.green : safeTrend < 0 ? C.coral : C.t3;
+  // Brain score drops use amber — never red (anti-slop rule)
+  const trendColor = safeTrend > 0 ? C.green : safeTrend < 0 ? C.amber : C.t3;
+
+  const ringGlow = {
+    shadowColor: scoreColor,
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
+  };
 
   return (
     <Animated.View entering={FadeIn.delay(100).duration(500)} style={styles.container}>
       {/* Score Ring */}
-      <View style={styles.ringContainer}>
+      <View style={[styles.ringContainer, ringGlow]}>
         <Svg width={SIZE} height={SIZE} style={styles.svg}>
           {/* Background ring */}
           <Circle

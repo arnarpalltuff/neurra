@@ -54,6 +54,13 @@ export interface DecorationDef {
   footprint: number; // radius in grid units
 }
 
+const DECORATION_DEFS_BY_ID: Record<string, DecorationDef> = {};
+
+/** O(1) decoration lookup by id. */
+export function decorationById(id: string): DecorationDef | undefined {
+  return DECORATION_DEFS_BY_ID[id];
+}
+
 export const DECORATION_DEFS: DecorationDef[] = [
   // Lighting
   { id: 'paper-lantern', name: 'Paper Lantern', emoji: '🏮', category: 'lighting', cost: 50, footprint: 1 },
@@ -102,6 +109,11 @@ export const DECORATION_DEFS: DecorationDef[] = [
   { id: 'dragon-egg', name: 'Dragon Egg', emoji: '🥚', category: 'pro', cost: -1, footprint: 1 },
 ];
 
+// Populate the lookup map once at module load.
+for (const def of DECORATION_DEFS) {
+  DECORATION_DEFS_BY_ID[def.id] = def;
+}
+
 export interface PlacedDecoration {
   defId: string;
   x: number;
@@ -120,6 +132,32 @@ export interface GiftFlower {
 export type VisitorId =
   | 'fireflies' | 'butterfly' | 'bird' | 'fox' | 'koi'
   | 'owl' | 'deer' | 'dragonfly' | 'rabbits' | 'phoenix';
+
+export type VisitorCategory = 'firefly' | 'butterfly' | 'bird' | 'ground' | 'hover';
+
+export interface VisitorDef {
+  emoji: string;
+  category: VisitorCategory;
+  /** Ambient glow color. Undefined = no tinted glow. */
+  glow?: string;
+}
+
+/**
+ * Canonical visitor render config. Consumers in grove look up here instead
+ * of maintaining parallel emoji/category/glow tables.
+ */
+export const VISITOR_DEFS: Record<VisitorId, VisitorDef> = {
+  fireflies: { emoji: '✨', category: 'firefly', glow: '#F0B542' },
+  butterfly: { emoji: '🦋', category: 'butterfly' },
+  bird:      { emoji: '🐦', category: 'bird' },
+  fox:       { emoji: '🦊', category: 'ground' },
+  koi:       { emoji: '🐟', category: 'hover', glow: '#E09B6B' },
+  owl:       { emoji: '🦉', category: 'hover' },
+  deer:      { emoji: '🦌', category: 'ground' },
+  dragonfly: { emoji: '🪰', category: 'firefly', glow: '#6BA8E0' },
+  rabbits:   { emoji: '🐰', category: 'ground' },
+  phoenix:   { emoji: '🔥', category: 'bird',   glow: '#E8707E' },
+};
 
 export interface ZoneGrowth {
   area: BrainArea;

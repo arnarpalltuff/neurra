@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, FadeOut } from 'react-native-reanimated';
 import FloatingParticles from '../../src/components/ui/FloatingParticles';
 import { router } from 'expo-router';
 import { C } from '../../src/constants/colors';
 import { fonts } from '../../src/constants/typography';
 import { gameConfigs, BrainArea } from '../../src/constants/gameConfigs';
 import { getTimeOfDaySky } from '../../src/constants/groveThemes';
+import { tapLight, success as hapticSuccess } from '../../src/utils/haptics';
 
 const W = Dimensions.get('window').width;
 import { useProgressStore } from '../../src/stores/progressStore';
@@ -221,6 +222,8 @@ function GroveScreenInner() {
   const level = useProgressStore(s => s.level);
   const recalcAllZones = useGroveStore(s => s.recalcAllZones);
   const updateVisitors = useGroveStore(s => s.updateVisitors);
+  const revivedSparkleArea = useGroveStore(s => s.revivedSparkleArea);
+  const clearRevivedSparkle = useGroveStore(s => s.clearRevivedSparkle);
 
   const [selectedZone, setSelectedZone] = useState<ZoneConfig | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -229,7 +232,37 @@ function GroveScreenInner() {
   const [pendingPlacement, setPendingPlacement] = useState<string | null>(null);
   const [kovaLine, setKovaLine] = useState('');
   const [kovaModal, setKovaModal] = useState(false);
+  const [celebrationToast, setCelebrationToast] = useState<string | null>(null);
   const groveRef = useRef<View>(null);
+
+  // Celebrate when a zone revives from wilting.
+  useEffect(() => {
+    if (!revivedSparkleArea) return;
+    const label = AREA_LABELS[revivedSparkleArea] ?? 'Zone';
+    setCelebrationToast(`${label} is growing again ✦`);
+    hapticSuccess();
+    const t = setTimeout(() => {
+      setCelebrationToast(null);
+      clearRevivedSparkle();
+    }, 2400);
+    // Clearing the store flag on unmount prevents a stale toast re-firing
+    // when the user returns to this tab after navigating away mid-celebration.
+    return () => {
+      clearTimeout(t);
+      clearRevivedSparkle();
+    };
+  }, [revivedSparkleArea, clearRevivedSparkle]);
+
+  const handleEnterEdit = useCallback(() => {
+    tapLight();
+    setEditMode(true);
+  }, []);
+
+  const handleExitEdit = useCallback(() => {
+    tapLight();
+    setEditMode(false);
+    setPendingPlacement(null);
+  }, []);
 
   useEffect(() => {
     startGroveAmbient();
@@ -294,15 +327,26 @@ function GroveScreenInner() {
           <Pressable style={styles.iconBtn} onPress={() => captureAndShare(groveRef)}>
             <Text style={styles.iconBtnText}>📷</Text>
           </Pressable>
-          <Pressable style={styles.iconBtn} onPress={() => setEditMode(true)}>
+          <Pressable style={styles.iconBtn} onPress={handleEnterEdit}>
             <Text style={styles.iconBtnText}>✏️</Text>
           </Pressable>
         </View>
       )}
 
+      {celebrationToast && (
+        <Animated.View
+          key={celebrationToast}
+          entering={FadeInUp.duration(300)}
+          exiting={FadeOut.duration(400)}
+          style={styles.celebrationToast}
+        >
+          <Text style={styles.celebrationText}>{celebrationToast}</Text>
+        </Animated.View>
+      )}
+
       <GroveEditMode
         visible={editMode}
-        onDone={() => { setEditMode(false); setPendingPlacement(null); }}
+        onDone={handleExitEdit}
         onOpenShop={() => setShopVisible(true)}
         pendingPlacement={pendingPlacement}
         onPlacementComplete={() => setPendingPlacement(null)}
@@ -348,6 +392,31 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   iconBtnText: { fontSize: 18 },
+
+  celebrationToast: {
+    position: 'absolute',
+    top: 90,
+    alignSelf: 'center',
+    left: 40,
+    right: 40,
+    backgroundColor: 'rgba(19,24,41,0.95)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderWidth: 1,
+    borderColor: `${C.green}44`,
+    shadowColor: C.green,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+    alignItems: 'center',
+  },
+  celebrationText: {
+    fontFamily: fonts.heading,
+    fontSize: 14,
+    color: C.green,
+    letterSpacing: 0.3,
+  },
 
   // Bottom sheet
   sheetBackdrop: {

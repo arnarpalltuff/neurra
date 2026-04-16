@@ -13,6 +13,8 @@ import { updateDifficulty, getDifficulty, splitFocusParams, isRelaxedMode } from
 import { shuffle } from '../../../utils/arrayUtils';
 import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import GameIntro from '../shared/GameIntro';
 
 const { width: W } = Dimensions.get('window');
@@ -168,6 +170,7 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
   const cancelledRef = useRef(false);
   const floatIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('split-focus');
 
   const flashScale = useSharedValue(1);
   const scorePulse = useSharedValue(1);
@@ -245,7 +248,7 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
 
     const isCorrect = color === colorPrompt.targetColor;
     const pos = { x: W / 2, y: 200 };
-    if (isCorrect) { playCorrect(); burstCorrect(pos); } else { playWrong(); burstWrong(pos); }
+    if (isCorrect) { playCorrect(); neural.onCorrectAnswer(); burstCorrect(pos); } else { playWrong(); neural.onWrongAnswer(); burstWrong(pos); }
 
     attemptsRef.current++;
 
@@ -283,7 +286,7 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
 
     const isCorrect = value === nextExpected;
     const pos = { x, y };
-    if (isCorrect) { playCorrect(); burstCorrect(pos); } else { playWrong(); burstWrong(pos); }
+    if (isCorrect) { playCorrect(); neural.onCorrectAnswer(); burstCorrect(pos); } else { playWrong(); neural.onWrongAnswer(); burstWrong(pos); }
 
     attemptsRef.current++;
 
@@ -335,6 +338,8 @@ export default function SplitFocus({ onComplete, initialLevel = 1 }: SplitFocusP
       <FloatingParticles count={6} color="rgba(168,124,232,0.25)" />
 
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* Header */}
       <View style={styles.header}>

@@ -19,6 +19,8 @@ import { C } from '../../../constants/colors';
 import { useGameFeedback } from '../../../hooks/useGameFeedback';
 import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import { wordWeaveParams, updateDifficulty, getDifficulty } from '../../../utils/difficultyEngine';
 import { shuffle } from '../../../utils/arrayUtils';
 import { WORD_LIST } from '../../../constants/wordList';
@@ -1154,6 +1156,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
   const cancelledRef = useRef(false);
   const scoreRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('word-weave');
   const wordCountRef = useRef(0);
   const submittedRef = useRef<Set<string>>(new Set());
   const feedbackIdRef = useRef(0);
@@ -1458,6 +1461,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
       hapticForLength(word.length);
       playCorrect();
       if (comboRef.current >= 3) playComboHit();
+      neural.onCorrectAnswer();
       burstCorrect({ x: width / 2, y: 180 });
     } else {
       // Near-miss check
@@ -1491,6 +1495,7 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
         hapticError();
         playWrong();
       }
+      neural.onWrongAnswer();
       burstWrong({ x: width / 2, y: 180 });
     }
 
@@ -1619,6 +1624,12 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
       <FloatingParticles count={6} color="rgba(240,181,66,0.25)" />
 
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay
+        activeAreas={neural.activeAreas}
+        pulseArea={neural.pulseArea}
+        intensity={neural.intensity}
+      />
 
       {/* ── Header ───────────────────────────────────── */}
       <View style={styles.header}>

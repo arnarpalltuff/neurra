@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withDelay,
-  FadeIn, FadeOut, Easing,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { fonts } from '../../constants/typography';
 import { C } from '../../constants/colors';
+import { useTypewriter } from '../../hooks/useTypewriter';
 
 interface KovaSpeechBubbleProps {
   text: string;
@@ -23,38 +21,18 @@ interface KovaSpeechBubbleProps {
 export default function KovaSpeechBubble({
   text, primaryColor, visible, onDismiss, duration = 4000,
 }: KovaSpeechBubbleProps) {
-  const [displayedText, setDisplayedText] = useState('');
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const displayedText = useTypewriter(visible && text ? text : '', { charMs: 40 });
   const dismissRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!visible || !text) {
-      setDisplayedText('');
-      return;
-    }
-
-    // Typewriter effect
-    let charIndex = 0;
-    setDisplayedText('');
-    intervalRef.current = setInterval(() => {
-      charIndex++;
-      if (charIndex <= text.length) {
-        setDisplayedText(text.slice(0, charIndex));
-      } else {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      }
-    }, 40);
-
-    // Auto-dismiss
+    if (!visible || !text) return;
     dismissRef.current = setTimeout(() => {
       onDismiss?.();
     }, duration);
-
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
       if (dismissRef.current) clearTimeout(dismissRef.current);
     };
-  }, [text, visible]);
+  }, [text, visible, duration, onDismiss]);
 
   if (!visible || !text) return null;
 

@@ -23,9 +23,11 @@ import {
   pillButton,
 } from '../../src/constants/design';
 import BrainFactCard from '../../src/components/ui/BrainFactCard';
-import GameUnlockBanner from '../../src/components/games/GameUnlockBanner';
 import Kova from '../../src/components/kova/Kova';
 import CelebrationOverlay, { CelebrationKind } from '../../src/components/ui/CelebrationOverlay';
+import { useGameUnlockStore, daysSinceJoin } from '../../src/stores/gameUnlockStore';
+import { unlocksOnDay } from '../../src/constants/gameUnlockSchedule';
+import { gameConfigs as gameConfigsMap } from '../../src/constants/gameConfigs';
 import { useUserStore } from '../../src/stores/userStore';
 import { useProgressStore } from '../../src/stores/progressStore';
 import { gameConfigs } from '../../src/constants/gameConfigs';
@@ -40,9 +42,12 @@ import { useStreakUrgency } from '../../src/hooks/useStreakUrgency';
 import { tapLight } from '../../src/utils/haptics';
 import { playTap, playTransition } from '../../src/utils/sound';
 import { getGreeting } from '../../src/constants/kovaDialogue';
+import { useKovaContext } from '../../src/hooks/useKovaContext';
+import { generateKovaMessage } from '../../src/services/kovaAI';
+import type { BrainArea } from '../../src/constants/gameConfigs';
+import QuickPlayGrid from '../../src/components/home/QuickPlayGrid';
 import { useProStore } from '../../src/stores/proStore';
 import { useDailyBriefing } from '../../src/hooks/useDailyBriefing';
-import { getDailyQuote } from '../../src/constants/quotes';
 import PaywallNudge from '../../src/components/paywall/PaywallNudge';
 import PaywallFull from '../../src/components/paywall/PaywallFull';
 import { useEnergyStore, maxHeartsFor, MAX_QUICK_HITS_PER_DAY } from '../../src/stores/energyStore';
@@ -114,21 +119,42 @@ function HomeScreenInner() {
   const [showRewardChest, setShowRewardChest] = useState(false);
   const [kovaDialogue, setKovaDialogue] = useState<string | null>(null);
   const [showKovaBubble, setShowKovaBubble] = useState(false);
+  const [kovaInsight, setKovaInsight] = useState<string | null>(null);
+  const kovaContext = useKovaContext();
 
   // Evaluate Kova state on mount
   useEffect(() => {
     evaluateKovaOnOpen();
   }, []);
 
-  // Show Kova greeting after evaluation
+  // AI-powered Kova greeting
   useEffect(() => {
+    let mounted = true;
+    const mode = kovaContext.returnedAfterBreak ? 'comeback'
+      : kovaContext.timeOfDay === 'lateNight' ? 'late_night'
+      : kovaContext.streakAtRisk ? 'streak_risk'
+      : 'greeting';
     const timer = setTimeout(() => {
-      const line = pickDialogue(kovaEmotion);
-      setKovaDialogue(line);
-      setShowKovaBubble(true);
+      generateKovaMessage(mode, kovaContext).then(msg => {
+        if (mounted) {
+          setKovaDialogue(msg);
+          setShowKovaBubble(true);
+        }
+      });
     }, 800);
-    return () => clearTimeout(timer);
-  }, [kovaEmotion]);
+    return () => { mounted = false; clearTimeout(timer); };
+  }, []);
+
+  // AI-powered daily insight — pre-generated so a second Kova tap cycles to it.
+  useEffect(() => {
+    let mounted = true;
+    if (kovaContext.totalSessions >= 3) {
+      generateKovaMessage('insight', kovaContext).then(msg => {
+        if (mounted) setKovaInsight(msg);
+      });
+    }
+    return () => { mounted = false; };
+  }, []);
 
   const handlePlayChallenge = useCallback((challengeId: string, gameType: string) => {
     playTransition();
@@ -174,8 +200,6 @@ function HomeScreenInner() {
   }, [qhLeft]);
 
   const brainScores = useProgressStore(s => s.brainScores);
-
-  const xpProgress = useMemo(() => getXPProgress(xp, level), [xp, level]);
 
   const moodLoggedToday = useMemo(() => moodHistory.some(e => e.date === todayStr()), [moodHistory]);
   const [moodDismissed, setMoodDismissed] = useState(false);
@@ -327,6 +351,31 @@ function HomeScreenInner() {
     prevLevelRef.current = level;
   }, [level]);
 
+  // Game-unlock celebration — replaces the old persistent GameUnlockBanner.
+  // Fires once per unlock day, then marks the day celebrated.
+  const unlockRefresh = useGameUnlockStore(s => s.refresh);
+  const markUnlockCelebrated = useGameUnlockStore(s => s.markCelebrated);
+  const celebratedDays = useGameUnlockStore(s => s.celebratedDays);
+  useEffect(() => {
+    unlockRefresh();
+    const day = daysSinceJoin();
+    const todaysUnlocks = unlocksOnDay(day);
+    if (todaysUnlocks.length === 0 || celebratedDays.includes(day)) return;
+    const firstId = todaysUnlocks[0];
+    const cfg = gameConfigsMap[firstId];
+    if (!cfg) return;
+    const label = todaysUnlocks.length > 1
+      ? `${cfg.name} +${todaysUnlocks.length - 1} more`
+      : cfg.name;
+    // Queue after level-up so the two never collide visually.
+    const t = setTimeout(() => {
+      setCelebration(prev => prev ?? { kind: 'gameUnlock', value: label });
+      markUnlockCelebrated(day);
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Button press animation
   const btnScale = useSharedValue(1);
   const btnStyle = useAnimatedStyle(() => ({
@@ -452,7 +501,20 @@ function HomeScreenInner() {
             stage={stage}
             emotion={sessionDone ? 'happy' : isUrgent ? 'worried' : streak === 0 ? 'curious' : 'idle'}
             size={160 * kovaStageConfig.size}
-            onTap={() => setHeartsTrigger(t => t + 1)}
+            onTap={() => {
+              setHeartsTrigger(t => t + 1);
+              // Cycle Kova voice: if we have a pre-generated insight, show that
+              // on the next tap; otherwise keep generating idle_tap chatter.
+              if (kovaInsight && kovaDialogue !== kovaInsight) {
+                setKovaDialogue(kovaInsight);
+                setShowKovaBubble(true);
+                return;
+              }
+              generateKovaMessage('idle_tap', kovaContext).then(msg => {
+                setKovaDialogue(msg);
+                setShowKovaBubble(true);
+              });
+            }}
             dialogueContext={
               timeOfDay === 'morning' ? 'tapMorning' :
               timeOfDay === 'lateNight' ? 'tapLateNight' :
@@ -479,7 +541,7 @@ function HomeScreenInner() {
           />
         )}
 
-        {/* ── Daily Challenges ─────────────────────────────── */}
+        {/* ── Daily Challenges (includes real-life slot) ───── */}
         <View style={styles.challengeSection}>
           <DailyChallengeList onPlayChallenge={handlePlayChallenge} />
         </View>
@@ -612,51 +674,8 @@ function HomeScreenInner() {
           </Animated.View>
         )}
 
-        {/* Game unlock banner — only shows on days when new games unlock */}
-        <View style={styles.weeklyChallengeWrap}>
-          <GameUnlockBanner />
-        </View>
-
-        {/* XP progress bar */}
-        {totalSessions > 0 && (
-          <Animated.View entering={FadeInDown.delay(320).duration(400)} style={styles.xpBarWrap}>
-            <View style={styles.xpBarTrack}>
-              <LinearGradient
-                colors={['#9B72E0', '#7A5CC0']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[styles.xpBarFill, { width: `${Math.min(100, (xpProgress.xpIntoLevel / xpProgress.xpNeeded) * 100)}%` }]}
-              />
-            </View>
-            <Text style={styles.xpBarText}>
-              Lv {level} · {xpProgress.xpNeeded - xpProgress.xpIntoLevel} XP to next
-            </Text>
-          </Animated.View>
-        )}
-
-        {/* Compact stats — individual glass cards */}
-        {totalSessions > 0 ? (
-          <Animated.View entering={FadeInDown.delay(360).duration(400)} style={styles.compactStatsRow}>
-            {[
-              { value: `${longestStreak}`, unit: 'd', label: 'best streak', color: C.amber },
-              { value: `${totalSessions}`, unit: '', label: 'sessions', color: C.blue },
-              { value: `${Math.round(xp)}`, unit: '', label: 'total XP', color: C.purple },
-            ].map((item) => (
-              <View
-                key={item.label}
-                style={[styles.compactStatCard, {
-                  borderColor: `${item.color}20`,
-                  shadowColor: item.color,
-                }]}
-              >
-                <Text style={[styles.compactStatValue, { color: item.color }]}>
-                  {item.value}<Text style={styles.compactStatUnit}>{item.unit}</Text>
-                </Text>
-                <Text style={styles.compactStatLabel}>{item.label}</Text>
-              </View>
-            ))}
-          </Animated.View>
-        ) : null}
+        {/* ── Quick Play Bento Grid ──────────────────────── */}
+        <QuickPlayGrid />
 
         {/* Daily brain fact */}
         <Animated.View
@@ -664,19 +683,6 @@ function HomeScreenInner() {
           style={styles.brainFactWrap}
         >
           <BrainFactCard />
-        </Animated.View>
-
-        {/* Daily quote from a brilliant mind */}
-        <Animated.View entering={FadeInDown.delay(450).duration(400)} style={styles.brainFactWrap}>
-          {(() => {
-            const q = getDailyQuote();
-            return (
-              <View style={styles.quoteCard}>
-                <Text style={styles.quoteText}>"{q.text}"</Text>
-                <Text style={styles.quoteAuthor}>— {q.author}</Text>
-              </View>
-            );
-          })()}
         </Animated.View>
 
         {/* Paywall nudge — bottom of scroll, less aggressive position */}
@@ -784,6 +790,11 @@ const styles = StyleSheet.create({
 
   // ── F12 Energy hearts (floating top-right) ─────────────────────────
   // `top` is set dynamically from useSafeAreaInsets() — see HomeScreenInner.
+  ambientNeuralMap: {
+    position: 'absolute',
+    right: 16,
+    zIndex: 25,
+  },
   heartsRow: {
     position: 'absolute',
     right: 16,
@@ -1283,6 +1294,40 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     marginTop: 1,
+  },
+
+  // ── Kova insight ──────────────────────────────────────────────────
+  insightSection: {
+    paddingHorizontal: asymmetry.pagePadding,
+    marginTop: space.sm,
+  },
+  insightCard: {
+    backgroundColor: 'rgba(19,24,41,0.88)',
+    borderRadius: 14,
+    padding: 14,
+    borderLeftWidth: 3,
+    borderLeftColor: C.purple,
+    borderWidth: 1,
+    borderColor: 'rgba(155,114,224,0.12)',
+    shadowColor: '#9B72E0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    gap: 6,
+  },
+  insightLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 9,
+    color: C.t4,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  insightText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: C.t2,
+    lineHeight: 20,
   },
 
   // ── Daily challenges ──────────────────────────────────────────────

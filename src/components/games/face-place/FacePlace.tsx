@@ -14,6 +14,8 @@ import { updateDifficulty, getDifficulty, facePlaceParams } from '../../../utils
 import { shuffle } from '../../../utils/arrayUtils';
 import { selection, success, error as hapticError, tapMedium } from '../../../utils/haptics';
 import { playCorrect, playWrong, playRoundEnd } from '../../../utils/sound';
+import NeuralMapOverlay from '../../ui/NeuralMapOverlay';
+import { useNeuralMap } from '../../../hooks/useNeuralMap';
 import GameIntro from '../shared/GameIntro';
 
 const { width } = Dimensions.get('window');
@@ -220,6 +222,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
   const correctCountRef = useRef(0);
   const floatIdRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
+  const neural = useNeuralMap('face-place');
 
   const scorePulse = useSharedValue(1);
   const rootShake = useSharedValue(0);
@@ -305,7 +308,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
           setFloatScores(prev => prev.filter(f => f.id !== fid));
         }
       }, 1200);
-      playCorrect(); burstCorrect({ x: width / 2, y: 300 });
+      playCorrect(); neural.onCorrectAnswer(); burstCorrect({ x: width / 2, y: 300 });
     } else {
       hapticError();
       rootShake.value = withSequence(
@@ -315,7 +318,7 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
         withTiming(3, { duration: 50 }),
         withTiming(0, { duration: 50 }),
       );
-      playWrong(); burstWrong({ x: width / 2, y: 300 });
+      playWrong(); neural.onWrongAnswer(); burstWrong({ x: width / 2, y: 300 });
     }
 
     setFeedback({ correct: isCorrect, answer: currentFace.name });
@@ -360,6 +363,8 @@ export default function FacePlace({ onComplete, initialLevel = 1 }: FacePlacePro
       <FloatingParticles count={6} color="rgba(180,140,240,0.3)" />
 
       <FeedbackBurst {...burstFeedback} />
+
+      <NeuralMapOverlay activeAreas={neural.activeAreas} pulseArea={neural.pulseArea} intensity={neural.intensity} />
 
       {/* Header */}
       <View style={styles.header}>

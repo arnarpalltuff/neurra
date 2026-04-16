@@ -15,7 +15,16 @@ export default function InsightCard({ insight, index, compact = false }: Insight
   return (
     <Animated.View
       entering={FadeInDown.delay(200 + index * 80).duration(400)}
-      style={[styles.card, compact && styles.cardCompact]}
+      style={[
+        styles.card,
+        compact && styles.cardCompact,
+        {
+          shadowColor: insight.accent,
+          shadowOpacity: 0.18,
+          shadowRadius: 14,
+          borderColor: `${insight.accent}1F`,
+        },
+      ]}
     >
       <View style={[styles.accentBar, { backgroundColor: insight.accent }]} />
       <View style={styles.content}>
@@ -55,11 +64,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     flexDirection: 'row',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    shadowColor: '#9B72E0',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
     elevation: 4,
   },
   cardCompact: {
