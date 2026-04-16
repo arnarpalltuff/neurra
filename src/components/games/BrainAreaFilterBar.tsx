@@ -1,9 +1,11 @@
 import React from 'react';
-import { ScrollView, Pressable, Text, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { AREA_LABELS, AREA_ACCENT, type BrainArea } from '../../constants/gameConfigs';
+import PressableScale from '../ui/PressableScale';
+import { selection } from '../../utils/haptics';
 import { useGamesSectionEntrance } from './gameCardStagger';
 
 export type FilterArea = 'all' | BrainArea;
@@ -23,7 +25,6 @@ const FILTERS: { key: FilterArea; label: string; accent: string }[] = [
   })),
 ];
 
-// PHASE 1 STUB — tactile states + press scale land in Phase 4.
 export default React.memo(function BrainAreaFilterBar({
   index,
   selected,
@@ -40,19 +41,34 @@ export default React.memo(function BrainAreaFilterBar({
         {FILTERS.map((f) => {
           const active = selected === f.key;
           return (
-            <Pressable
+            <PressableScale
               key={f.key}
-              onPress={() => onSelect(f.key)}
+              scaleDown={0.94}
+              onPress={() => { selection(); onSelect(f.key); }}
               style={[
                 styles.pill,
                 { borderColor: `${f.accent}${active ? '88' : '40'}` },
-                active && { backgroundColor: `${f.accent}22` },
+                active && {
+                  backgroundColor: `${f.accent}22`,
+                  shadowColor: f.accent,
+                  shadowOpacity: 0.15,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 4 },
+                  elevation: 4,
+                },
               ]}
             >
-              <Text style={[styles.text, { color: active ? f.accent : C.t3 }]}>
+              {active && <View style={[styles.dot, { backgroundColor: f.accent }]} />}
+              <Text
+                style={[
+                  styles.text,
+                  { color: active ? f.accent : C.t3 },
+                  active && { fontFamily: fonts.bodyBold },
+                ]}
+              >
                 {f.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </ScrollView>
@@ -67,10 +83,18 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 24,
     borderWidth: 1,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
   },
   text: {
     fontFamily: fonts.bodySemi,
