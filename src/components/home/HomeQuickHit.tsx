@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { router } from 'expo-router';
+import { navigate } from '../../utils/navigate';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { accentGlow } from '../../constants/design';
@@ -27,7 +27,7 @@ export default React.memo(function HomeQuickHit({ index }: HomeQuickHitProps) {
     if (qhLeft <= 0) return;
     tapLight();
     playTap();
-    router.push('/quick-hit' as any);
+    navigate('/quick-hit');
   }, [qhLeft]);
 
   const disabled = qhLeft <= 0;

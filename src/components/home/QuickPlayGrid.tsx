@@ -3,8 +3,8 @@ import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { router } from 'expo-router';
+import { navigate } from '../../utils/navigate';
+import { tapLight, selection } from '../../utils/haptics';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { space, radii, accentGlow } from '../../constants/design';
@@ -72,8 +72,8 @@ const AreaCard = React.memo(function AreaCard({
   const { start, end } = gradientCornerToStartEnd(config.gradientCorner);
 
   const handlePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push({ pathname: '/(tabs)/games', params: { area: config.area } } as any);
+    tapLight();
+    navigate({ pathname: '/(tabs)/games', params: { area: config.area } });
   };
 
   return (
@@ -114,8 +114,8 @@ const AreaCard = React.memo(function AreaCard({
  */
 export default React.memo(function QuickPlayGrid() {
   const handleSeeAll = () => {
-    Haptics.selectionAsync();
-    router.push('/(tabs)/games' as any);
+    selection();
+    navigate('/(tabs)/games');
   };
 
   return (

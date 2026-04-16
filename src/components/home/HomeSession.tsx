@@ -10,7 +10,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { navigate } from '../../utils/navigate';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { useUserStore, FREE_DEEP_SESSIONS_PER_WEEK, type SessionLength } from '../../stores/userStore';
@@ -101,7 +101,7 @@ export default React.memo(function HomeSession({
     navigatingRef.current = true;
     playTransition();
     const length = useUserStore.getState().sessionLength;
-    router.push(`/session?length=${length}` as any);
+    navigate(`/session?length=${length}`);
     navTimerRef.current = setTimeout(() => { navigatingRef.current = false; }, 1000);
   }, []);
 

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { navigate } from '../../src/utils/navigate';
 import { C } from '../../src/constants/colors';
 import BrainFactCard from '../../src/components/ui/BrainFactCard';
 import MoodCheckIn from '../../src/components/ui/MoodCheckIn';
@@ -68,7 +68,7 @@ function HomeScreenInner() {
   const showNudge = !isPro && !nudgeDismissed && canShowNudge(totalSessions);
 
   const handlePlayChallenge = useCallback((challengeId: string, gameType: string) => {
-    router.push({ pathname: '/focus-practice', params: { games: gameType, challengeId } } as any);
+    navigate({ pathname: '/focus-practice', params: { games: gameType, challengeId } });
   }, []);
 
   let idx = 0;
