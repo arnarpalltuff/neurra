@@ -8,11 +8,14 @@ import {
 } from 'react-native-reanimated';
 
 /**
- * Entrance stagger for top-level sections on the Games tab. Matches the
- * easing and 70ms cadence used by home/profile/insights so the tab feels
- * like part of the same app.
+ * Shared entrance stagger for tab sections. Each section passes its display
+ * order via `index`; the hook returns an animated style that fades in and
+ * rises from 24px below with the app's standard bezier. 70ms stagger keeps
+ * the reveal brisk but legible.
+ *
+ * Used by: Home, Games, and any future tab that follows the same pattern.
  */
-export function useGamesSectionEntrance(index: number) {
+export function useStaggeredEntrance(index: number) {
   const opacity = useSharedValue(0);
   const ty = useSharedValue(24);
 

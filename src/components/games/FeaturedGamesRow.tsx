@@ -6,14 +6,15 @@ import { fonts } from '../../constants/typography';
 import { gameConfigs, AREA_LABELS, type GameId } from '../../constants/gameConfigs';
 import { useProgressStore } from '../../stores/progressStore';
 import { useGameUnlockStore } from '../../stores/gameUnlockStore';
-import { getPlayStats } from '../../utils/gameFreshness';
+import type { GamePlayStats } from '../../utils/gameFreshness';
 import { weakestArea } from '../../utils/weakestArea';
 import GameCard from './GameCard';
-import { useGamesSectionEntrance } from './gameCardStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 
 interface FeaturedGamesRowProps {
   index: number;
   onPlay: (id: GameId) => void;
+  playStats: Record<GameId, GamePlayStats>;
 }
 
 const CARD_WIDTH = 240;
@@ -22,26 +23,25 @@ const CARD_WIDTH = 240;
 export default React.memo(function FeaturedGamesRow({
   index,
   onPlay,
+  playStats,
 }: FeaturedGamesRowProps) {
-  const entranceStyle = useGamesSectionEntrance(index);
+  const entranceStyle = useStaggeredEntrance(index);
   const brainScores = useProgressStore(s => s.brainScores);
-  const gameHistory = useProgressStore(s => s.gameHistory);
   const unlockedIds = useGameUnlockStore(s => s.unlockedIds);
 
   const weakest = useMemo(() => weakestArea(brainScores), [brainScores]);
   const featured = useMemo<GameId[]>(() => {
     if (!weakest) return [];
-    const stats = getPlayStats(gameHistory);
     return Object.values(gameConfigs)
       .filter(g => g.brainArea === weakest && unlockedIds.includes(g.id))
       .map(g => g.id)
       .sort((a, b) => {
-        const da = stats[a]?.daysSinceLastPlay ?? Infinity;
-        const db = stats[b]?.daysSinceLastPlay ?? Infinity;
+        const da = playStats[a]?.daysSinceLastPlay ?? Infinity;
+        const db = playStats[b]?.daysSinceLastPlay ?? Infinity;
         return db - da;
       })
       .slice(0, 3);
-  }, [weakest, gameHistory, unlockedIds]);
+  }, [weakest, playStats, unlockedIds]);
 
   if (!weakest || featured.length === 0) {
     return (

@@ -4,7 +4,7 @@ import Animated from 'react-native-reanimated';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { accentGlow } from '../../constants/design';
-import { useStaggeredEntrance } from './homeStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 
 interface HomeUrgencyBannerProps {
   index: number;

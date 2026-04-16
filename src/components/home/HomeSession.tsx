@@ -21,7 +21,7 @@ import { gameConfigs } from '../../constants/gameConfigs';
 import { selectDailyGames } from '../../utils/gameSelection';
 import { tapLight } from '../../utils/haptics';
 import { playTap, playTransition } from '../../utils/sound';
-import { useStaggeredEntrance } from './homeStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 
 interface HomeSessionProps {
   index: number;

@@ -6,7 +6,7 @@ import { fonts } from '../../constants/typography';
 import { useUserStore } from '../../stores/userStore';
 import { useProgressStore } from '../../stores/progressStore';
 import { getTimeOfDay } from '../../utils/timeUtils';
-import { useStaggeredEntrance } from './homeStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 
 const GREETINGS: Record<string, string> = {
   morning: 'Good morning',

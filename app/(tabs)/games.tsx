@@ -64,7 +64,7 @@ function GamesScreenInner() {
           onSelect={setFilter}
         />
         <View style={styles.featuredGap} />
-        <FeaturedGamesRow index={idx++} onPlay={handlePlay} />
+        <FeaturedGamesRow index={idx++} onPlay={handlePlay} playStats={playStats} />
         <View style={styles.gridGap} />
         <GameBentoGrid index={idx++} filter={filter} onPlay={handlePlay} />
       </ScrollView>

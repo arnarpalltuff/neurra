@@ -9,7 +9,7 @@ import { useEnergyStore, MAX_QUICK_HITS_PER_DAY } from '../../stores/energyStore
 import { todayStr } from '../../utils/timeUtils';
 import { tapLight } from '../../utils/haptics';
 import { playTap } from '../../utils/sound';
-import { useStaggeredEntrance } from './homeStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 
 interface HomeQuickHitProps {
   index: number;

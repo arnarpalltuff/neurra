@@ -30,10 +30,8 @@ export default React.memo(function GameCard({
 }: GameCardProps) {
   const game = gameConfigs[gameId];
   const accent = AREA_ACCENT[game.brainArea];
-  const gameLevels = useProgressStore(s => s.gameLevels);
-  const personalBests = useProgressStore(s => s.personalBests);
-  const level = gameLevels[gameId] ?? 1;
-  const best = personalBests[gameId] ?? 0;
+  const level = useProgressStore(s => s.gameLevels[gameId]) ?? 1;
+  const best = useProgressStore(s => s.personalBests[gameId]) ?? 0;
 
   const Icon = iconForGame(gameId);
 

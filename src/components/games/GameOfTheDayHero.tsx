@@ -16,7 +16,7 @@ import { gameConfigs, AREA_ACCENT, AREA_LABELS, type GameId } from '../../consta
 import PressableScale from '../ui/PressableScale';
 import { tapLight } from '../../utils/haptics';
 import { iconForGame } from './icons';
-import { useGamesSectionEntrance } from './gameCardStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 
 interface GameOfTheDayHeroProps {
   index: number;
@@ -51,7 +51,7 @@ export default React.memo(function GameOfTheDayHero({
   gameId,
   onPress,
 }: GameOfTheDayHeroProps) {
-  const entranceStyle = useGamesSectionEntrance(index);
+  const entranceStyle = useStaggeredEntrance(index);
   const game = gameConfigs[gameId];
   const accent = AREA_ACCENT[game.brainArea];
   const Icon = iconForGame(gameId);

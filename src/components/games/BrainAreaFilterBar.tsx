@@ -6,7 +6,7 @@ import { fonts } from '../../constants/typography';
 import { AREA_LABELS, AREA_ACCENT, type BrainArea } from '../../constants/gameConfigs';
 import PressableScale from '../ui/PressableScale';
 import { selection } from '../../utils/haptics';
-import { useGamesSectionEntrance } from './gameCardStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 
 export type FilterArea = 'all' | BrainArea;
 
@@ -30,7 +30,7 @@ export default React.memo(function BrainAreaFilterBar({
   selected,
   onSelect,
 }: BrainAreaFilterBarProps) {
-  const style = useGamesSectionEntrance(index);
+  const style = useStaggeredEntrance(index);
   return (
     <Animated.View style={style}>
       <ScrollView

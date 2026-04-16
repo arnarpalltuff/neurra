@@ -10,8 +10,10 @@ import {
 } from '../../constants/gameConfigs';
 import { useGameUnlockStore } from '../../stores/gameUnlockStore';
 import GameCard from './GameCard';
-import { useGamesSectionEntrance } from './gameCardStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 import type { FilterArea } from './BrainAreaFilterBar';
+
+const ALL_GAMES = Object.values(gameConfigs);
 
 interface GameBentoGridProps {
   index: number;
@@ -30,13 +32,13 @@ export default React.memo(function GameBentoGrid({
   filter,
   onPlay,
 }: GameBentoGridProps) {
-  const entranceStyle = useGamesSectionEntrance(index);
+  const entranceStyle = useStaggeredEntrance(index);
   const unlockedIds = useGameUnlockStore(s => s.unlockedIds);
 
-  const games = useMemo<GameConfig[]>(() => {
-    const all = Object.values(gameConfigs);
-    return filter === 'all' ? all : all.filter(g => g.brainArea === filter);
-  }, [filter]);
+  const games = useMemo<GameConfig[]>(
+    () => (filter === 'all' ? ALL_GAMES : ALL_GAMES.filter(g => g.brainArea === filter)),
+    [filter],
+  );
 
   const useCenteredLayout = games.length <= 2;
 

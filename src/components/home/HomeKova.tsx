@@ -12,7 +12,7 @@ import { useKovaContext } from '../../hooks/useKovaContext';
 import { generateKovaMessage } from '../../services/kovaAI';
 import { getTimeOfDay } from '../../utils/timeUtils';
 import { getGreeting } from '../../constants/kovaDialogue';
-import { useStaggeredEntrance } from './homeStagger';
+import { useStaggeredEntrance } from '../../hooks/useStaggeredEntrance';
 
 interface HomeKovaProps {
   index: number;
