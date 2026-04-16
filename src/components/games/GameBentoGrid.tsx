@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+} from 'react-native-reanimated';
 import {
   gameConfigs,
-  type BrainArea,
-  type GameId,
   type GameConfig,
+  type GameId,
 } from '../../constants/gameConfigs';
 import { useGameUnlockStore } from '../../stores/gameUnlockStore';
 import GameCard from './GameCard';
@@ -18,7 +19,12 @@ interface GameBentoGridProps {
   onPlay: (id: GameId) => void;
 }
 
-// PHASE 1 STUB — asymmetric bento + ≤2 centered edge case land in Phase 5.
+/**
+ * Asymmetric bento layout: rows alternate between full-width and half-width
+ * pairs so the grid has visual rhythm instead of uniform columns. When the
+ * filter returns ≤2 games the layout centers cards with generous margin —
+ * a bento with one card looks broken.
+ */
 export default React.memo(function GameBentoGrid({
   index,
   filter,
@@ -32,21 +38,69 @@ export default React.memo(function GameBentoGrid({
     return filter === 'all' ? all : all.filter(g => g.brainArea === filter);
   }, [filter]);
 
-  // Centered layout when filter returns ≤2 games — a "bento" with one card looks broken.
   const useCenteredLayout = games.length <= 2;
+
+  // Build rows: full → pair → pair → full → repeat.
+  // Rows are used only for the asymmetric variant (>2 games).
+  const rows = useMemo(() => {
+    if (useCenteredLayout) return [];
+    const result: GameConfig[][] = [];
+    let i = 0;
+    let rowType: 'full' | 'pair' = 'full';
+    while (i < games.length) {
+      if (rowType === 'full') {
+        result.push([games[i]]);
+        i += 1;
+        rowType = 'pair';
+      } else {
+        result.push(games.slice(i, i + 2));
+        i += 2;
+        // After two pair rows, go back to full for rhythm.
+        if (result.length % 3 === 0) rowType = 'full';
+      }
+    }
+    return result;
+  }, [games, useCenteredLayout]);
 
   return (
     <Animated.View style={[styles.wrap, entranceStyle]}>
-      <View style={useCenteredLayout ? styles.centered : styles.grid}>
-        {games.map(g => {
-          const locked = !unlockedIds.includes(g.id);
-          return (
-            <View key={g.id} style={useCenteredLayout ? styles.centeredItem : styles.gridItem}>
-              <GameCard gameId={g.id} locked={locked} onPress={() => onPlay(g.id)} />
-            </View>
-          );
-        })}
-      </View>
+      {useCenteredLayout ? (
+        <View style={styles.centered}>
+          {games.map((g, gi) => (
+            <Animated.View
+              key={g.id}
+              entering={FadeIn.delay(gi * 80).duration(400)}
+              style={styles.centeredItem}
+            >
+              <GameCard
+                gameId={g.id}
+                locked={!unlockedIds.includes(g.id)}
+                onPress={() => onPlay(g.id)}
+              />
+            </Animated.View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.grid}>
+          {rows.map((row, ri) => (
+            <Animated.View
+              key={ri}
+              entering={FadeIn.delay(ri * 70).duration(400)}
+              style={row.length === 1 ? styles.fullRow : styles.pairRow}
+            >
+              {row.map(g => (
+                <View key={g.id} style={row.length === 1 ? styles.fullItem : styles.halfItem}>
+                  <GameCard
+                    gameId={g.id}
+                    locked={!unlockedIds.includes(g.id)}
+                    onPress={() => onPlay(g.id)}
+                  />
+                </View>
+              ))}
+            </Animated.View>
+          ))}
+        </View>
+      )}
     </Animated.View>
   );
 });
@@ -56,12 +110,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
   },
-  gridItem: {
-    width: '100%',
+  fullRow: {
+    flexDirection: 'row',
+  },
+  pairRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  fullItem: {
+    flex: 1,
+  },
+  halfItem: {
+    flex: 1,
   },
   centered: {
     alignItems: 'center',
