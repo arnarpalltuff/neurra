@@ -1,24 +1,36 @@
 # Neurra — session handoff
 
-## 2026-04-16 — Games tab premium upgrade (in progress)
+## 2026-04-16 — Games tab premium upgrade (shipped)
 
-**Status:** Phase 0 complete, plan approved. Phases 1–6 executing.
+**Status:** Complete. 6 phases committed.
 
-### Approved plan summary
+### Result
 
-- 649-line flat games tab → thin composer (≤130 lines) + focused sub-components
-- 11 game cards get custom SVG icons (one each) replacing emoji
-- Brain-area accent colors drive everything (memory=green, focus=blue, speed=amber, flexibility=purple, creativity=peach)
-- New structure: Game of the Day hero → BrainAreaFilterBar → FeaturedGamesRow → GameBentoGrid (asymmetric)
-- `gameUnlockStore.isUnlocked()` now wired (fixes bug where Day 0 accounts saw all 11 games)
-- LockedGamesTeaser dropped — dimmed locked cards in grid are the teaser
-- Weakest-area source = `progressStore.brainScores` (matches Insights `calcBrainPulse`)
-- Existing `gameConfigs.description` kept as hook copy (flag individual flat ones at build time)
-- Bento edge case: ≤2 games in filter → center cards with horizontal margin, no asymmetric grid
+- Composer lines: **649 → 106** (84% reduction)
+- Custom SVG icons: **11 of 11** (zero emoji on the tab)
+- `expo-haptics` direct imports: 0
+- `as any` casts: 0
+- TypeScript errors: 0
 
-### Commits so far
+### What shipped
+
+- **GameCard** — accent gradient bg, tinted shadow, SVG icon, brain-area eyebrow, level dots, locked state with Ionicons glyph
+- **GameOfTheDayHero** — 200px hero with BreathingHalo (3.2s breathing glow), "Play Now" CTA, strongest shadow
+- **BrainAreaFilterBar** — horizontal pills, PressableScale 0.94, selection() haptic, accent glow on selected
+- **FeaturedGamesRow** — "Train your [weakest area]" horizontal snap, Kova-voiced empty state
+- **GameBentoGrid** — asymmetric full/pair row rhythm, centered fallback for ≤2 games, gameUnlockStore wired
+- **11 custom SVG icons** — each ≤3 stroked elements, crisp at 72px (Pulse, Ghost Kitchen, Word Weave, Signal & Noise, Mirrors, Mind Drift, Face Place, Chain Reaction, Rewind, Split Focus, Zen Flow)
+- **weakestArea util** — pure fn matching insightsEngine calcBrainPulse logic
+- **Bug fix:** gameUnlockStore.isUnlocked() now wired into game cards (Day 0 accounts correctly see locked cards)
+
+### Commits
 ```
-(phase 0) games: inventory and upgrade plan
+4142aa7 games: phase 0 inventory and upgrade plan
+        games: phase 1 foundations
+        games: phase 2 card pattern (word weave)
+        games: phase 3 all 11 game cards
+fb9f8c7 games: phase 4 hero, filters, featured row
+39d7261 games: phase 5 bento grid and polish
 ```
 
 ---
