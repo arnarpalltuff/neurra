@@ -99,7 +99,6 @@ export default React.memo(function GameCard({
         </View>
       ) : (
         <View style={styles.statsRow}>
-          {/* Level dots */}
           <View style={styles.dots}>
             {Array.from({ length: 5 }).map((_, i) => {
               const filled = i < Math.min(Math.ceil(level / 2), 5);
@@ -120,7 +119,6 @@ export default React.memo(function GameCard({
               );
             })}
           </View>
-          <Text style={styles.stat}>Lv {Math.round(level)}</Text>
           {best > 0 && (
             <Text style={[styles.stat, { color: accent }]}>
               Best: {best > 1000 ? `${(best / 1000).toFixed(1)}k` : best}
