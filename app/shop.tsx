@@ -1,9 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, Pressable, FlatList, ScrollView, Alert,
+  View, Text, StyleSheet, SafeAreaView, Pressable, ScrollView, Alert,
 } from 'react-native';
 import PressableScale from '../src/components/ui/PressableScale';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { tapLight, success as hapticSuccess } from '../src/utils/haptics';
 import { router } from 'expo-router';
@@ -12,13 +11,8 @@ import { fonts } from '../src/constants/typography';
 import { useProgressStore } from '../src/stores/progressStore';
 import { useCoinStore } from '../src/stores/coinStore';
 import {
-  useCosmeticsStore,
-  OUTFIT_DEFS, OutfitDef,
-  ACCESSORY_DEFS, AccessoryDef,
-} from '../src/stores/cosmeticsStore';
-import {
   useGroveStore,
-  GROVE_THEMES, DECORATION_DEFS,
+  GROVE_THEMES,
   GroveThemeId,
 } from '../src/stores/groveStore';
 import { GROVE_PALETTES } from '../src/constants/groveThemes';
@@ -29,7 +23,7 @@ import {
 import { useProStore } from '../src/stores/proStore';
 import PaywallFull from '../src/components/paywall/PaywallFull';
 
-type ShopTab = 'outfits' | 'accessories' | 'themes' | 'decorations' | 'utilities';
+type ShopTab = 'themes' | 'decorations' | 'utilities';
 
 interface UtilityItem {
   id: string;
@@ -46,63 +40,17 @@ const UTILITY_ITEMS: UtilityItem[] = [
 ];
 
 export default function ShopScreen() {
-  const [tab, setTab] = useState<ShopTab>('outfits');
+  const [tab, setTab] = useState<ShopTab>('themes');
   const [showPaywall, setShowPaywall] = useState(false);
   const isPro = useProStore(s => s.isPro || s.debugSimulatePro);
   const coins = useProgressStore(s => s.coins);
   const spendCoins = useCoinStore(s => s.spendCoins);
   const addStreakFreeze = useProgressStore(s => s.addStreakFreeze);
   const streakFreezes = useProgressStore(s => s.streakFreezes);
-  const ownedOutfits = useCosmeticsStore(s => s.ownedOutfits);
-  const ownedAccessories = useCosmeticsStore(s => s.ownedAccessories);
-  const equippedOutfit = useCosmeticsStore(s => s.equippedOutfit);
-  const equippedAccessory = useCosmeticsStore(s => s.equippedAccessory);
-  const buyOutfit = useCosmeticsStore(s => s.buyOutfit);
-  const buyAccessory = useCosmeticsStore(s => s.buyAccessory);
-  const equipOutfit = useCosmeticsStore(s => s.equipOutfit);
-  const equipAccessory = useCosmeticsStore(s => s.equipAccessory);
   const activeTheme = useGroveStore(s => s.activeTheme);
   const unlockedThemes = useGroveStore(s => s.unlockedThemes);
   const setTheme = useGroveStore(s => s.setTheme);
   const unlockTheme = useGroveStore(s => s.unlockTheme);
-
-  const handleBuyOutfit = useCallback((def: OutfitDef) => {
-    if (def.cost === -1) {
-      if (!isPro) setShowPaywall(true);
-      return;
-    }
-    if (ownedOutfits.includes(def.id)) {
-      equipOutfit(equippedOutfit === def.id ? null : def.id);
-      tapLight();
-      return;
-    }
-    if (!spendCoins(def.cost, `Outfit: ${def.name}`)) {
-      Alert.alert('Not enough coins', `You need ${def.cost} coins for this outfit.`);
-      return;
-    }
-    buyOutfit(def.id);
-    equipOutfit(def.id);
-    hapticSuccess();
-  }, [ownedOutfits, equippedOutfit, spendCoins, buyOutfit, equipOutfit]);
-
-  const handleBuyAccessory = useCallback((def: AccessoryDef) => {
-    if (def.cost === -1) {
-      if (!isPro) setShowPaywall(true);
-      return;
-    }
-    if (ownedAccessories.includes(def.id)) {
-      equipAccessory(equippedAccessory === def.id ? null : def.id);
-      tapLight();
-      return;
-    }
-    if (!spendCoins(def.cost, `Accessory: ${def.name}`)) {
-      Alert.alert('Not enough coins', `You need ${def.cost} coins for this accessory.`);
-      return;
-    }
-    buyAccessory(def.id);
-    equipAccessory(def.id);
-    hapticSuccess();
-  }, [ownedAccessories, equippedAccessory, spendCoins, buyAccessory, equipAccessory]);
 
   const handleBuyTheme = useCallback((themeId: GroveThemeId, cost: number) => {
     if (cost === -1) {
@@ -145,8 +93,6 @@ export default function ShopScreen() {
   }, [streakFreezes, spendCoins, addStreakFreeze]);
 
   const tabs: { key: ShopTab; label: string }[] = [
-    { key: 'outfits', label: 'Outfits' },
-    { key: 'accessories', label: 'Gear' },
     { key: 'themes', label: 'Themes' },
     { key: 'decorations', label: 'Decor' },
     { key: 'utilities', label: 'Items' },
@@ -180,69 +126,6 @@ export default function ShopScreen() {
           </Pressable>
         ))}
       </ScrollView>
-
-      {/* Outfits */}
-      {tab === 'outfits' && (
-        <FlatList
-          data={OUTFIT_DEFS}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          contentContainerStyle={styles.grid}
-          renderItem={({ item }) => {
-            const owned = ownedOutfits.includes(item.id);
-            const equipped = equippedOutfit === item.id;
-            const isPro = item.cost === -1;
-            return (
-              <PressableScale style={[styles.card, equipped && styles.cardEquipped]} onPress={() => handleBuyOutfit(item)}>
-                <LinearGradient colors={[C.bg4, C.bg3]} style={StyleSheet.absoluteFill} />
-                <Text style={styles.cardEmoji}>{item.emoji}</Text>
-                <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
-                {equipped ? (
-                  <View style={styles.equippedBadge}><Text style={styles.equippedBadgeText}>Equipped</Text></View>
-                ) : owned ? (
-                  <Text style={styles.ownedTag}>Tap to equip</Text>
-                ) : isPro ? (
-                  <View style={styles.proBadge}><Text style={styles.proText}>PRO</Text></View>
-                ) : (
-                  <Text style={styles.costText}>{item.cost} 🪙</Text>
-                )}
-              </PressableScale>
-            );
-          }}
-        />
-      )}
-
-      {/* Accessories */}
-      {tab === 'accessories' && (
-        <FlatList
-          data={ACCESSORY_DEFS}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          contentContainerStyle={styles.grid}
-          renderItem={({ item }) => {
-            const owned = ownedAccessories.includes(item.id);
-            const equipped = equippedAccessory === item.id;
-            const isPro = item.cost === -1;
-            return (
-              <PressableScale style={[styles.cardSmall, equipped && styles.cardEquipped]} onPress={() => handleBuyAccessory(item)}>
-                <LinearGradient colors={[C.bg4, C.bg3]} style={StyleSheet.absoluteFill} />
-                <Text style={styles.cardEmoji}>{item.emoji}</Text>
-                <Text style={styles.cardNameSmall} numberOfLines={1}>{item.name}</Text>
-                {equipped ? (
-                  <View style={styles.equippedBadgeSmall}><Text style={styles.equippedBadgeTextSmall}>On</Text></View>
-                ) : owned ? (
-                  <Text style={styles.ownedTagSmall}>Equip</Text>
-                ) : isPro ? (
-                  <View style={styles.proBadgeSmall}><Text style={styles.proTextSmall}>PRO</Text></View>
-                ) : (
-                  <Text style={styles.costTextSmall}>{item.cost} 🪙</Text>
-                )}
-              </PressableScale>
-            );
-          }}
-        />
-      )}
 
       {/* Themes */}
       {tab === 'themes' && (
@@ -383,49 +266,6 @@ const styles = StyleSheet.create({
   },
   tabTextActive: { color: C.green },
 
-  // Grid
-  grid: { paddingHorizontal: 14, paddingTop: 10, gap: 10, paddingBottom: 40 },
-
-  // Outfit cards (2 col)
-  card: {
-    flex: 1,
-    maxWidth: '48%',
-    borderRadius: 20,
-    padding: 16,
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(19,24,41,0.85)',
-    marginHorizontal: 4,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  cardEquipped: {
-    borderColor: C.green,
-    borderWidth: 1.5,
-    shadowColor: '#6ECF9A',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-  },
-  cardEmoji: { fontSize: 32 },
-  cardName: {
-    fontFamily: fonts.headingMed,
-    color: C.t1,
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  cardDesc: {
-    fontFamily: fonts.body,
-    color: C.t3,
-    fontSize: 11,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
   equippedBadge: {
     backgroundColor: C.greenTint,
     paddingHorizontal: 10,
@@ -462,58 +302,6 @@ const styles = StyleSheet.create({
     color: C.t1,
     fontSize: 10,
     letterSpacing: 0.5,
-  },
-
-  // Accessory cards (3 col)
-  cardSmall: {
-    flex: 1,
-    maxWidth: '31%',
-    borderRadius: 16,
-    padding: 12,
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginHorizontal: 3,
-    overflow: 'hidden',
-  },
-  cardNameSmall: {
-    fontFamily: fonts.bodySemi,
-    color: C.t2,
-    fontSize: 11,
-    textAlign: 'center',
-  },
-  equippedBadgeSmall: {
-    backgroundColor: C.greenTint,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  equippedBadgeTextSmall: {
-    fontFamily: fonts.bodyBold,
-    color: C.green,
-    fontSize: 9,
-  },
-  ownedTagSmall: {
-    fontFamily: fonts.bodySemi,
-    color: C.blue,
-    fontSize: 10,
-  },
-  costTextSmall: {
-    fontFamily: fonts.bodyBold,
-    color: C.peach,
-    fontSize: 11,
-  },
-  proBadgeSmall: {
-    backgroundColor: C.purple,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-  },
-  proTextSmall: {
-    fontFamily: fonts.bodyBold,
-    color: C.t1,
-    fontSize: 9,
   },
 
   // Themes grid

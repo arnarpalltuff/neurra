@@ -1,10 +1,9 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { tapLight } from '../../utils/haptics';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
-import { useTranslation } from '../../i18n';
 
 type Mood = 'great' | 'good' | 'okay' | 'low' | 'rough';
 
@@ -13,16 +12,15 @@ interface MoodCheckInProps {
   onDismiss?: () => void;
 }
 
-export default function MoodCheckIn({ onSelect, onDismiss }: MoodCheckInProps) {
-  const t = useTranslation();
+const MOODS: { key: Mood; emoji: string; label: string }[] = [
+  { key: 'great', emoji: '😊', label: 'Great' },
+  { key: 'good',  emoji: '🙂', label: 'Good' },
+  { key: 'okay',  emoji: '😐', label: 'Okay' },
+  { key: 'low',   emoji: '😔', label: 'Low' },
+  { key: 'rough', emoji: '😣', label: 'Rough' },
+];
 
-  const MOODS = useMemo<{ key: Mood; emoji: string; label: string }[]>(() => [
-    { key: 'great', emoji: '😊', label: t.moodGreat },
-    { key: 'good', emoji: '🙂', label: t.moodGood },
-    { key: 'okay', emoji: '😐', label: t.moodOkay },
-    { key: 'low', emoji: '😔', label: t.moodLow },
-    { key: 'rough', emoji: '😣', label: t.moodRough },
-  ], [t]);
+export default function MoodCheckIn({ onSelect, onDismiss }: MoodCheckInProps) {
   const handleSelect = (mood: Mood) => {
     tapLight();
     onSelect(mood);
@@ -30,7 +28,7 @@ export default function MoodCheckIn({ onSelect, onDismiss }: MoodCheckInProps) {
 
   return (
     <Animated.View entering={FadeInDown.delay(100)} style={styles.container}>
-      <Text style={styles.title}>{t.howAreYouFeeling}</Text>
+      <Text style={styles.title}>How are you feeling?</Text>
       <Text style={styles.subtitle}>This stays private and helps track your wellbeing.</Text>
       <View style={styles.moodRow}>
         {MOODS.map((m) => (
@@ -46,7 +44,7 @@ export default function MoodCheckIn({ onSelect, onDismiss }: MoodCheckInProps) {
       </View>
       {onDismiss && (
         <Pressable onPress={onDismiss} hitSlop={12}>
-          <Text style={styles.dismissText}>{t.skip}</Text>
+          <Text style={styles.dismissText}>Skip</Text>
         </Pressable>
       )}
     </Animated.View>

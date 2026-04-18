@@ -64,6 +64,18 @@ export const useAchievementStore = create<AchievementState>()(
       name: 'neurra-achievement-store',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({ unlocked: s.unlocked }),
+      version: 1,
+      migrate: (persistedState: any, _version: number) => {
+        // When badge defs get pruned, drop any persisted unlocks for IDs
+        // that no longer exist so the Profile screen can't render orphans.
+        if (persistedState?.unlocked && Array.isArray(persistedState.unlocked)) {
+          const validIds = new Set(BADGES.map((b) => b.id));
+          persistedState.unlocked = persistedState.unlocked.filter(
+            (u: UnlockedBadge) => u && validIds.has(u.id),
+          );
+        }
+        return persistedState;
+      },
     },
   ),
 );

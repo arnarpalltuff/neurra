@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import {
   Quicksand_500Medium,
@@ -49,6 +50,10 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    // One-shot cleanup of removed persist keys. Safe to remove after a few
+    // releases — the removeItem call is a no-op if the key is already gone.
+    AsyncStorage.removeItem('neurra-cosmetics').catch(() => {});
+
     preloadAllSounds();
     initializePurchases();
     useWeeklyReportStore.getState().generateIfNeeded();

@@ -2,17 +2,11 @@ import { GameId, BrainArea } from './gameConfigs';
 import type { SessionRecord, GameResult, BrainScores } from '../stores/progressStore';
 
 /**
- * 25 achievement badges.
+ * 20 achievement badges.
  *
  * Each badge has a stable id, display info, and a `check(ctx)` predicate
  * that takes the current state and returns true if the badge should be
  * unlocked. The check is pure — no side effects.
- *
- * Some checks reference data the store doesn't currently track (e.g.
- * exact game-completion duration, return-after-absence). Those return
- * false today and will start unlocking once the relevant tracking lands.
- * The badge defs themselves are stable, so future plumbing won't require
- * a constants migration.
  */
 
 export type BadgeCategory = 'milestone' | 'streak' | 'mastery' | 'exploration' | 'special';
@@ -71,7 +65,7 @@ const hasPerfectGame = (history: BadgeContext['gameHistory']): boolean => {
   return false;
 };
 
-// ── Badge definitions (25) ───────────────────────────────────────────────
+// ── Badge definitions (20) ───────────────────────────────────────────────
 
 export const BADGES: BadgeDef[] = [
   // Milestones
@@ -168,42 +162,6 @@ export const BADGES: BadgeDef[] = [
     check: (c) => hasPerfectSession(c.sessions),
   },
   {
-    id: 'speed-demon',
-    name: 'Speed Demon',
-    description: 'Crush a Chain Reaction session in record time.',
-    icon: '⚡',
-    category: 'mastery',
-    // Requires per-game duration tracking — placeholder until that lands.
-    check: () => false,
-  },
-  {
-    id: 'word-wizard',
-    name: 'Word Wizard',
-    description: 'Find a 7+ letter word in Word Weave.',
-    icon: '📚',
-    category: 'mastery',
-    // Requires word-length tracking in word-weave results — placeholder.
-    check: () => false,
-  },
-  {
-    id: 'iron-will',
-    name: 'Iron Will',
-    description: 'Resist 20 red shapes in a row in Pulse.',
-    icon: '🛡️',
-    category: 'mastery',
-    // Requires inner-game streak tracking — placeholder.
-    check: () => false,
-  },
-  {
-    id: 'memory-palace',
-    name: 'Memory Palace',
-    description: 'Remember 8+ items in a Ghost Kitchen round.',
-    icon: '🧠',
-    category: 'mastery',
-    // Requires per-round item count — placeholder.
-    check: () => false,
-  },
-  {
     id: 'zen-master',
     name: 'Zen Master',
     description: 'Complete 20 Zen Flow sessions.',
@@ -270,15 +228,6 @@ export const BADGES: BadgeDef[] = [
     icon: '🌍',
     category: 'special',
     check: (c) => c.realChallengesCompleted >= 10,
-  },
-  {
-    id: 'comeback-kid',
-    name: 'Comeback Kid',
-    description: 'Return after 7+ days away.',
-    icon: '🔄',
-    category: 'special',
-    // Requires gap detection — placeholder.
-    check: () => false,
   },
   {
     id: 'founding-member',

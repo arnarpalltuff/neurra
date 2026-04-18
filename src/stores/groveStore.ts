@@ -7,14 +7,8 @@ import { BrainArea } from '../constants/gameConfigs';
 
 export type GroveThemeId =
   | 'floating-isle'
-  | 'deep-ocean'
   | 'cloud-kingdom'
-  | 'volcanic-ember'
-  | 'zen-garden'
-  | 'cosmic-void'
-  | 'ancient-ruins'
-  | 'aurora-borealis'
-  | 'bioluminescent-deep';
+  | 'cosmic-void';
 
 export interface GroveTheme {
   id: GroveThemeId;
@@ -25,14 +19,8 @@ export interface GroveTheme {
 
 export const GROVE_THEMES: GroveTheme[] = [
   { id: 'floating-isle', name: 'Floating Isle', cost: 0, description: 'Lush green island in a soft sky' },
-  { id: 'deep-ocean', name: 'Deep Ocean', cost: 500, description: 'A coral reef on the ocean floor' },
   { id: 'cloud-kingdom', name: 'Cloud Kingdom', cost: 500, description: 'Floating among soft clouds and gold' },
-  { id: 'volcanic-ember', name: 'Volcanic Ember', cost: 750, description: 'Dark volcanic island with ember glow' },
-  { id: 'zen-garden', name: 'Zen Garden', cost: 750, description: 'Cherry blossoms, koi pond, raked sand' },
   { id: 'cosmic-void', name: 'Cosmic Void', cost: 1000, description: 'Floating in space with stardust rivers' },
-  { id: 'ancient-ruins', name: 'Ancient Ruins', cost: 1000, description: 'Overgrown temple ruins' },
-  { id: 'aurora-borealis', name: 'Aurora Borealis', cost: -1, description: 'Northern lights and ice crystals' },
-  { id: 'bioluminescent-deep', name: 'Bioluminescent Deep', cost: -1, description: 'Everything emits soft light in the dark' },
 ];
 
 export type DecorationCategory =
@@ -479,10 +467,9 @@ export const useGroveStore = create<GroveState>()(
     {
       name: 'neurra-grove',
       storage: createJSONStorage(() => AsyncStorage),
-      // F7: bumped to v2 when streakCount + activeSpecialists were added.
-      // Existing persisted state from v1 (or unversioned) doesn't have those
-      // fields; backfill them so reads can't trip on undefined.
-      version: 2,
+      // v2: streakCount + activeSpecialists backfill.
+      // v3: grove themes cut 9 → 3 — reset activeTheme if stale, filter unlockedThemes.
+      version: 3,
       migrate: (persistedState: unknown, version: number) => {
         const state = (persistedState ?? {}) as Partial<GroveState> & {
           zoneGrowths?: Partial<Record<BrainArea, Partial<ZoneGrowth>>>;
@@ -512,6 +499,23 @@ export const useGroveStore = create<GroveState>()(
           state.zoneGrowths = fixedZones;
           if (!Array.isArray(state.activeSpecialists)) {
             state.activeSpecialists = [];
+          }
+        }
+        if (version < 3) {
+          const VALID_THEMES: GroveThemeId[] = ['floating-isle', 'cloud-kingdom', 'cosmic-void'];
+          const isValid = (id: unknown): id is GroveThemeId =>
+            typeof id === 'string' && (VALID_THEMES as string[]).includes(id);
+
+          if (!isValid(state.activeTheme)) {
+            state.activeTheme = 'floating-isle';
+          }
+          if (Array.isArray(state.unlockedThemes)) {
+            state.unlockedThemes = (state.unlockedThemes as unknown[]).filter(isValid);
+            if (!state.unlockedThemes.includes('floating-isle')) {
+              state.unlockedThemes.unshift('floating-isle');
+            }
+          } else {
+            state.unlockedThemes = ['floating-isle'];
           }
         }
         return state;

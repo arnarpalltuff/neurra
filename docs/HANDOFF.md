@@ -1,5 +1,51 @@
 # Neurra — session handoff
 
+## 2026-04-18 — Dead-code purge (shipped)
+
+**Status:** Complete. All 5 steps executed end-to-end. Single commit on `main`.
+
+### Net lines removed: ~1,048
+
+| Step | Files touched | Lines |
+|---|---|---|
+| 1 — i18n skeleton | src/i18n/* deleted, settingsStore + MoodCheckIn edited | ~472 |
+| 2 — Leagues route + tab | app/(tabs)/leagues.tsx deleted, _layout + settingsStore edited | ~246 |
+| 3 — 5 always-false badges (25 → 20) | badges.ts + achievementStore migrate | ~33 |
+| 4 — Grove themes (9 → 3) | groveStore + constants/groveThemes + GroveIsland fallback | ~47 |
+| 5 — Cosmetics | cosmeticsStore.ts deleted, KovaHero + shop.tsx + root layout edited | ~250 |
+
+### Shipped migrations
+
+- `neurra-settings` v1 — force `language='en'`, drop `leaguesEnabled`
+- `neurra-achievement-store` v1 — filter `unlocked[]` to valid BADGES ids
+- `neurra-grove` v2 → v3 — reset stale `activeTheme` to `floating-isle`, filter `unlockedThemes`
+- `neurra-cosmetics` — purged via one-shot `AsyncStorage.removeItem` in root layout
+
+### Kept themes (3)
+
+`floating-isle` (free) · `cloud-kingdom` (500) · `cosmic-void` (1000)
+
+### Out-of-scope flag (not touched)
+
+`src/constants/appStore.ts:21` still mentions "leagues" in App Store marketing bullet. Fix when finalizing store listing, not now.
+
+### Verification at commit time
+
+- `npx tsc --noEmit` → 0 errors
+- `grep` for cosmeticsStore / i18n / leagues → 0 hits outside intended locations
+- All 4 migrations defensive against malformed persisted state
+
+### Device test pending
+
+Not yet run on device. Next session should:
+1. Launch app, confirm all 5 tabs render (no leagues in tab bar)
+2. Open Shop, confirm 3 tabs (themes/decor/items) and default is themes
+3. Open Profile, confirm Kova renders without cosmetic label
+4. Open Grove, confirm theme loads (defaults to floating-isle if previously on a cut theme)
+5. Complete a session, confirm badges still fire
+
+---
+
 ## 2026-04-16 — Games tab premium upgrade (shipped)
 
 **Status:** Complete. 6 phases committed.

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BrainArea } from '../constants/gameConfigs';
-import { Language } from '../i18n/translations';
+type Language = 'en';
 
 export type AppTheme = 'auto' | 'dark' | 'light';
 export type DifficultyPref = 'adaptive' | 'challenge' | 'easy';
@@ -39,7 +39,6 @@ interface SettingsState {
   zenFlowInclusion: ZenFlowPref;
 
   // Competition
-  leaguesEnabled: boolean;
   friendActivityEnabled: boolean;
   allowFriendRequests: boolean;
   showOnLeaderboards: boolean;
@@ -83,7 +82,6 @@ interface SettingsState {
   setFocusArea: (area: BrainArea, enabled: boolean) => void;
   setDifficultyPref: (v: DifficultyPref) => void;
   setZenFlowInclusion: (v: ZenFlowPref) => void;
-  setLeaguesEnabled: (v: boolean) => void;
   setFriendActivityEnabled: (v: boolean) => void;
   setAllowFriendRequests: (v: boolean) => void;
   setShowOnLeaderboards: (v: boolean) => void;
@@ -131,7 +129,6 @@ export const useSettingsStore = create<SettingsState>()(
       difficultyPref: 'adaptive',
       zenFlowInclusion: 'sometimes',
 
-      leaguesEnabled: true,
       friendActivityEnabled: true,
       allowFriendRequests: true,
       showOnLeaderboards: true,
@@ -166,7 +163,6 @@ export const useSettingsStore = create<SettingsState>()(
         })),
       setDifficultyPref: (difficultyPref) => set({ difficultyPref }),
       setZenFlowInclusion: (zenFlowInclusion) => set({ zenFlowInclusion }),
-      setLeaguesEnabled: (leaguesEnabled) => set({ leaguesEnabled }),
       setFriendActivityEnabled: (friendActivityEnabled) => set({ friendActivityEnabled }),
       setAllowFriendRequests: (allowFriendRequests) => set({ allowFriendRequests }),
       setShowOnLeaderboards: (showOnLeaderboards) => set({ showOnLeaderboards }),
@@ -187,6 +183,20 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'neurra-settings',
       storage: createJSONStorage(() => AsyncStorage),
+      version: 1,
+      migrate: (persistedState: any, _version: number) => {
+        // i18n removed — force any stored non-English language back to 'en'
+        // so runtime matches the narrowed `Language = 'en'` type.
+        if (persistedState?.language && persistedState.language !== 'en') {
+          persistedState.language = 'en';
+        }
+        // Leagues removed — drop orphan persisted key so stale AsyncStorage
+        // values don't sit around forever.
+        if (persistedState && 'leaguesEnabled' in persistedState) {
+          delete persistedState.leaguesEnabled;
+        }
+        return persistedState;
+      },
     },
   ),
 );

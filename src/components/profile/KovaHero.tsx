@@ -19,7 +19,6 @@ import { useKovaStore, stageConfigFor } from '../../stores/kovaStore';
 import { STORE_EMOTION_TO_VISUAL, clampStage } from '../../utils/kovaMapping';
 import { useProStore } from '../../stores/proStore';
 import { useEnergyStore, maxHeartsFor } from '../../stores/energyStore';
-import { OUTFIT_DEFS, ACCESSORY_DEFS } from '../../stores/cosmeticsStore';
 import { getXPProgress } from '../ui/XPProgressBar';
 import {
   AREA_LABELS,
@@ -50,14 +49,6 @@ function speechLine(streak: number, topArea: BrainArea | null, name: string): st
   return 'Ready for a fresh session?';
 }
 
-function cosmeticName(id: string | null): string | null {
-  if (!id) return null;
-  const o = OUTFIT_DEFS.find(d => d.id === id);
-  if (o) return o.name;
-  const a = ACCESSORY_DEFS.find(d => d.id === id);
-  return a ? a.name : null;
-}
-
 export default React.memo(function KovaHero() {
   const name = useUserStore(s => s.name);
   const improvementGoals = useUserStore(s => s.improvementGoals);
@@ -70,13 +61,11 @@ export default React.memo(function KovaHero() {
 
   const currentStage = useKovaStore(s => s.currentStage);
   const currentEmotion = useKovaStore(s => s.currentEmotion);
-  const equippedCosmetic = useKovaStore(s => s.equippedCosmetic);
 
   const isPro = useProStore(s => s.isPro);
   const hearts = useEnergyStore(s => s.hearts);
 
   const stageName = stageConfigFor(currentStage).name;
-  const cosName = cosmeticName(equippedCosmetic);
 
   const topArea = useMemo(() => dominantArea(brainScores), [brainScores]);
   const brainType = topArea ? BRAIN_TYPE_LABEL[topArea] : 'Brain Explorer';
@@ -128,12 +117,6 @@ export default React.memo(function KovaHero() {
           <Text style={[styles.stageLabel, { color: accent }]}>
             STAGE {currentStage} · {stageName.toUpperCase()}
           </Text>
-          {cosName && (
-            <>
-              <View style={styles.dotSep} />
-              <Text style={styles.cosmeticLabel}>{cosName}</Text>
-            </>
-          )}
         </View>
 
         <View style={styles.nameRow}>

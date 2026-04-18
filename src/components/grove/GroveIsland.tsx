@@ -65,7 +65,7 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
   );
   const xp = useProgressStore((s) => s.xp);
   const stage = stageFromXP(xp);
-  const palette = GROVE_PALETTES[activeTheme];
+  const palette = GROVE_PALETTES[activeTheme] ?? GROVE_PALETTES['floating-isle'];
   const timeSky = getTimeOfDaySky();
 
   // Use time-of-day sky for default theme, else theme's own sky

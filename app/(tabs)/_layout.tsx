@@ -100,14 +100,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="leagues"
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🏆" label="Leagues" focused={focused} activeColor={C.purple} />,
-          tabBarAccessibilityLabel: "Leagues",
-          href: null, // Hidden from tab bar — reintroduce post-launch
-        }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
           tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="Profile" focused={focused} activeColor={C.peach} />,
