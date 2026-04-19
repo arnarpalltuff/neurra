@@ -1153,7 +1153,13 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
   const scoreTrailIdRef = useRef(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Unmount-only guard. All five consumers of `cancelledRef` below treat it
+  // as "has the component unmounted?" — so it must only flip on real unmount,
+  // not on intra-component state transitions like 'playing' → 'outro'.
   const cancelledRef = useRef(false);
+  useEffect(() => {
+    return () => { cancelledRef.current = true; };
+  }, []);
   const scoreRef = useRef(0);
   const { feedback: burstFeedback, fireCorrect: burstCorrect, fireWrong: burstWrong } = useGameFeedback();
   const neural = useNeuralMap('word-weave');
@@ -1234,7 +1240,6 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
   // Timer — only runs in 'playing' state
   useEffect(() => {
     if (gameState !== 'playing') return;
-    cancelledRef.current = false;
     timerRef.current = setInterval(() => {
       if (cancelledRef.current) return;
       setTimeLeft((t) => {
@@ -1265,7 +1270,6 @@ export default function WordWeave({ onComplete, initialLevel = 1, isOnboarding =
       });
     }, 1000);
     return () => {
-      cancelledRef.current = true;
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [gameState]);

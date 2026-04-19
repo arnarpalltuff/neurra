@@ -1,5 +1,39 @@
 # Neurra — session handoff
 
+## 2026-04-18 — Word Weave freeze fix (applied, pending commit)
+
+**Status:** Fix applied in working tree. Typecheck passes. User verification + commit pending.
+
+### Bug
+
+Completing a Word Weave session froze on the outro screen — never advanced to the result/summary view.
+
+### Root cause
+
+`cancelledRef` in `src/components/games/word-weave/WordWeave.tsx` had semantic drift. Five read sites treated it as "component unmounted?" but one write site (timer effect cleanup) set it `true` on any `[gameState]` dep change — including the legitimate `'playing' → 'outro'` transition. When `OutroOverlay` fired `onDone` 2.6s later, `handleOutroDone` bailed early because the ref was already `true`, so `onComplete` was never called.
+
+### Fix (3 lines removed, 3 lines added)
+
+- Added a single unmount-only `useEffect` that writes `cancelledRef.current = true` only on real unmount
+- Removed `cancelledRef.current = false` from the timer-effect start
+- Removed `cancelledRef.current = true` from the timer-effect cleanup
+- All 5 read sites unchanged — they now correctly reflect "has the component unmounted?"
+
+### Loop verification (walked manually)
+
+1. `OutroOverlay` `setTimeout(onDone, 2600)` fires → `handleOutroDone`
+2. Guard passes (ref is `false`) → `onComplete(score, accuracy)`
+3. `GameWrapper.handleGameComplete` → state `'result'` → renders Kova + score + Continue
+4. Continue → `onGameComplete` → `session.handleGameComplete` → phase `'summary'`
+5. `<PostSession>` renders → Done → `router.replace('/(tabs)')` → back to tabs
+
+### Follow-ups (NOT in this commit)
+
+1. **0ms setTimeout wrapping setState** at `WordWeave.tsx:1243` — dead React 17 batching weight. Harmless but removable in a future cleanup pass.
+2. **Pre-existing bug:** `PostSession.tsx:208-215` passes `showSpeechBubble={false}` with `forceDialogue={kovaMessage}`. `forceDialogue` is only consumed by `Kova.handleTap` when `showSpeechBubble` is true (Kova.tsx:307-335). The computed `kovaMessage` state is therefore dead — never surfaces visually. Kova appears on the summary screen but silent. This predates the freeze fix; track separately.
+
+---
+
 ## 2026-04-18 — Dead-code purge (shipped)
 
 **Status:** Complete. All 5 steps executed end-to-end. Single commit on `main`.
