@@ -16,6 +16,7 @@ import FeedbackBurst from '../../ui/FeedbackBurst';
 import FloatingParticles from '../../ui/FloatingParticles';
 import { updateDifficulty, getDifficulty, mindDriftParams } from '../../../utils/difficultyEngine';
 import { pickRandom } from '../../../utils/arrayUtils';
+import { logDogfoodSession } from '../../../utils/dogfoodLog';
 import GameIntro from '../shared/GameIntro';
 
 const { width: W } = Dimensions.get('window');
@@ -137,6 +138,10 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   const roundStartRef = useRef(Date.now());
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
+  // Dogfood logging — 7-day Mind Drift retention test.
+  const dogfoodStartRef = useRef<string>('');
+  const dogfoodCompletedRef = useRef(false);
+
   const scorePulse = useSharedValue(1);
   const rootShake = useSharedValue(0);
 
@@ -149,6 +154,32 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
   useEffect(() => {
 
     return () => { pendingTimers.current.forEach(clearTimeout); };
+  }, []);
+
+  // Dogfood session tracking — logs a finished=true entry inside advanceRound
+  // on natural completion, and a finished=false entry here on abandonment.
+  // The 3-second elapsed guard filters out strict-mode double-mounts.
+  useEffect(() => {
+    dogfoodStartRef.current = new Date().toISOString();
+    const pathLength = params.pathLength;
+    const totalRounds = params.totalRounds;
+    return () => {
+      if (dogfoodCompletedRef.current) return;
+      const startedAt = dogfoodStartRef.current;
+      const elapsedMs = startedAt ? Date.now() - new Date(startedAt).getTime() : 0;
+      const roundsCompleted = Math.max(0, roundRef.current - 1);
+      if (roundsCompleted === 0 && elapsedMs < 3000) return;
+      logDogfoodSession({
+        game: 'mind-drift',
+        startedAt,
+        endedAt: new Date().toISOString(),
+        finished: false,
+        finalScore: scoreRef.current,
+        roundsCompleted,
+        totalRounds,
+        pathLength,
+      });
+    };
   }, []);
 
 
@@ -185,6 +216,17 @@ export default function MindDrift({ onComplete, initialLevel = 1 }: MindDriftPro
     setRound(roundRef.current);
     if (roundRef.current > params.totalRounds) {
       const acc = correctRef.current / params.totalRounds;
+      dogfoodCompletedRef.current = true;
+      logDogfoodSession({
+        game: 'mind-drift',
+        startedAt: dogfoodStartRef.current,
+        endedAt: new Date().toISOString(),
+        finished: true,
+        finalScore: scoreRef.current,
+        roundsCompleted: params.totalRounds,
+        totalRounds: params.totalRounds,
+        pathLength: params.pathLength,
+      });
       onComplete(scoreRef.current, acc);
     } else {
       startRound();
