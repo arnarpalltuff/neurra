@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { selection } from '../../utils/haptics';
+import { navigate } from '../../utils/navigate';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { space, radii, accentGlow } from '../../constants/design';
@@ -25,7 +25,7 @@ export default React.memo(function WeeklyReportSummary() {
 
   const handleOpen = () => {
     selection();
-    router.push('/weekly-report' as any);
+    navigate('/weekly-report');
   };
 
   if (!report) {

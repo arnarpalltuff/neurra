@@ -72,7 +72,7 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
   const skyTop = activeTheme === 'floating-isle' ? timeSky.top : palette.skyTop;
   const skyBottom = activeTheme === 'floating-isle' ? timeSky.bottom : palette.skyBottom;
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ElementRef<typeof AnimatedScrollView>>(null);
   const scrollX = useSharedValue(0);
 
   const onScroll = useAnimatedScrollHandler({
@@ -119,7 +119,7 @@ export default function GroveIsland({ onZoneTap, onKovaTap }: GroveIslandProps) 
 
   return (
     <AnimatedScrollView
-      ref={scrollRef as any}
+      ref={scrollRef}
       horizontal
       contentContainerStyle={{ width: ISLAND_W, height: ISLAND_H }}
       showsHorizontalScrollIndicator={false}

@@ -8,10 +8,10 @@ import {
   Alert,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { selection } from '../../utils/haptics';
+import { navigate, navigateReplace } from '../../utils/navigate';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { space, radii } from '../../constants/design';
@@ -176,8 +176,9 @@ export default React.memo(function SettingsSection({ onOpenPaywall }: SettingsSe
           ? 'Your Pro subscription has been restored.'
           : 'No active subscription for this account.',
       );
-    } catch (e: any) {
-      Alert.alert('Restore failed', e?.message ?? 'Please try again.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Please try again.';
+      Alert.alert('Restore failed', msg);
     }
   }, [syncFromRevenueCat]);
 
@@ -193,7 +194,7 @@ export default React.memo(function SettingsSection({ onOpenPaywall }: SettingsSe
           onPress: async () => {
             try {
               await AsyncStorage.clear();
-              router.replace('/onboarding' as any);
+              navigateReplace('/onboarding');
             } catch {
               Alert.alert('Error', 'Could not clear data. Try again.');
             }
@@ -240,7 +241,7 @@ export default React.memo(function SettingsSection({ onOpenPaywall }: SettingsSe
         <NavRow
           label="Subscription"
           value={isPro ? 'Pro' : 'Free'}
-          onPress={isPro ? () => router.push('/settings' as any) : onOpenPaywall}
+          onPress={isPro ? () => navigate('/settings') : onOpenPaywall}
           icon="card"
         />
         <Divider />
@@ -248,11 +249,11 @@ export default React.memo(function SettingsSection({ onOpenPaywall }: SettingsSe
       </Group>
 
       <Group title="About">
-        <NavRow label="The science" onPress={() => router.push('/science' as any)} icon="flask" />
+        <NavRow label="The science" onPress={() => navigate('/science')} icon="flask" />
         <Divider />
-        <NavRow label="Privacy policy" onPress={() => router.push('/privacy' as any)} icon="shield-checkmark" />
+        <NavRow label="Privacy policy" onPress={() => navigate('/privacy')} icon="shield-checkmark" />
         <Divider />
-        <NavRow label="Terms of service" onPress={() => router.push('/terms' as any)} icon="document-text" />
+        <NavRow label="Terms of service" onPress={() => navigate('/terms')} icon="document-text" />
       </Group>
 
       <Group title="Danger zone">

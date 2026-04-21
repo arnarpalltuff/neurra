@@ -4,7 +4,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   withSequence, withDelay, FadeIn, FadeOut, Easing, interpolate, runOnJS,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
+import { success, warning } from '../../utils/haptics';
 import { stageConfigFor, KovaStageConfig, pickDialogue } from '../../stores/kovaStore';
 import { fonts } from '../../constants/typography';
 import { C } from '../../constants/colors';
@@ -41,7 +41,7 @@ export default function KovaEvolutionAnimation({
       glowScale.value = withTiming(0.6, { duration: 800, easing: Easing.out(Easing.cubic) });
       textOpacity.value = withDelay(600, withTiming(1, { duration: 400 }));
       textScale.value = withDelay(600, withSpring(1, { damping: 10 }));
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      warning();
     } else {
       // Evolution: intensify → burst → flash
       glowOpacity.value = withSequence(
@@ -59,7 +59,7 @@ export default function KovaEvolutionAnimation({
       ));
       textOpacity.value = withDelay(900, withTiming(1, { duration: 400 }));
       textScale.value = withDelay(900, withSpring(1, { damping: 10, stiffness: 120 }));
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      success();
     }
 
     const timer = setTimeout(onComplete, isDeEvolution ? 2500 : 3000);

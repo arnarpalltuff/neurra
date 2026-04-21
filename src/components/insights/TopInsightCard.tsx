@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { router } from 'expo-router';
+import { navigate } from '../../utils/navigate';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import type { BrainPulseData, Insight } from '../../utils/insightsEngine';
@@ -17,7 +17,7 @@ export default function TopInsightCard({ pulse, topInsight, delay = 400 }: TopIn
     <Animated.View entering={FadeInDown.delay(delay).duration(400)}>
       <Pressable
         style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-        onPress={() => router.push('/(tabs)/insights' as any)}
+        onPress={() => navigate('/(tabs)/insights')}
       >
         {/* Pulse score mini */}
         <View style={styles.pulseRow}>

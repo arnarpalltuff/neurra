@@ -10,6 +10,7 @@ import { fonts, type as t } from '../src/constants/typography';
 import { space, radii, shadows } from '../src/constants/design';
 import Kova from '../src/components/kova/Kova';
 import { selection } from '../src/utils/haptics';
+import { navigate } from '../src/utils/navigate';
 import { playToggle } from '../src/utils/sound';
 import { useUserStore } from '../src/stores/userStore';
 import { useSettingsStore } from '../src/stores/settingsStore';
@@ -120,8 +121,9 @@ export default function SettingsScreen() {
           ? 'Your Pro subscription has been restored.'
           : 'We could not find an active subscription for this account.',
       );
-    } catch (e: any) {
-      Alert.alert('Restore Failed', e?.message ?? 'Please try again.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Please try again.';
+      Alert.alert('Restore Failed', msg);
     }
   }, [syncFromRevenueCat]);
 
@@ -268,12 +270,12 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           <SettingRow
             label="Privacy policy"
-            onPress={() => router.push('/privacy' as unknown as Parameters<typeof router.push>[0])}
+            onPress={() => navigate('/privacy')}
           />
           <Divider />
           <SettingRow
             label="Terms of service"
-            onPress={() => router.push('/terms' as unknown as Parameters<typeof router.push>[0])}
+            onPress={() => navigate('/terms')}
           />
         </View>
 

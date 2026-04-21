@@ -445,12 +445,13 @@ function detectGameDiscoveries(input: InsightInput): Insight[] {
 
   // Find best game
   const gamePlays = Object.entries(gameHistory)
-    .filter(([, results]) => results && results.length >= 5)
     .map(([id, results]) => {
-      const avg = results!.reduce((a, r) => a + r.accuracy, 0) / results!.length;
+      if (!results || results.length < 5) return null;
+      const avg = results.reduce((a, r) => a + r.accuracy, 0) / results.length;
       const config = gameConfigs[id as GameId];
       return { id: id as GameId, avg, name: config?.name ?? id, icon: config?.icon ?? '🎮', color: config?.color ?? '#6ECF9A' };
     })
+    .filter((g): g is NonNullable<typeof g> => g !== null)
     .sort((a, b) => b.avg - a.avg);
 
   if (gamePlays.length >= 3) {

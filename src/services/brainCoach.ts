@@ -29,6 +29,7 @@ interface SessionSummary {
 }
 
 const CACHE_PREFIX = 'briefing_';
+const TIMEOUT_MS = 3000;
 
 // ── Static Fallback ─────────────────────────────────
 
@@ -79,25 +80,33 @@ Generate a daily briefing with exactly 4 parts:
 
 Respond ONLY in JSON format with these exact keys: greeting, insight, recommendation, encouragement. No markdown, no backticks.`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+      signal: controller.signal,
+    });
 
-  const result = await response.json();
-  const text = result.content?.[0]?.text || '';
-  return JSON.parse(text);
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+    const result = await response.json();
+    const text = result.content?.[0]?.text || '';
+    return JSON.parse(text);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // ── Public API ──────────────────────────────────────

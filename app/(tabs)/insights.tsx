@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { router } from 'expo-router';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { C } from '../../src/constants/colors';
 import { fonts, type as t } from '../../src/constants/typography';
@@ -11,6 +10,7 @@ import { useUserStore } from '../../src/stores/userStore';
 import { useBrainHistoryStore } from '../../src/stores/brainHistoryStore';
 import { generateInsights, getBrainTrend } from '../../src/utils/insightsEngine';
 import { selection } from '../../src/utils/haptics';
+import { navigate } from '../../src/utils/navigate';
 import { localDateStr } from '../../src/utils/timeUtils';
 import BrainPulseHero from '../../src/components/insights/BrainPulseHero';
 import InsightCard from '../../src/components/insights/InsightCard';
@@ -128,15 +128,15 @@ function InsightsScreenInner() {
 
   const handleBrowseGames = () => {
     selection();
-    router.push('/(tabs)/games' as any);
+    navigate('/(tabs)/games');
   };
 
   const handleOpenReport = (wid: string) => {
     selection();
-    router.push({
+    navigate({
       pathname: '/weekly-report',
       params: { weekId: wid },
-    } as unknown as Parameters<typeof router.push>[0]);
+    });
   };
 
   return (

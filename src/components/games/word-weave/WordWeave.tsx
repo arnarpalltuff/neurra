@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Dimensions, StyleProp, TextStyle } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming, withRepeat,
   withSequence, withDelay, FadeIn, FadeOut, FadeInDown, FadeOutUp,
@@ -662,7 +662,7 @@ function TierLabel({
 // ─────────────────────────────────────────────────────────────
 // Animated score — rolls from previous value to new value
 // ─────────────────────────────────────────────────────────────
-function AnimatedScore({ value, style }: { value: number; style: any }) {
+function AnimatedScore({ value, style }: { value: number; style: StyleProp<TextStyle> }) {
   const [display, setDisplay] = useState(value);
   const prev = useRef(value);
   useEffect(() => {
@@ -795,7 +795,7 @@ function BonusSparkle({
 // ─────────────────────────────────────────────────────────────
 // Outro score text — rolls up from 0 on mount
 // ─────────────────────────────────────────────────────────────
-function OutroScoreText({ target, style }: { target: number; style: any }) {
+function OutroScoreText({ target, style }: { target: number; style: StyleProp<TextStyle> }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {
     const startTime = Date.now();
@@ -820,7 +820,7 @@ function OutroCountUp({
   target: number;
   delay: number;
   format: 'int' | 'float' | 'intX';
-  style: any;
+  style: StyleProp<TextStyle>;
 }) {
   const [display, setDisplay] = useState(0);
   useEffect(() => {

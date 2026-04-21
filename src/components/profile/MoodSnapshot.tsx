@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { router } from 'expo-router';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { space, radii } from '../../constants/design';
 import { useJournalStore } from '../../stores/journalStore';
 import { localDateStr, isToday as isTodayStr } from '../../utils/timeUtils';
 import { selection } from '../../utils/haptics';
+import { navigate } from '../../utils/navigate';
 import SectionHeader from '../home/SectionHeader';
 
 type JournalMood = 'up' | 'neutral' | 'down';
@@ -48,7 +48,7 @@ export default React.memo(function MoodSnapshot() {
 
   const handleOpen = () => {
     selection();
-    router.push('/(tabs)/insights' as any);
+    navigate('/(tabs)/insights');
   };
 
   return (

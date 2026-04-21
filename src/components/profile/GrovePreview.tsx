@@ -3,8 +3,8 @@ import { View, Text, StyleSheet } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import { selection } from '../../utils/haptics';
+import { navigate } from '../../utils/navigate';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { space, radii } from '../../constants/design';
@@ -37,7 +37,7 @@ export default React.memo(function GrovePreview() {
 
   const handleOpen = () => {
     selection();
-    router.push('/(tabs)/grove' as any);
+    navigate('/(tabs)/grove');
   };
 
   return (

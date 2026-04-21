@@ -7,7 +7,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
+import { tapLight, tapMedium, success } from '../../utils/haptics';
 import { C } from '../../constants/colors';
 import { fonts } from '../../constants/typography';
 import { Reward, RARITY_COLORS, rollReward, useRewardStore } from '../../stores/rewardStore';
@@ -165,7 +165,7 @@ export default function RewardChest({ visible, onDismiss }: RewardChestProps) {
   const handleTapOrb = useCallback(() => {
     if (phase !== 'orb') return;
     playTap();
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    tapLight();
 
     // Roll the reward
     const rolled = rollReward(ownedCosmetics);
@@ -191,10 +191,10 @@ export default function RewardChest({ visible, onDismiss }: RewardChestProps) {
 
       // Haptics by rarity
       if (rolled.rarity === 'legendary' || rolled.rarity === 'rare') {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        success();
         playPerfect();
       } else {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        tapMedium();
         playCorrect();
       }
       if (rolled.rarity === 'legendary') playConfetti();

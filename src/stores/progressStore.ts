@@ -119,7 +119,8 @@ export const useProgressStore = create<ProgressState>()(
           for (const result of session.games) {
             const prev = newGameHistory[result.gameId] ?? [];
             newGameHistory[result.gameId] = [...prev, result].slice(-50);
-            if (!newPersonalBests[result.gameId] || result.score > newPersonalBests[result.gameId]!) {
+            const prevBest = newPersonalBests[result.gameId];
+            if (!prevBest || result.score > prevBest) {
               newPersonalBests[result.gameId] = result.score;
             }
           }
