@@ -1,27 +1,15 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableWithoutFeedback } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withRepeat,
-  withSequence,
-  withTiming,
-  withDelay,
-  Easing,
-  interpolate,
-  runOnJS,
-} from 'react-native-reanimated';
-import { tapLight, tapMedium, tapHeavy } from '../../utils/haptics';
-import { playKovaHappy, playKovaExcited, playKovaGiggle, playKovaWow } from '../../utils/sound';
+import Animated from 'react-native-reanimated';
 import { Svg, Circle, Ellipse, Path, G } from 'react-native-svg';
 import { C } from '../../constants/colors';
 import { KovaEmotion, KovaStage, emotionGlowColors, stageColors } from './KovaStates';
-import { getDialogue, DialogueContext } from '../../constants/dialoguePool';
-import { getTimeOfDay } from '../../utils/timeUtils';
+import { DialogueContext } from '../../constants/dialoguePool';
 import { fonts } from '../../constants/typography';
-import { usePersonalityStore } from '../../stores/personalityStore';
-import { pickPersonalityLine } from '../../constants/kovaPersonalityDialogue';
+
+import { useKovaAnimation } from './hooks/useKovaAnimation';
+import { useKovaDialogue } from './hooks/useKovaDialogue';
+import { useKovaTapFeedback } from './hooks/useKovaTapFeedback';
 
 interface KovaProps {
   stage?: KovaStage;
@@ -42,335 +30,24 @@ export default function Kova({
   forceDialogue,
   dialogueContext,
 }: KovaProps) {
-  const [bubble, setBubble] = useState<string | null>(null);
-  const [bubbleVisible, setBubbleVisible] = useState(false);
-  const [blinking, setBlinking] = useState(false);
-  const lastDialogue = useRef('');
-  const bubbleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const tapCountRef = useRef(0);
-  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const blinkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { bounce, scaleVal, wiggle, kovaStyle, glowStyle, blinking } =
+    useKovaAnimation({ emotion });
 
-  // Animation values
-  const floatY = useSharedValue(0);
-  const scaleVal = useSharedValue(1);
-  const breathScale = useSharedValue(1);
-  const glowOpacity = useSharedValue(0.4);
-  const glowScale = useSharedValue(1);
-  const wiggle = useSharedValue(0);
-  const bounce = useSharedValue(0);
-  const bubbleOpacity = useSharedValue(0);
-  const lookX = useSharedValue(0);
+  const { bubble, bubbleVisible, bubbleStyle, showBubble } =
+    useKovaDialogue({ forceDialogue, dialogueContext });
+
+  const { handleTapAnimation } = useKovaTapFeedback({ bounce, scaleVal, wiggle });
 
   const glowColor = emotionGlowColors[emotion] ?? emotionGlowColors.idle;
   const bodyColor = stageColors[stage] ?? stageColors[1];
 
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current);
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
-    };
-  }, []);
-
-  // Idle float animation
-  useEffect(() => {
-    floatY.value = withRepeat(
-      withSequence(
-        withTiming(-6, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(6, { duration: 2000, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      true
-    );
-    glowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.6, { duration: 1500, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.3, { duration: 1500, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      true
-    );
-    glowScale.value = withRepeat(
-      withSequence(
-        withTiming(1.15, { duration: 1800, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0.95, { duration: 1800, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  // Breathing animation — randomized per cycle so Kova never breathes at
-  // exactly the same speed twice. Robots breathe at 3.000s; living things
-  // breathe at 2.8, 3.1, 2.9... That tiny variance is what makes her feel alive.
-  useEffect(() => {
-    let cancelled = false;
-    const breathe = () => {
-      if (cancelled) return;
-      const inDur = 2600 + Math.random() * 600;
-      const outDur = 2600 + Math.random() * 600;
-      breathScale.value = withSequence(
-        withTiming(1.03, { duration: inDur, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1.0, { duration: outDur, easing: Easing.inOut(Easing.sin) }, (finished) => {
-          if (finished) runOnJS(breathe)();
-        }),
-      );
-    };
-    breathe();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Blink animation (random interval 2-6s)
-  useEffect(() => {
-    let cancelled = false;
-    const scheduleBlink = () => {
-      const delay = 2000 + Math.random() * 4000;
-      blinkTimerRef.current = setTimeout(() => {
-        if (cancelled) return;
-        setBlinking(true);
-        setTimeout(() => {
-          if (!cancelled) setBlinking(false);
-          scheduleBlink();
-        }, 150);
-      }, delay);
-    };
-    scheduleBlink();
-    return () => {
-      cancelled = true;
-      if (blinkTimerRef.current) clearTimeout(blinkTimerRef.current);
-    };
-  }, []);
-
-  // Random idle actions (every 8-15s)
-  useEffect(() => {
-    let cancelled = false;
-    const actions = [
-      // Look left, then right, then center
-      () => {
-        lookX.value = withSequence(
-          withTiming(-8, { duration: 400 }),
-          withDelay(800, withTiming(8, { duration: 400 })),
-          withDelay(800, withTiming(0, { duration: 300 })),
-        );
-      },
-      // Little bounce
-      () => {
-        bounce.value = withSequence(
-          withSpring(-10, { damping: 4 }),
-          withSpring(0, { damping: 8 }),
-        );
-      },
-      // Quick wiggle (dance)
-      () => {
-        wiggle.value = withSequence(
-          withTiming(-6, { duration: 120 }),
-          withTiming(6, { duration: 120 }),
-          withTiming(-4, { duration: 120 }),
-          withTiming(4, { duration: 120 }),
-          withTiming(-2, { duration: 120 }),
-          withTiming(0, { duration: 120 }),
-        );
-      },
-      // Wave (tilt back and forth)
-      () => {
-        wiggle.value = withSequence(
-          withTiming(10, { duration: 200 }),
-          withTiming(-10, { duration: 200 }),
-          withTiming(10, { duration: 200 }),
-          withTiming(0, { duration: 200 }),
-        );
-      },
-    ];
-
-    const scheduleAction = () => {
-      const delay = 8000 + Math.random() * 7000;
-      idleTimerRef.current = setTimeout(() => {
-        if (cancelled) return;
-        const action = actions[Math.floor(Math.random() * actions.length)];
-        action();
-        scheduleAction();
-      }, delay);
-    };
-    scheduleAction();
-    return () => {
-      cancelled = true;
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-    };
-  }, []);
-
-  // Emotion-based animations
-  useEffect(() => {
-    switch (emotion) {
-      case 'happy':
-      case 'relieved':
-        bounce.value = withSequence(
-          withSpring(-15, { damping: 4 }),
-          withSpring(0, { damping: 8 }),
-          withSpring(-8, { damping: 6 }),
-          withSpring(0, { damping: 10 })
-        );
-        break;
-      case 'proud':
-      case 'celebrating':
-      case 'excited':
-        bounce.value = withSequence(
-          withSpring(-20, { damping: 3 }),
-          withSpring(0, { damping: 5 }),
-          withSpring(-14, { damping: 5 }),
-          withSpring(0, { damping: 8 })
-        );
-        scaleVal.value = withSequence(
-          withSpring(1.15, { damping: 4 }),
-          withSpring(1, { damping: 8 })
-        );
-        break;
-      case 'encouraging':
-        wiggle.value = withSequence(
-          withTiming(-8, { duration: 150 }),
-          withTiming(8, { duration: 150 }),
-          withTiming(-6, { duration: 150 }),
-          withTiming(6, { duration: 150 }),
-          withTiming(0, { duration: 150 })
-        );
-        break;
-      case 'wilted':
-      case 'worried':
-        scaleVal.value = withTiming(0.92, { duration: 500 });
-        break;
-      default:
-        scaleVal.value = withTiming(1, { duration: 300 });
-        bounce.value = withTiming(0, { duration: 300 });
-        wiggle.value = withTiming(0, { duration: 300 });
-    }
-  }, [emotion]);
-
   const handleTap = useCallback(() => {
-    tapCountRef.current += 1;
-    const taps = tapCountRef.current;
-
-    // Escalating tap reactions
-    if (taps >= 10) {
-      // Rocket launch
-      tapHeavy();
-      playKovaWow();
-      bounce.value = withSequence(
-        withTiming(-80, { duration: 300, easing: Easing.out(Easing.cubic) }),
-        withDelay(200, withSpring(0, { damping: 6, stiffness: 100 })),
-      );
-      scaleVal.value = withSequence(
-        withTiming(0.7, { duration: 150 }),
-        withDelay(300, withSpring(1.1, { damping: 4 })),
-        withSpring(1, { damping: 8 }),
-      );
-      tapCountRef.current = 0; // Reset cycle
-    } else if (taps >= 5) {
-      // Dizzy spin
-      tapMedium();
-      playKovaGiggle();
-      wiggle.value = withSequence(
-        withTiming(360, { duration: 600 }),
-        withTiming(380, { duration: 100 }),
-        withTiming(360, { duration: 200 }),
-        withTiming(0, { duration: 10 }),
-      );
-      scaleVal.value = withSequence(
-        withSpring(0.85, { damping: 4 }),
-        withSpring(1.05, { damping: 5 }),
-        withSpring(1, { damping: 8 }),
-      );
-    } else if (taps >= 3) {
-      // Spin
-      tapMedium();
-      playKovaExcited();
-      wiggle.value = withSequence(
-        withTiming(360, { duration: 400, easing: Easing.out(Easing.cubic) }),
-        withTiming(0, { duration: 10 }),
-      );
-      scaleVal.value = withSequence(
-        withSpring(0.9, { damping: 5 }),
-        withSpring(1.05, { damping: 6 }),
-        withSpring(1, { damping: 8 }),
-      );
-    } else {
-      // Normal bounce
-      tapLight();
-      playKovaHappy();
-      scaleVal.value = withSequence(
-        withSpring(0.88, { damping: 6 }),
-        withSpring(1.08, { damping: 5 }),
-        withSpring(1, { damping: 8 }),
-      );
-    }
-
+    handleTapAnimation();
     if (showSpeechBubble) {
-      let line: string;
-      if (forceDialogue) {
-        line = forceDialogue;
-      } else {
-        const tod = getTimeOfDay();
-        const ctx: DialogueContext =
-          dialogueContext ??
-          (tod === 'morning'
-            ? 'tapMorning'
-            : tod === 'lateNight'
-            ? 'tapLateNight'
-            : tod === 'evening'
-            ? 'tapEvening'
-            : 'tap');
-        // 40% chance Kova speaks from her current personality pool. The
-        // other 60% she falls back to the standard time-of-day dialogue.
-        const personality = usePersonalityStore.getState().current();
-        if (personality !== 'neutral' && Math.random() < 0.4) {
-          line = pickPersonalityLine(personality);
-        } else {
-          line = getDialogue(ctx, true);
-        }
-        // Avoid repeating the last line
-        if (line === lastDialogue.current) {
-          line = getDialogue('tap');
-        }
-        lastDialogue.current = line;
-      }
-
-      setBubble(line);
-      setBubbleVisible(true);
-      bubbleOpacity.value = withTiming(1, { duration: 200 });
-
-      if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current);
-      bubbleTimeoutRef.current = setTimeout(() => {
-        bubbleOpacity.value = withTiming(0, { duration: 300 }, () => {
-          runOnJS(setBubbleVisible)(false);
-        });
-      }, 2500);
+      showBubble();
     }
-
     onTap?.();
-  }, [showSpeechBubble, forceDialogue, dialogueContext, onTap]);
-
-  const kovaStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: floatY.value + bounce.value },
-      { translateX: lookX.value },
-      { scale: scaleVal.value * breathScale.value },
-      { rotate: `${wiggle.value}deg` },
-    ],
-  }));
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowOpacity.value,
-    transform: [{ scale: glowScale.value }],
-  }));
-
-  const bubbleStyle = useAnimatedStyle(() => ({
-    opacity: bubbleOpacity.value,
-    transform: [
-      {
-        scale: interpolate(bubbleOpacity.value, [0, 1], [0.85, 1]),
-      },
-    ],
-  }));
+  }, [handleTapAnimation, showBubble, showSpeechBubble, onTap]);
 
   const s = size;
   const cx = s / 2;
