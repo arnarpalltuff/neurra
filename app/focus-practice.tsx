@@ -10,6 +10,7 @@ import { useProgressStore } from '../src/stores/progressStore';
 import { useCoinStore } from '../src/stores/coinStore';
 import { useKovaStore } from '../src/stores/kovaStore';
 import { useDailyChallengeStore } from '../src/stores/dailyChallengeStore';
+import { useRewardStore } from '../src/stores/rewardStore';
 import { calcSessionCoinRewards, CoinRewardBreakdown } from '../src/utils/coinRewards';
 import { SessionGameResult, calcSessionXP } from '../src/utils/sessionUtils';
 
@@ -44,7 +45,10 @@ export default function FocusPracticeScreen() {
     setResults(newResults);
 
     if (currentIndex + 1 >= gameIds.length) {
-      const totalXP = calcSessionXP(newResults);
+      let totalXP = calcSessionXP(newResults);
+      // Chest xp_boost multiplier (1.5/2/3x) — same consumption point as session.tsx.
+      const boostMult = useRewardStore.getState().consumeXpBoost();
+      if (boostMult > 1) totalXP = Math.round(totalXP * boostMult);
       setSessionXP(totalXP);
 
       const prevLevel = level;

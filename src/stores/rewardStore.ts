@@ -142,7 +142,7 @@ export function rollReward(ownedCosmetics: string[]): Reward {
 // ── Store ────────────────────────────────────────────────────
 
 interface RewardStoreState {
-  activeXpBoost: { multiplier: number; challengesRemaining: number } | null;
+  activeXpBoost: { multiplier: number } | null;
   bonusChallengesAvailable: number;
   rewardHistory: Array<{ reward: Reward; earnedAt: string }>;
   totalChestsOpened: number;
@@ -182,7 +182,6 @@ export const useRewardStore = create<RewardStoreState>()(
           case 'xp_boost':
             updates.activeXpBoost = {
               multiplier: reward.value ?? 1.5,
-              challengesRemaining: 1,
             };
             break;
           case 'streak_shield':
@@ -203,13 +202,7 @@ export const useRewardStore = create<RewardStoreState>()(
       consumeXpBoost: () => {
         const { activeXpBoost } = get();
         if (!activeXpBoost) return 1;
-
-        const remaining = activeXpBoost.challengesRemaining - 1;
-        if (remaining <= 0) {
-          set({ activeXpBoost: null });
-        } else {
-          set({ activeXpBoost: { ...activeXpBoost, challengesRemaining: remaining } });
-        }
+        set({ activeXpBoost: null });
         return activeXpBoost.multiplier;
       },
 

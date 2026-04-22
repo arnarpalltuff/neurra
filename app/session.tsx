@@ -32,6 +32,7 @@ import { calcSessionCoinRewards, CoinRewardBreakdown } from '../src/utils/coinRe
 import { startSessionAmbient, stopAmbient } from '../src/utils/sound';
 import { useKovaStore } from '../src/stores/kovaStore';
 import RewardChest from '../src/components/rewards/RewardChest';
+import { useRewardStore } from '../src/stores/rewardStore';
 import { SessionGameResult, calcSessionXP } from '../src/utils/sessionUtils';
 import { getStoryBeat } from '../src/constants/story';
 import { shouldOfferChallenge, pickChallenge, CHALLENGE_XP_BONUS, type Challenge } from '../src/constants/challenges';
@@ -79,6 +80,7 @@ export default function SessionScreen() {
   const [phase, setPhase] = useState<Phase>(storyBeat ? 'preStory' : 'sessionIntro');
   const [showSessionChest, setShowSessionChest] = useState(false);
   const recordKovaChallenge = useKovaStore(s => s.recordChallengeCompletion);
+  const activeXpBoost = useRewardStore(s => s.activeXpBoost);
 
   useEffect(() => {
     if (phase === 'sessionIntro') {
@@ -139,6 +141,9 @@ export default function SessionScreen() {
       // F12: half XP if user started this session with no hearts left.
       // Stacks multiplicatively with deep bonus (deep + depleted = 0.75x).
       if (wasDepletedRef.current) xp = Math.round(xp * DEPLETED_XP_MULTIPLIER);
+      // Chest xp_boost multiplier (1.5/2/3x). Stacks multiplicatively with deep/depleted.
+      const boostMult = useRewardStore.getState().consumeXpBoost();
+      if (boostMult > 1) xp = Math.round(xp * boostMult);
       const totalXP = xp;
       setSessionXP(totalXP);
 
@@ -299,6 +304,11 @@ export default function SessionScreen() {
           <Animated.Text entering={FadeInDown.delay(250).duration(400)} style={styles.sessionIntroCount}>
             {gameCount} games · {timeEst} min
           </Animated.Text>
+          {activeXpBoost && (
+            <Animated.Text entering={FadeInDown.delay(380).duration(400)} style={styles.sessionIntroBoost}>
+              ⚡ {activeXpBoost.multiplier}× XP active this session
+            </Animated.Text>
+          )}
           <Animated.View entering={FadeInDown.delay(500).duration(400)} style={styles.sessionIntroGamesRow}>
             {gameIds.map((id, i) => {
               const cfg = gameConfigs[id];
@@ -450,6 +460,15 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: C.t1,
     letterSpacing: -0.5,
+  },
+  sessionIntroBoost: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 13,
+    color: C.amber,
+    letterSpacing: 0.6,
+    textShadowColor: 'rgba(240,181,66,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   sessionIntroGamesRow: {
     gap: 8,
