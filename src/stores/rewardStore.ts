@@ -142,7 +142,6 @@ export function rollReward(ownedCosmetics: string[]): Reward {
 // ── Store ────────────────────────────────────────────────────
 
 interface RewardStoreState {
-  streakShields: number;
   activeXpBoost: { multiplier: number; challengesRemaining: number } | null;
   bonusChallengesAvailable: number;
   rewardHistory: Array<{ reward: Reward; earnedAt: string }>;
@@ -154,9 +153,6 @@ interface RewardStoreState {
   /** Consume the XP boost (returns the multiplier, or 1 if none active). */
   consumeXpBoost: () => number;
 
-  /** Consume a streak shield. Returns true if one was available. */
-  consumeStreakShield: () => boolean;
-
   /** Consume a bonus challenge. Returns true if one was available. */
   consumeBonusChallenge: () => boolean;
 }
@@ -164,7 +160,6 @@ interface RewardStoreState {
 export const useRewardStore = create<RewardStoreState>()(
   persist(
     (set, get) => ({
-      streakShields: 0,
       activeXpBoost: null,
       bonusChallengesAvailable: 0,
       rewardHistory: [],
@@ -191,7 +186,8 @@ export const useRewardStore = create<RewardStoreState>()(
             };
             break;
           case 'streak_shield':
-            updates.streakShields = state.streakShields + 1;
+            // Routed directly to progressStore.addStreakFreeze by the
+            // chest; no rewardStore-side state to update.
             break;
           case 'bonus_challenge':
             updates.bonusChallengesAvailable = state.bonusChallengesAvailable + 1;
@@ -215,13 +211,6 @@ export const useRewardStore = create<RewardStoreState>()(
           set({ activeXpBoost: { ...activeXpBoost, challengesRemaining: remaining } });
         }
         return activeXpBoost.multiplier;
-      },
-
-      consumeStreakShield: () => {
-        const { streakShields } = get();
-        if (streakShields <= 0) return false;
-        set({ streakShields: streakShields - 1 });
-        return true;
       },
 
       consumeBonusChallenge: () => {

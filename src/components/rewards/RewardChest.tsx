@@ -119,6 +119,7 @@ export default function RewardChest({ visible, onDismiss }: RewardChestProps) {
   const setEmotion = useKovaStore(s => s.setEmotion);
   const applyReward = useRewardStore(s => s.applyReward);
   const addXP = useProgressStore(s => s.addXP);
+  const addStreakFreeze = useProgressStore(s => s.addStreakFreeze);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
@@ -217,6 +218,9 @@ export default function RewardChest({ visible, onDismiss }: RewardChestProps) {
         }
         if (rolled.type === 'cosmetic' && rolled.kovaCosmetic) {
           addCosmetic(rolled.kovaCosmetic.id);
+        }
+        if (rolled.type === 'streak_shield') {
+          addStreakFreeze(1);
         }
       }, 600));
     }, 800));

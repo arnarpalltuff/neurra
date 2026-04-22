@@ -29,6 +29,7 @@ export default React.memo(function HomeGreeting({
   const style = useStaggeredEntrance(index);
   const name = useUserStore(s => s.name);
   const streak = useProgressStore(s => s.streak);
+  const streakFreezes = useProgressStore(s => s.streakFreezes);
   const timeOfDay = getTimeOfDay();
 
   return (
@@ -46,6 +47,9 @@ export default React.memo(function HomeGreeting({
             <Text style={styles.streakNumber}>{streak}</Text>
           </View>
           <Text style={styles.streakLabel}>DAY STREAK</Text>
+          {streakFreezes > 0 && (
+            <Text style={styles.shieldBadge}>🛡 × {streakFreezes}</Text>
+          )}
         </View>
       )}
     </Animated.View>
@@ -123,5 +127,12 @@ const styles = StyleSheet.create({
     color: C.t4,
     letterSpacing: 1.3,
     marginTop: 1,
+  },
+  shieldBadge: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: C.t3,
+    marginTop: 4,
+    letterSpacing: 0.4,
   },
 });
