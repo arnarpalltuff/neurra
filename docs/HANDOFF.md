@@ -1,5 +1,11 @@
 # Neurra — session handoff
 
+## 2026-04-22 — Known pre-alpha state drift
+
+`activeXpBoost` records persisted from installs before the `challengesRemaining` field was dropped carry an unused extra property; TypeScript ignores it and `consumeXpBoost` clears it on first use, so no migration is needed.
+
+---
+
 ## 2026-04-18 — Word Weave freeze fix (applied, pending commit)
 
 **Status:** Fix applied in working tree. Typecheck passes. User verification + commit pending.

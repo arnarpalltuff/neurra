@@ -66,6 +66,10 @@ export default function SessionScreen() {
   const [challengeScore, setChallengeScore] = useState({ score: 0, total: 0 });
   const [unlockedBadges, setUnlockedBadges] = useState<string[]>([]);
   const betweenGamesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Captured once in handleGameComplete so the post-session challenge bonus
+  // gets the same xp_boost multiplier as the session XP. consumeXpBoost
+  // fires there and clears activeXpBoost, so we can't re-read it later.
+  const sessionBoostMultRef = useRef(1);
 
   // Story mode
   const storyEnabled = useStoryStore(s => s.storyEnabled);
@@ -143,6 +147,7 @@ export default function SessionScreen() {
       if (wasDepletedRef.current) xp = Math.round(xp * DEPLETED_XP_MULTIPLIER);
       // Chest xp_boost multiplier (1.5/2/3x). Stacks multiplicatively with deep/depleted.
       const boostMult = useRewardStore.getState().consumeXpBoost();
+      sessionBoostMultRef.current = boostMult;
       if (boostMult > 1) xp = Math.round(xp * boostMult);
       const totalXP = xp;
       setSessionXP(totalXP);
@@ -266,8 +271,11 @@ export default function SessionScreen() {
 
   const handleChallengeComplete = useCallback((score: number, total: number) => {
     setChallengeScore({ score, total });
-    // Award bonus XP
-    useProgressStore.getState().addXP(CHALLENGE_XP_BONUS);
+    // Award bonus XP — same xp_boost multiplier the session used, so a
+    // "2× boost" boosts everything earned this session.
+    const mult = sessionBoostMultRef.current;
+    const bonus = mult > 1 ? Math.round(CHALLENGE_XP_BONUS * mult) : CHALLENGE_XP_BONUS;
+    useProgressStore.getState().addXP(bonus);
     useCoinStore.getState().earnCoins(50, 'Real-life challenge');
     setPhase('challengeResult');
   }, []);
