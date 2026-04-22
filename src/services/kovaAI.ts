@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSettingsStore } from '../stores/settingsStore';
+import { invokeClaudeProxy } from './supabaseClient';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -195,7 +196,9 @@ function getFallback(mode: KovaMode, ctx: KovaContext): string {
 
 // ── Main function ────────────────────────────────────────────
 
-const TIMEOUT_MS = 3000;
+interface AnthropicMessageResponse {
+  content?: Array<{ type: string; text?: string }>;
+}
 
 export async function generateKovaMessage(
   mode: KovaMode,
@@ -204,10 +207,6 @@ export async function generateKovaMessage(
   // Check if AI Kova is enabled
   const aiEnabled = useSettingsStore.getState().aiKovaEnabled ?? true;
   if (!aiEnabled) return getFallback(mode, context);
-
-  // Check API key
-  const apiKey = useSettingsStore.getState().anthropicApiKey;
-  if (!apiKey) return getFallback(mode, context);
 
   // Day cache for greeting and insight
   const cacheKey = `kova_${mode}_${new Date().toDateString()}`;
@@ -218,35 +217,19 @@ export async function generateKovaMessage(
     } catch {}
   }
 
-  // Rate limit
+  // Rate limit (client-side advisory; server-side limit comes in Phase 5)
   const allowed = await checkRateLimit();
   if (!allowed) return getFallback(mode, context);
 
   const userPrompt = buildPromptForMode(mode, context);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 150,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userPrompt }],
-      }),
-      signal: controller.signal,
+    const data = await invokeClaudeProxy<AnthropicMessageResponse>({
+      prompt: userPrompt,
+      maxTokens: 150,
+      model: 'claude-sonnet-4-20250514',
+      system: SYSTEM_PROMPT,
     });
-
-    if (!response.ok) return getFallback(mode, context);
-
-    const data = await response.json();
     const message = data.content?.[0]?.text?.trim();
     if (!message) return getFallback(mode, context);
 
@@ -257,7 +240,5 @@ export async function generateKovaMessage(
     return message;
   } catch {
     return getFallback(mode, context);
-  } finally {
-    clearTimeout(timeout);
   }
 }

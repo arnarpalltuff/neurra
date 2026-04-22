@@ -35,7 +35,6 @@ export function useDailyBriefing() {
           sessions: summaries,
           storyEnabled,
           storyDay,
-          apiKey: undefined,
         });
         if (!cancelled) setBriefing(result);
       } catch {

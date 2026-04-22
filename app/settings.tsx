@@ -92,9 +92,6 @@ export default function SettingsScreen() {
 
   const aiKovaEnabled = useSettingsStore(s => s.aiKovaEnabled);
   const setAiKovaEnabled = useSettingsStore(s => s.setAiKovaEnabled);
-  const anthropicApiKey = useSettingsStore(s => s.anthropicApiKey);
-  const setAnthropicApiKey = useSettingsStore(s => s.setAnthropicApiKey);
-  const [apiKeyInput, setApiKeyInput] = useState(anthropicApiKey);
   const neuralMapEnabled = useSettingsStore(s => s.neuralMapEnabled);
   const setNeuralMapEnabled = useSettingsStore(s => s.setNeuralMapEnabled);
 
@@ -187,21 +184,6 @@ export default function SettingsScreen() {
         <SectionHeader title="AI KOVA" />
         <View style={styles.card}>
           <ToggleRow label="AI-powered Kova" value={aiKovaEnabled} onChange={setAiKovaEnabled} />
-          <Divider />
-          <View style={styles.apiKeyRow}>
-            <Text style={styles.apiKeyLabel}>Anthropic API Key</Text>
-            <TextInput
-              style={styles.apiKeyInput}
-              value={apiKeyInput}
-              onChangeText={setApiKeyInput}
-              onBlur={() => setAnthropicApiKey(apiKeyInput)}
-              placeholder="sk-ant-..."
-              placeholderTextColor="rgba(255,255,255,0.2)"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
         </View>
 
         {/* APPEARANCE */}

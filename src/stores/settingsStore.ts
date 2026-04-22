@@ -50,9 +50,7 @@ interface SettingsState {
 
   // AI Kova
   aiKovaEnabled: boolean;
-  anthropicApiKey: string;
   setAiKovaEnabled: (v: boolean) => void;
-  setAnthropicApiKey: (v: string) => void;
 
   // Neural Map
   neuralMapEnabled: boolean;
@@ -115,7 +113,6 @@ export const useSettingsStore = create<SettingsState>()(
       quietHoursEnd: '07:00',
 
       aiKovaEnabled: true,
-      anthropicApiKey: '',
       neuralMapEnabled: true,
 
       relaxedMode: false,
@@ -177,13 +174,12 @@ export const useSettingsStore = create<SettingsState>()(
       setColorBlindMode: (colorBlindMode) => set({ colorBlindMode }),
       setTapTargetSize: (tapTargetSize) => set({ tapTargetSize }),
       setAiKovaEnabled: (aiKovaEnabled) => set({ aiKovaEnabled }),
-      setAnthropicApiKey: (anthropicApiKey) => set({ anthropicApiKey }),
       setNeuralMapEnabled: (neuralMapEnabled) => set({ neuralMapEnabled }),
     }),
     {
       name: 'neurra-settings',
       storage: createJSONStorage(() => AsyncStorage),
-      version: 1,
+      version: 2,
       migrate: (persistedState: any, _version: number) => {
         // i18n removed — force any stored non-English language back to 'en'
         // so runtime matches the narrowed `Language = 'en'` type.
@@ -194,6 +190,11 @@ export const useSettingsStore = create<SettingsState>()(
         // values don't sit around forever.
         if (persistedState && 'leaguesEnabled' in persistedState) {
           delete persistedState.leaguesEnabled;
+        }
+        // v2: Anthropic key moved server-side (Supabase secret). Purge any
+        // previously-stored value from device AsyncStorage on existing installs.
+        if (persistedState && 'anthropicApiKey' in persistedState) {
+          delete persistedState.anthropicApiKey;
         }
         return persistedState;
       },

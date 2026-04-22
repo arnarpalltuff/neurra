@@ -12,6 +12,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { todayStr, getTimeOfDay } from '../utils/timeUtils';
+import { invokeClaudeProxy } from './supabaseClient';
 
 export interface CoachBriefing {
   greeting: string;
@@ -29,7 +30,6 @@ interface SessionSummary {
 }
 
 const CACHE_PREFIX = 'briefing_';
-const TIMEOUT_MS = 3000;
 
 // ── Static Fallback ─────────────────────────────────
 
@@ -52,13 +52,16 @@ function getStaticBriefing(name: string, streak: number): CoachBriefing {
 
 // ── API Call ─────────────────────────────────────────
 
+interface AnthropicMessageResponse {
+  content?: Array<{ type: string; text?: string }>;
+}
+
 async function callCoachAPI(
   name: string,
   data: SessionSummary[],
   streak: number,
   storyEnabled: boolean,
   storyDay: number,
-  apiKey: string,
 ): Promise<CoachBriefing> {
   const tod = getTimeOfDay();
   const storyContext = storyEnabled
@@ -80,33 +83,13 @@ Generate a daily briefing with exactly 4 parts:
 
 Respond ONLY in JSON format with these exact keys: greeting, insight, recommendation, encouragement. No markdown, no backticks.`;
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-      signal: controller.signal,
-    });
-
-    if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-    const result = await response.json();
-    const text = result.content?.[0]?.text || '';
-    return JSON.parse(text);
-  } finally {
-    clearTimeout(timeout);
-  }
+  const result = await invokeClaudeProxy<AnthropicMessageResponse>({
+    prompt,
+    maxTokens: 300,
+    model: 'claude-sonnet-4-20250514',
+  });
+  const text = result.content?.[0]?.text || '';
+  return JSON.parse(text) as CoachBriefing;
 }
 
 // ── Public API ──────────────────────────────────────
@@ -122,9 +105,8 @@ export async function getDailyBriefing(params: {
   sessions: SessionSummary[];
   storyEnabled: boolean;
   storyDay: number;
-  apiKey?: string;
 }): Promise<CoachBriefing> {
-  const { name, streak, totalSessions, sessions, storyEnabled, storyDay, apiKey } = params;
+  const { name, streak, totalSessions, sessions, storyEnabled, storyDay } = params;
 
   // Not enough data for AI coaching
   if (totalSessions < 3) {
@@ -139,16 +121,13 @@ export async function getDailyBriefing(params: {
     if (cached) return JSON.parse(cached);
   } catch {}
 
-  // Try API
-  if (apiKey) {
-    try {
-      const briefing = await callCoachAPI(name, sessions, streak, storyEnabled, storyDay, apiKey);
-      // Cache for today
-      await AsyncStorage.setItem(cacheKey, JSON.stringify(briefing)).catch(() => {});
-      return briefing;
-    } catch (e) {
-      console.warn('[brainCoach] API call failed, using fallback:', e);
-    }
+  // Try API (Supabase Edge Function holds the Anthropic key server-side).
+  try {
+    const briefing = await callCoachAPI(name, sessions, streak, storyEnabled, storyDay);
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(briefing)).catch(() => {});
+    return briefing;
+  } catch (e) {
+    console.warn('[brainCoach] API call failed, using fallback:', e);
   }
 
   // Fallback
