@@ -6,10 +6,11 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
 import { configureReanimatedLogger } from 'react-native-reanimated';
 
-// Diagnostic: disable Reanimated strict-mode warnings to determine whether
-// the ~60-per-render "Writing to value during component render" warnings are
-// real render-phase writes or strict-mode false positives. Remove after
-// diagnosis is complete.
+// Strict mode off: the Expo Go-bundled Reanimated emits false-positive
+// "Writing to value during component render" warnings that don't correspond
+// to real render-phase writes (verified via classification sweep + runtime
+// diagnosis — see commit d3cd701). Strict off silences the noise without
+// losing actionable signal.
 configureReanimatedLogger({ strict: false });
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
