@@ -51,24 +51,6 @@ export default React.memo(function HomeKova({
 
   useEffect(() => {
     let mounted = true;
-    const mode = kovaContext.returnedAfterBreak ? 'comeback'
-      : kovaContext.timeOfDay === 'lateNight' ? 'late_night'
-      : kovaContext.streakAtRisk ? 'streak_risk'
-      : 'greeting';
-    const timer = setTimeout(() => {
-      generateKovaMessage(mode, kovaContext).then(msg => {
-        if (mounted) {
-          setKovaDialogue(msg);
-          setShowBubble(true);
-        }
-      });
-    }, 800);
-    return () => { mounted = false; clearTimeout(timer); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
     if (kovaContext.totalSessions >= 3) {
       generateKovaMessage('insight', kovaContext).then(msg => {
         if (mounted) setKovaInsight(msg);
