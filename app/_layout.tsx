@@ -4,6 +4,14 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet, View } from 'react-native';
+import { configureReanimatedLogger } from 'react-native-reanimated';
+
+// Diagnostic: disable Reanimated strict-mode warnings to determine whether
+// the ~60-per-render "Writing to value during component render" warnings are
+// real render-phase writes or strict-mode false positives. Remove after
+// diagnosis is complete.
+configureReanimatedLogger({ strict: false });
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import {
