@@ -35,7 +35,9 @@ export default React.memo(function HomeGreeting({
   return (
     <Animated.View style={[styles.row, style]}>
       <View style={styles.left}>
-        <Text style={styles.sub}>{weatherIcon}  {GREETINGS[timeOfDay].toUpperCase()}</Text>
+        <Text style={styles.sub}>
+          {weatherIcon ? `${weatherIcon}  ` : ''}{GREETINGS[timeOfDay].toUpperCase()}
+        </Text>
         <Text style={styles.name}>{name || 'friend'}</Text>
         <Text style={styles.weather}>{weatherHeadline}</Text>
       </View>

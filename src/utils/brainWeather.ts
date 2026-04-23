@@ -62,7 +62,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
   if (returningToday) {
     return {
       weather: 'rainbow',
-      icon: '🌈',
+      icon: '',
       headline: 'Welcome back. The forecast is looking up.',
       tint: 'rgba(155,114,224,0.06)',
       surgingArea: null,
@@ -73,7 +73,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
   if (gap >= 3 && streak === 0) {
     return {
       weather: 'stormy',
-      icon: '⛈',
+      icon: '',
       headline: "Rough weather. But storms pass. Let's train.",
       tint: 'rgba(0,0,0,0.18)',
       surgingArea: null,
@@ -85,7 +85,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
     if (streak >= 3) {
       return {
         weather: 'sunny',
-        icon: '☀️',
+        icon: '',
         headline: "Clear skies. Your brain's in good shape.",
         tint: 'rgba(240,181,66,0.06)',
         surgingArea: null,
@@ -93,7 +93,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
     }
     return {
       weather: 'cloudy',
-      icon: '☁️',
+      icon: '',
       headline: 'A few clouds. Train a little to clear them.',
       tint: 'rgba(160,164,176,0.05)',
       surgingArea: null,
@@ -112,7 +112,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
   if (surger) {
     return {
       weather: 'lightning',
-      icon: '⚡',
+      icon: '',
       headline: `Your ${AREA_LABEL[surger.area]} is surging. Ride the lightning.`,
       tint: 'rgba(240,181,66,0.08)',
       surgingArea: AREA_LABEL[surger.area],
@@ -126,7 +126,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
   if (improved >= 4 && declined <= 1 && streak > 0) {
     return {
       weather: 'sunny',
-      icon: '☀️',
+      icon: '',
       headline: "Clear skies. Your brain's in good shape.",
       tint: 'rgba(240,181,66,0.06)',
       surgingArea: null,
@@ -137,7 +137,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
   if (improved >= 2 && declined <= 2) {
     return {
       weather: 'partlyCloudy',
-      icon: '⛅',
+      icon: '',
       headline: 'A few clouds. Some areas need attention.',
       tint: 'rgba(107,168,224,0.05)',
       surgingArea: null,
@@ -148,7 +148,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
   if (declined >= 3) {
     return {
       weather: 'rainy',
-      icon: '🌧',
+      icon: '',
       headline: 'A bit of rain. A short session helps.',
       tint: 'rgba(107,168,224,0.07)',
       surgingArea: null,
@@ -158,7 +158,7 @@ export function classifyBrainWeather(inputs: WeatherInputs): BrainWeatherReport 
   // ── Default: cloudy.
   return {
     weather: 'cloudy',
-    icon: '☁️',
+    icon: '',
     headline: 'Mostly cloudy. Time to train and shake it loose.',
     tint: 'rgba(160,164,176,0.05)',
     surgingArea: null,
